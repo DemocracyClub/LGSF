@@ -32,7 +32,8 @@ scrapers. Scrapers can be run by tags, council identifiers, failing, etc
 ## Using
 
 This is very new and likely to change a lot. If you want to actually use this
-project, it’s recommended you also [join the Democracy Club Slack] to talk
+project, it’s recommended you also
+[join the Democracy Club Slack](https://slack.democracyclub.org.uk/) to talk
 about it with us. Everything is likely to change, and this code is in no way
 supported.
 
@@ -59,7 +60,8 @@ To run a single council run e.g:
 
 `python manage.py councillors --council KIR`
 
-Where `KIR` is the council ID from the [MHCLG register].
+Where `KIR` is the council ID from the
+[MHCLG register](https://www.registers.service.gov.uk/registers/).
 
 Running the scrapers will create a `data` directory with raw and JSON folders
 and a file in each per councillor.
