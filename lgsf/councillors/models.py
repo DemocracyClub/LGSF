@@ -38,7 +38,12 @@ class CouncillorBase:
         return out.getvalue()
 
     def as_dict(self):
-        out = {"email": getattr(self, "email", None), "url": self.url}
+        out = {
+            "photo_url": getattr(self, "photo_url", None),
+            "email": getattr(self, "email", None),
+            "standing_down": getattr(self, "standing_down", None),
+            "url": self.url,
+        }
         RAW_FIELDS = ["identifier", "name", "party", "division"]
         for attr in RAW_FIELDS:
             out["raw_{}".format(attr)] = getattr(self, attr)

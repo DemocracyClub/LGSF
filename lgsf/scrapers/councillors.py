@@ -1,6 +1,7 @@
 import abc
 
 from bs4 import BeautifulSoup
+from dateutil.parser import parse
 
 from lgsf.scrapers import ScraperBase
 from lgsf.councillors import CouncillorBase
@@ -109,10 +110,33 @@ class ModGovCouncillorScraper(BaseCouncillorScraper):
             party=party,
             division=division,
         )
+
+        # Emails
         try:
             councillor.email = councillor_xml.find("email").text
         except AttributeError:
             pass
+
+        # Photos
+        try:
+            councillor.photo_url = councillor_xml.photobigurl.text
+        except AttributeError:
+            pass
+
+        # Standing down
+        IGNORED_ENDDATES = ["unspecified"]
+
+        try:
+            enddate = (
+                councillor_xml.find("termsofoffice").findAll("enddate")[-1].text
+            )
+            if enddate not in IGNORED_ENDDATES:
+                # councillor.standing_down = enddate
+                standing_down = parse(enddate, dayfirst=True)
+                councillor.standing_down = standing_down.isoformat()
+        except AttributeError:
+            pass
+
         return councillor
 
 
