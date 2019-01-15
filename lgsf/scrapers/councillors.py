@@ -94,7 +94,7 @@ class ModGovCouncillorScraper(BaseCouncillorScraper):
     def get_councillors(self):
         req = self.get(self.format_councillor_api_url())
         soup = BeautifulSoup(req.text, "lxml")
-        return soup.findAll("wards")
+        return soup.findAll("ward")
 
     def get_single_councillor(self, ward, councillor_xml):
         identifier = councillor_xml.find("councillorid").text
