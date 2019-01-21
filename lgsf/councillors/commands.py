@@ -20,6 +20,8 @@ class Command(PerCouncilCommandBase):
         except KeyboardInterrupt:
             raise
         except:
+            if self.options.get('verbose'):
+                raise
             print(
                 "Error running {}, see {} for more".format(
                     self.options["council"], scraper._error_file_name()
