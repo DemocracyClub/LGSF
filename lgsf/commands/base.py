@@ -3,6 +3,7 @@ import argparse
 import os
 
 from lgsf.conf import settings
+from lgsf.path_utils import _abs_path
 
 
 class CommandBase(metaclass=abc.ABCMeta):
@@ -79,7 +80,7 @@ class PerCouncilCommandBase(CommandBase):
         councils = []
         if self.options["all_councils"] or self.options["tags"]:
             councils = [
-                d
+                d.split("-")[0]
                 for d in os.listdir(settings.SCRAPER_DIR_NAME)
                 if os.path.isdir(os.path.join(settings.SCRAPER_DIR_NAME, d))
                 and not d.startswith("__")
@@ -87,6 +88,15 @@ class PerCouncilCommandBase(CommandBase):
 
         else:
             for council in self.options["council"].split(","):
-                council = council.strip().upper()
+                council = council.strip().split("-")[0].upper()
                 councils.append(council)
         return councils
+
+    def normalise_codes(self):
+        if self.options.get('council'):
+            old_codes = self.options["council"].split(",")
+            new_codes = []
+            for code in old_codes:
+                new_codes.append(_abs_path(settings.SCRAPER_DIR_NAME, code)[1])
+        self.options['council'] = ",".join(new_codes)
+        return self.options

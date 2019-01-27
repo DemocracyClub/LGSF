@@ -2,6 +2,7 @@ import os
 import pkgutil
 from importlib.machinery import SourceFileLoader
 from importlib import import_module
+import glob
 
 from lgsf.conf import settings
 
@@ -9,16 +10,23 @@ from lgsf.conf import settings
 def _abs_path(base_dir, code):
     abs_path = os.path.abspath(base_dir)
     if code:
-        abs_path = os.path.join(abs_path, code)
-    return abs_path
+        abs_path_root = os.path.join(abs_path, code.upper())
+        try:
+            abs_path = glob.glob("{}*".format(abs_path_root))[0]
+        except IndexError:
+            # This might be a slug rather than a code
+            abs_path = glob.glob("{}/*{}*".format(abs_path, code.lower()))[0]
+
+    code = os.path.split(abs_path)[-1].split("-")[0]
+    return (abs_path, code)
 
 
 def scraper_abs_path(code=None):
-    return _abs_path(settings.SCRAPER_DIR_NAME, code)
+    return _abs_path(settings.SCRAPER_DIR_NAME, code)[0]
 
 
 def data_abs_path(code=None, subdir=None):
-    abspath = _abs_path(settings.DATA_DIR_NAME, code)
+    abspath = _abs_path(settings.DATA_DIR_NAME, code)[0]
     if subdir:
         abspath = os.path.join(abspath, subdir)
     return abspath

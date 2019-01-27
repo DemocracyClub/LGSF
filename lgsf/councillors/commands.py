@@ -30,6 +30,7 @@ class Command(PerCouncilCommandBase):
 
     def handle(self, options):
         self.options = options
+        self.normalise_codes()
         for council in self.councils_to_run():
             self.options["council"] = council
             scraper_cls = load_scraper(council, self.command_name)
