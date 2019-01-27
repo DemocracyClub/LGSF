@@ -93,9 +93,10 @@ class PerCouncilCommandBase(CommandBase):
         return councils
 
     def normalise_codes(self):
+        new_codes = []
         if self.options.get('council'):
             old_codes = self.options["council"].split(",")
-            new_codes = []
+
             for code in old_codes:
                 new_codes.append(_abs_path(settings.SCRAPER_DIR_NAME, code)[1])
         self.options['council'] = ",".join(new_codes)
