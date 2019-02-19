@@ -39,7 +39,6 @@ class Scraper(HTMLCouncillorScraper):
 
         req = self.get(url)
         soup = BeautifulSoup(req.text, "lxml")
-
         councillor.email = (
             soup.find(text="Email:").findNext("td").getText(strip=True)
         )

@@ -1,5 +1,7 @@
-from lgsf.scrapers.councillors import CMISCouncillorScraper
+from lgsf.scrapers.councillors import ModGovCouncillorScraper
 
 
-class Scraper(CMISCouncillorScraper):
-    base_url = "https://lewes.cmis.uk.com/CMIS5/"
+class Scraper(ModGovCouncillorScraper):
+    base_url = "http://democracy.lewes-eastbourne.gov.uk/"
+
+    
