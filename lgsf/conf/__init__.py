@@ -21,6 +21,8 @@ class BaseSettings(object):
 
         self.APPS = (
             "councillors",
+            "templates",
+            "metadata",
             # 'parties',
             # "scrapers",
             # 'reconcilers',

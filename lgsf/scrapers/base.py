@@ -25,7 +25,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
         self.options = options
         self.check()
 
-    def get(self, url, **kwargs):
+    def get(self, url, verify=True):
         """
         Wraps `requests.get`
         """
@@ -33,7 +33,8 @@ class ScraperBase(metaclass=abc.ABCMeta):
         if self.options.get("verbose"):
             print(url)
         headers = {"User-Agent": "Scraper/DemocracyClub", "Accept": "*/*"}
-        return requests.get(url, headers=headers)
+
+        return requests.get(url, headers=headers, verify=verify)
 
     def check(self):
         checker = ScraperChecker(self.__class__)

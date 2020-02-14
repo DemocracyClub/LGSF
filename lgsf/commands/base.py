@@ -1,9 +1,10 @@
 import abc
 import argparse
 import os
+import json
 
 from lgsf.conf import settings
-from lgsf.path_utils import _abs_path
+from lgsf.path_utils import _abs_path, load_scraper
 
 
 class CommandBase(metaclass=abc.ABCMeta):
@@ -14,7 +15,8 @@ class CommandBase(metaclass=abc.ABCMeta):
 
     def create_parser(self):
         self.parser = argparse.ArgumentParser()
-        self.add_arguments(self.parser)
+        if hasattr(self, "add_arguments"):
+            self.add_arguments(self.parser)
         return self.parser.parse_args(self.argv[1:])
 
     def add_default_arguments(self, parser):
@@ -29,6 +31,7 @@ class CommandBase(metaclass=abc.ABCMeta):
         self.options = vars(self.create_parser())
         return self.handle(self.options)
 
+    @abc.abstractmethod
     def handle(self, *args, **options):
         """
         The actual logic of the command. Subclasses must implement
@@ -68,6 +71,8 @@ class PerCouncilCommandBase(CommandBase):
         self.add_default_arguments(self.parser)
         self.add_arguments(self.parser)
         args = self.parser.parse_args(self.argv[1:])
+        if args.list_missing or args.list_disabled:
+            return args
         if not any((args.council, args.all_councils, args.tags)):
             self.parser.error(
                 "one of --council or --all-councils or --tags required"
@@ -76,15 +81,47 @@ class PerCouncilCommandBase(CommandBase):
             self.parser.error("Can't use --tags and --council together")
         return args
 
+    @property
+    def _all_council_dirs(self):
+        return [
+            d.split("-")[0]
+            for d in os.listdir(settings.SCRAPER_DIR_NAME)
+            if os.path.isdir(os.path.join(settings.SCRAPER_DIR_NAME, d))
+            and not d.startswith("__")
+        ]
+
+    def missing(self, command_name):
+        missing_councils = []
+        for council in self._all_council_dirs:
+            scraper = load_scraper(council, command_name)
+            if not scraper:
+                metadata_path = os.path.join(
+                    _abs_path(settings.SCRAPER_DIR_NAME, council)[0],
+                    "metadata.json",
+                )
+                council_metadata = json.load(open(metadata_path))
+                nice_name = "{} - {}".format(council, council_metadata["slug"])
+                missing_councils.append(nice_name)
+        return sorted(missing_councils)
+
+    def disabled(self, command_name):
+        disabled_councils = []
+        for council in self._all_council_dirs:
+            scraper = load_scraper(council, command_name)
+            if scraper and scraper.disabled:
+                metadata_path = os.path.join(
+                    _abs_path(settings.SCRAPER_DIR_NAME, council)[0],
+                    "metadata.json",
+                )
+                council_metadata = json.load(open(metadata_path))
+                nice_name = "{} - {}".format(council, council_metadata["slug"])
+                disabled_councils.append(nice_name)
+        return sorted(disabled_councils)
+
     def councils_to_run(self):
         councils = []
         if self.options["all_councils"] or self.options["tags"]:
-            councils = [
-                d.split("-")[0]
-                for d in os.listdir(settings.SCRAPER_DIR_NAME)
-                if os.path.isdir(os.path.join(settings.SCRAPER_DIR_NAME, d))
-                and not d.startswith("__")
-            ]
+            councils = self._all_council_dirs
 
         else:
             for council in self.options["council"].split(","):
@@ -94,10 +131,10 @@ class PerCouncilCommandBase(CommandBase):
 
     def normalise_codes(self):
         new_codes = []
-        if self.options.get('council'):
+        if self.options.get("council"):
             old_codes = self.options["council"].split(",")
 
             for code in old_codes:
                 new_codes.append(_abs_path(settings.SCRAPER_DIR_NAME, code)[1])
-        self.options['council'] = ",".join(new_codes)
+        self.options["council"] = ",".join(new_codes)
         return self.options

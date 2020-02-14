@@ -11,6 +11,7 @@ class BaseCouncillorScraper(ScraperBase):
     tags = []
     class_tags = []
     ext = "html"
+    verify_requests = True
 
     def __init__(self, options):
         super().__init__(options)
@@ -41,18 +42,30 @@ class BaseCouncillorScraper(ScraperBase):
         self.report()
 
     def save_councillor(self, raw_content, councillor_obj):
-        assert type(councillor_obj) == CouncillorBase
+        assert (
+            type(councillor_obj) == CouncillorBase
+        ), "Scrapers must return a councillor object"
         file_name = "{}.{}".format(councillor_obj.as_file_name(), self.ext)
         self.save_raw(file_name, raw_content.prettify())
         self.save_json(councillor_obj)
 
     def report(self):
         if self.options.get("verbose"):
+            if len(self.councillors) < 10:
+                raise ValueError(
+                    "Not many councillors found ({})".format(
+                        len(self.councillors)
+                    )
+                )
             print("Found {} councillors".format(len(self.councillors)))
 
 
 class HTMLCouncillorScraper(BaseCouncillorScraper):
     class_tags = ["html"]
+
+    def get_page(self, url):
+        page = self.get(url).text
+        return BeautifulSoup(page, "html5lib")
 
     def get_list_container(self):
         """
@@ -66,13 +79,34 @@ class HTMLCouncillorScraper(BaseCouncillorScraper):
         .. todo::
             raise if more than one node found
         """
-        page = self.get(self.base_url).text
-        soup = BeautifulSoup(page, "html5lib")
+        soup = self.get_page(self.base_url)
         return soup.select(self.list_page["container_css_selector"])[0]
 
     def get_councillors(self):
         container = self.get_list_container()
         return container.select(self.list_page["councillor_css_selector"])
+
+
+class PagedHTMLCouncillorScraper(HTMLCouncillorScraper):
+    def get_next_link(self, soup):
+        try:
+            return soup.select(self.list_page["next_page_css_selector"])[0].a[
+                "href"
+            ]
+        except:
+            return None
+
+    def get_councillors(self):
+        url = self.base_url
+        while url:
+            soup = self.get_page(url)
+
+            url = self.get_next_link(soup)
+            container = soup.select(self.list_page["container_css_selector"])[0]
+            for councillor_html in container.select(
+                self.list_page["councillor_css_selector"]
+            ):
+                yield councillor_html
 
 
 class ModGovCouncillorScraper(BaseCouncillorScraper):
@@ -92,7 +126,9 @@ class ModGovCouncillorScraper(BaseCouncillorScraper):
         return "{}/mgWebService.asmx/GetCouncillorsByWard".format(self.base_url)
 
     def get_councillors(self):
-        req = self.get(self.format_councillor_api_url())
+        req = self.get(
+            self.format_councillor_api_url(), verify=self.verify_requests
+        )
         soup = BeautifulSoup(req.text, "lxml")
         return soup.findAll("ward")
 
@@ -142,6 +178,7 @@ class ModGovCouncillorScraper(BaseCouncillorScraper):
 
 class CMISCouncillorScraper(BaseCouncillorScraper):
     person_block_class_name = "PE_People_PersonBlock"
+    division_text = "Ward:"
     class_tags = ["cmis"]
 
     def get_councillors(self):
@@ -167,7 +204,7 @@ class CMISCouncillorScraper(BaseCouncillorScraper):
         name = list_page_html.find("div", {"class": "NameLink"}).getText(
             strip=True
         )
-        division = list_page_html.find(text="Ward:").next.strip()
+        division = list_page_html.find(text=self.division_text).next.strip()
         party = self.get_party_name(list_page_html)
 
         councillor = self.add_councillor(
