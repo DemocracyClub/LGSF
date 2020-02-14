@@ -32,6 +32,8 @@ class Scraper(HTMLCouncillorScraper):
         councillor.email = soup.select("a[href^=mailto]")[0].get_text(
             strip=True
         )
-
-        councillor.photo_url = "https://www.threerivers.gov.uk" + soup.find("p", {"class": "image"}).img["src"]
+        try:
+            councillor.photo_url = "https://www.threerivers.gov.uk" + soup.find("p", {"class": "image"}).img["src"]
+        except AttributeError:
+            pass
         return councillor
