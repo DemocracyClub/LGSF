@@ -15,10 +15,10 @@ class Scraper(HTMLCouncillorScraper):
 
     def get_single_councillor(self, councillor_html):
         url = "https://www.stroud.gov.uk{}".format(
-            councillor_html.find_all("a")[1]["href"]
+            councillor_html.find_all("a")[0]["href"]
         )
         identifier = url.split("/")[-1]
-        name = councillor_html.find_all("a")[1].text
+        name = councillor_html.find_all("a")[0].text
         division = (
             re.search("Ward: (.*)", councillor_html.find("p").text)
             .group(1)
