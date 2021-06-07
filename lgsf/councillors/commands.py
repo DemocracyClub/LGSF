@@ -1,3 +1,5 @@
+from rich.progress import Progress
+
 from lgsf.commands.base import PerCouncilCommandBase
 from lgsf.path_utils import load_scraper, load_council_info
 from retry import retry
@@ -23,61 +25,91 @@ class Command(PerCouncilCommandBase):
             help="Print disabled councils",
         )
 
-    def _run_single(self, scraper):
+    def _run_single(self, scraper, progress, tasks):
         try:
 
             from lgsf.scrapers.councillors import ModGovCouncillorScraper
+
             if isinstance(scraper, ModGovCouncillorScraper):
 
-                print("\t".join([scraper.options['council'], scraper.base_url]))
+                progress.console.print(
+                    "\t".join([scraper.options["council"], scraper.base_url])
+                )
 
             else:
-                print("\t".join([scraper.options['council'], str(scraper.class_tags)]))
+                progress.console.print(
+                    "\t".join([scraper.options["council"], str(scraper.class_tags)])
+                )
             scraper.run()
+            progress.update(tasks["completed"], advance=1)
         except KeyboardInterrupt:
             raise
         except:
-            if self.options.get('verbose'):
+            if self.options.get("verbose"):
                 raise
-            print(
-                "Error running {}, see {} for more".format(
+            progress.update(tasks["failed"], advance=1)
+            progress.console.print(
+                "Error running asdasd {}, see {} for more".format(
                     self.options["council"], scraper._error_file_name()
-                )
+                ),
+                style="red",
             )
+
 
     def handle(self, options):
         self.options = options
         if options["list_missing"]:
-            for council in self.missing(self.command_name):
-                print(council)
+            self.output_missing()
 
         if options["list_disabled"]:
-            for council in self.disabled(self.command_name):
-                print(council)
+            self.output_disabled()
+
+        self.output_status()
+
         self.normalise_codes()
-        for council in self.councils_to_run():
-            self.options["council"] = council
-            self.options["council_info"] = load_council_info(council)
-            scraper_cls = load_scraper(council, self.command_name)
-            if not scraper_cls:
-                continue
-            with scraper_cls((self.options)) as scraper:
-                should_run = True
-                if scraper.disabled:
-                    should_run = False
+        to_run = self.councils_to_run()
+        with Progress(
+            auto_refresh=False, redirect_stderr=False, redirect_stdout=False
+        ) as progress:
 
-                if should_run and options["refresh"]:
-                    if scraper.run_since():
-                        should_run = False
+            tasks = {
+                "total": progress.add_task(description=f"Total", total=len(to_run)),
+                "completed": progress.add_task(
+                    description=f"Completed", total=len(to_run)
+                ),
+                "failed": progress.add_task(description=f"Failed", total=len(to_run)),
+                "skipped": progress.add_task(description=f"Skipped", total=len(to_run)),
+            }
 
-                if should_run and options["tags"]:
-                    required_tags = set(options["tags"].split(","))
-                    scraper_tags = set(scraper.get_tags)
-                    if not required_tags.issubset(scraper_tags):
-                        should_run = False
+            while not progress.finished:
+                for council in to_run:
+                    self.options["council"] = council
+                    self.options["council_info"] = load_council_info(council)
+                    scraper_cls = load_scraper(council, self.command_name)
+                    if not scraper_cls:
+                        continue
+                    with scraper_cls((self.options), progress.console) as scraper:
+                        should_run = True
+                        if scraper.disabled:
+                            should_run = False
 
-                if should_run:
-                    if options.get("verbose"):
-                        print(council)
+                        if should_run and options["refresh"]:
+                            if scraper.run_since():
+                                should_run = False
 
-                    self._run_single(scraper)
+                        if should_run and options["tags"]:
+                            required_tags = set(options["tags"].split(","))
+                            scraper_tags = set(scraper.get_tags)
+                            if not required_tags.issubset(scraper_tags):
+                                should_run = False
+
+                        if should_run:
+                            if options.get("verbose"):
+                                progress.console.print(council)
+
+                            self._run_single(scraper, progress, tasks)
+                            progress.update(tasks["total"], advance=1)
+                        else:
+                            progress.update(tasks["skipped"], advance=1)
+                            progress.update(tasks["total"], advance=1)
+                        progress.refresh()

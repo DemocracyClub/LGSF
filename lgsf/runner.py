@@ -1,10 +1,15 @@
+import sys
+
 from lgsf.path_utils import load_command
 from lgsf.conf import settings
 from lgsf import LOGO
 
 
 class CommandRunner:
-    def __init__(self, argv):
+    def __init__(self, argv, stdout=None):
+        if not stdout:
+            stdout = sys.stdout
+        self.stdout = stdout
 
         try:
             subcommand = argv[1]
@@ -14,10 +19,10 @@ class CommandRunner:
             subcommand = "help"
 
         if subcommand == "help":
-            print(self.format_help())
+            self.stdout.write(self.format_help())
         else:
-            cmd = load_command(subcommand)
-            cmd.Command(argv[1:])
+            Command = load_command(subcommand)
+            Command(argv[1:], self.stdout)
 
     def format_help(self):
         help_text = [

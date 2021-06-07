@@ -21,8 +21,9 @@ class ScraperBase(metaclass=abc.ABCMeta):
 
     disabled = False
 
-    def __init__(self, options):
+    def __init__(self, options, console):
         self.options = options
+        self.console = console
         self.check()
 
     def get(self, url, verify=True):
@@ -31,7 +32,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
         """
 
         if self.options.get("verbose"):
-            print(url)
+            self.console.print(url)
         headers = {"User-Agent": "Scraper/DemocracyClub", "Accept": "*/*"}
 
         return requests.get(url, headers=headers, verify=verify)

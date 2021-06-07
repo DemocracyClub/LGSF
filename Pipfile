@@ -1,12 +1,9 @@
 [[source]]
-
 url = "https://pypi.python.org/simple"
 verify_ssl = true
 name = "pypi"
 
-
 [packages]
-
 requests = "*"
 ipdb = "*"
 requests-cache = "*"
@@ -23,12 +20,13 @@ pyopenssl = "*"
 python-dateutil = "*"
 retry = "*"
 black = "*"
-
+rich = "*"
 
 [dev-packages]
-
-
+pytest-mypy-plugins = "*"
 
 [requires]
+python_version = "3.8"
 
-python_version = "3.6"
+[pipenv]
+allow_prereleases = true

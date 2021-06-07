@@ -13,8 +13,8 @@ class BaseCouncillorScraper(ScraperBase):
     ext = "html"
     verify_requests = True
 
-    def __init__(self, options):
-        super().__init__(options)
+    def __init__(self, options, console):
+        super().__init__(options, console)
         self.councillors = set()
 
     @abc.abstractmethod
@@ -57,7 +57,7 @@ class BaseCouncillorScraper(ScraperBase):
                         len(self.councillors)
                     )
                 )
-            print("Found {} councillors".format(len(self.councillors)))
+            self.console.print("Found {} councillors".format(len(self.councillors)))
 
 
 class HTMLCouncillorScraper(BaseCouncillorScraper):

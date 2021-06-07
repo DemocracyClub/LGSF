@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 import re
 import pkgutil
@@ -75,7 +77,14 @@ def get_commands():
     return [mod.name for mod in pkgutil.iter_modules([command_path])]
 
 
-def load_command(module_name):
+def load_command_module(module_name):
     return import_module(
         "{}.{}".format(module_name, settings.COMMAND_FILE_NAME)
     )
+
+def load_command(module_name):
+    module = load_command_module(module_name)
+    if hasattr(module, "Command"):
+        return module.Command
+    else:
+        raise ValueError(f"{module_name} doesn't contain a class")
