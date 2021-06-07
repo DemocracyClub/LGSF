@@ -1,0 +1,182 @@
+import json
+import glob
+
+
+ALL_UP_IDS = [
+    "MDB",
+    "RCC",
+    "STT",
+    "DAL",
+    "BPL",
+    "ERY",
+    "NLN",
+    "YOR",
+    "LCE",
+    "RUT",
+    "NGM",
+    "HEF",
+    "TFW",
+    "STE",
+    "BAS",
+    "NSM",
+    "SGC",
+    "TOB",
+    "LUT",
+    "MDW",
+    "BRC",
+    "WBK",
+    "WNM",
+    "BNH",
+    "CHE",
+    "CHW",
+    "BDF",
+    "CBF",
+    "ECA",
+    "FEN",
+    "ALL",
+    "BAR",
+    "COP",
+    "EDN",
+    "BOS",
+    "CHS",
+    "DEB",
+    "ERE",
+    "HIG",
+    "NED",
+    "SDE",
+    "EDE",
+    "MDE",
+    "NDE",
+    "SHA",
+    "TEI",
+    "TOR",
+    "WDE",
+    "EAS",
+    "LEE",
+    "ROH",
+    "WEA",
+    "BRA",
+    "CHL",
+    "MAL",
+    "TEN",
+    "UTT",
+    "COT",
+    "FOE",
+    "TEW",
+    "EHA",
+    "NEW",
+    "TES",
+    "DAC",
+    "HER",
+    "ASF",
+    "CAT",
+    "DAR",
+    "GRA",
+    "SEV",
+    "SHE",
+    "SWL",
+    "THA",
+    "TON",
+    "FYL",
+    "LAC",
+    "PRE",
+    "RIB",
+    "SRI",
+    "WYR",
+    "BLA",
+    "CHA",
+    "HAO",
+    "HIN",
+    "MEL",
+    "NWL",
+    "OAD",
+    "BOT",
+    "ELI",
+    "NKE",
+    "SHO",
+    "SKE",
+    "WLI",
+    "BRE",
+    "BRO",
+    "GRY",
+    "KIN",
+    "NNO",
+    "SNO",
+    "HAE",
+    "RIH",
+    "RYE",
+    "SCE",
+    "SEL",
+    "ASH",
+    "BAE",
+    "BRT",
+    "GED",
+    "MAS",
+    "NEA",
+    "RUS",
+    "SOX",
+    "VAL",
+    "MEN",
+    "SEG",
+    "SSO",
+    "EST",
+    "LIF",
+    "SST",
+    "STA",
+    "STF",
+    "BAB",
+    "MSU",
+    "EPS",
+    "GRT",
+    "SPE",
+    "SUR",
+    "WAE",
+    "NWA",
+    "STR",
+    "WAW",
+    "ARU",
+    "CHI",
+    "HOR",
+    "MSS",
+    "BRM",
+    "MAV",
+    "WYC",
+    "WYE",
+    "EHE",
+]
+
+out_set = set()
+
+
+def should_output(content, council_id):
+    if not content.get("email"):
+        # Never output with no email
+        return False
+
+    if council_id in ALL_UP_IDS:
+        # Always yes for all up councils
+        return True
+
+    standing_down = content.get("standing_down")
+    if standing_down:
+        if "2019-05" in standing_down:
+            return True
+
+    return False
+
+
+for file_name in glob.glob("./data/**/json/*.json"):
+    content = json.loads(open(file_name).read())
+    council_ID = file_name.split("/")[-3]
+    if should_output(content, council_ID):
+        out = [
+            council_ID,
+            content.get("standing_down") or "Unknown",
+            content["raw_name"],
+            content["raw_party"],
+            content["raw_division"],
+            content["email"],
+            content["url"],
+        ]
+        line = "\t".join(out)
+        print(line)
