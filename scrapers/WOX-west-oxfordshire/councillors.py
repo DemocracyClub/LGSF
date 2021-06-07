@@ -1,5 +1,5 @@
-from lgsf.scrapers.councillors import CMISCouncillorScraper
+from lgsf.scrapers.councillors import ModGovCouncillorScraper
 
 
-class Scraper(CMISCouncillorScraper):
-    base_url = "http://cmis.westoxon.gov.uk/cmis/Councillors.aspx"
+class Scraper(ModGovCouncillorScraper):
+    base_url = "https://meetings.westoxon.gov.uk"
