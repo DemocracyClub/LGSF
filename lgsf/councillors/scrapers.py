@@ -53,9 +53,7 @@ class BaseCouncillorScraper(ScraperBase):
         if self.options.get("verbose"):
             if len(self.councillors) < 10:
                 raise ValueError(
-                    "Not many councillors found ({})".format(
-                        len(self.councillors)
-                    )
+                    "Not many councillors found ({})".format(len(self.councillors))
                 )
             self.console.print("Found {} councillors".format(len(self.councillors)))
 
@@ -90,9 +88,7 @@ class HTMLCouncillorScraper(BaseCouncillorScraper):
 class PagedHTMLCouncillorScraper(HTMLCouncillorScraper):
     def get_next_link(self, soup):
         try:
-            return soup.select(self.list_page["next_page_css_selector"])[0].a[
-                "href"
-            ]
+            return soup.select(self.list_page["next_page_css_selector"])[0].a["href"]
         except:
             return None
 
@@ -126,9 +122,7 @@ class ModGovCouncillorScraper(BaseCouncillorScraper):
         return "{}/mgWebService.asmx/GetCouncillorsByWard".format(self.base_url)
 
     def get_councillors(self):
-        req = self.get(
-            self.format_councillor_api_url(), verify=self.verify_requests
-        )
+        req = self.get(self.format_councillor_api_url(), verify=self.verify_requests)
         soup = BeautifulSoup(req.text, "lxml")
         return soup.findAll("ward")
 
@@ -163,9 +157,7 @@ class ModGovCouncillorScraper(BaseCouncillorScraper):
         IGNORED_ENDDATES = ["unspecified"]
 
         try:
-            enddate = (
-                councillor_xml.find("termsofoffice").findAll("enddate")[-1].text
-            )
+            enddate = councillor_xml.find("termsofoffice").findAll("enddate")[-1].text
             if enddate not in IGNORED_ENDDATES:
                 # councillor.standing_down = enddate
                 standing_down = parse(enddate, dayfirst=True)
@@ -187,11 +179,7 @@ class CMISCouncillorScraper(BaseCouncillorScraper):
         return soup.findAll("div", {"class": self.person_block_class_name})
 
     def get_party_name(self, list_page_html):
-        return (
-            list_page_html.find_all("img")[-1]["title"]
-            .replace("(logo)", "")
-            .strip()
-        )
+        return list_page_html.find_all("img")[-1]["title"].replace("(logo)", "").strip()
 
     def get_single_councillor(self, list_page_html):
         """
@@ -201,9 +189,7 @@ class CMISCouncillorScraper(BaseCouncillorScraper):
         """
         url = list_page_html.a["href"]
         identifier = url.split("/id/")[1].split("/")[0]
-        name = list_page_html.find("div", {"class": "NameLink"}).getText(
-            strip=True
-        )
+        name = list_page_html.find("div", {"class": "NameLink"}).getText(strip=True)
         division = list_page_html.find(text=self.division_text).next.strip()
         party = self.get_party_name(list_page_html)
 

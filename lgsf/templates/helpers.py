@@ -1,5 +1,6 @@
 from string import Template
 
+
 class BaseTemplate:
     required_fields = []
 
@@ -9,21 +10,18 @@ class BaseTemplate:
 
     def validate_context(self):
         for key in self.required_fields:
-            assert key in self.context.keys(), "{} required in context".format(
-                key
-            )
+            assert key in self.context.keys(), "{} required in context".format(key)
 
     def format_template(self):
         teml = Template(self.template)
         return teml.substitute(**self.context)
 
 
-
 class ModGovCouncillorTemplate(BaseTemplate):
     required_fields = ["base_url"]
     file_name = "councillors.py"
 
-    template = """from lgsf.scrapers.councillors import ModGovCouncillorScraper
+    template = """from lgsf.councillors.scrapers import ModGovCouncillorScraper
 
 
 class Scraper(ModGovCouncillorScraper):
@@ -36,7 +34,7 @@ class CMISCouncillorTemplate(BaseTemplate):
     required_fields = ["base_url"]
     file_name = "councillors.py"
 
-    template = """from lgsf.scrapers.councillors import CMISCouncillorScraper
+    template = """from lgsf.councillors.scrapers import CMISCouncillorScraper
 
 
 class Scraper(CMISCouncillorScraper):
@@ -72,6 +70,7 @@ class Scraper(HTMLCouncillorScraper):
             division=division,
         )
 """
+
 
 TEMPLATES = {
     "councillor_scraper_modgov": ModGovCouncillorTemplate,

@@ -28,7 +28,7 @@ class Command(PerCouncilCommandBase):
     def _run_single(self, scraper, progress, tasks):
         try:
 
-            from lgsf.scrapers.councillors import ModGovCouncillorScraper
+            from lgsf.councillors.scrapers import ModGovCouncillorScraper
 
             if isinstance(scraper, ModGovCouncillorScraper):
 
@@ -54,7 +54,6 @@ class Command(PerCouncilCommandBase):
                 ),
                 style="red",
             )
-
 
     def handle(self, options):
         self.options = options
