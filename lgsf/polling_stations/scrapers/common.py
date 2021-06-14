@@ -75,9 +75,6 @@ class PollingStationScraperBase(ScraperBase, metaclass=abc.ABCMeta):
         self.council_id = self.options["council"]
         self.stations = []
         self.districts = []
-        import ipdb
-
-        ipdb.set_trace()
 
     def save_stations(self):
         station_list = PollingStationsList(self.stations)

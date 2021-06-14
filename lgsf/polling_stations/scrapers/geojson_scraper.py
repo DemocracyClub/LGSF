@@ -1,3 +1,4 @@
+import abc
 import json
 from arcgis2geojson import arcgis2geojson
 from numbers import Number
@@ -47,3 +48,25 @@ class GeoJsonScraper(PollingStationScraperBase):
         features = data["features"]
 
         return self.process_features(features)
+
+
+class RandomIdGeoJSONScraper(GeoJsonScraper):
+    def get_data(self, url):
+
+        """
+        Some WFS servers produce output with id fields that seem to
+        be randomly generated. Define an id from some other aspect of the feature
+        See old wdiv scrapers repo for an alternate approach
+        """
+
+        response = self.get(url)
+        data_str = response.content
+        data = json.loads(data_str.decode(self.encoding))
+
+        for i in range(0, len(data["features"])):
+            data["features"][i]["id"] = self.make_pk(data["features"][i])
+
+        return data
+
+    def make_pk(self, feature):
+        raise NotImplementedError
