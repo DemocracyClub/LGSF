@@ -1,20 +1,14 @@
 import json
 from arcgis2geojson import arcgis2geojson
 
-from lgsf.polling_stations.models import PollingStationsList, PollingDistrictsList
-from lgsf.scrapers.base import ScraperBase
-from lgsf.polling_stations.scrapers.common import (
-    # BaseScraper,
-    # get_data_from_url,
-    # save,
-    summarise,
-    sync_db_to_github,
-    truncate,
-    PollingStationScraperBase,
-)
+
+from lgsf.polling_stations.scrapers.common import PollingStationScraperBase
 
 
 class ArcGisScraper(PollingStationScraperBase):
+    encoding = "utf-8"
+    key = "OBJECTID"
+
     def make_geometry(self, feature):
         return json.dumps(arcgis2geojson(feature), sort_keys=True)
 
