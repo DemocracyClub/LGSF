@@ -5,15 +5,15 @@ import csv
 import sys
 
 field_names = [
-    'council_id',
-    'raw_division',
-    'raw_identifier',
-    'email',
-    'url',
-    'raw_name',
-    'raw_party',
-    'photo_url',
-    'standing_down',
+    "council_id",
+    "raw_division",
+    "raw_identifier",
+    "email",
+    "url",
+    "raw_name",
+    "raw_party",
+    "photo_url",
+    "standing_down",
     # 'glasses',
     # 'age_high',
     # 'smile',
@@ -40,15 +40,13 @@ for file_name in glob.glob("./data/**/json/*.json"):
     for k in list(councillor.keys()):
         if k not in field_names:
             del councillor[k]
-    councillor['council_id']= council_id
+    councillor["council_id"] = council_id
     csvout.writerow(councillor)
-
 
     # council_id = file_name.split("/")[-3]
     # if not council_id in councillor_counter:
     #     councillor_counter[council_id] = 0
     # councillor_counter[council_id] += 1
-
 
     # with open(file_name) as f:
     #     json_data = json.loads(f.read())

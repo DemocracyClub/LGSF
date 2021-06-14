@@ -29,9 +29,7 @@ class Command(CommandBase):
                         path = scraper_abs_path(org["official_identifier"])
                     except IOError:
                         # This org does't exist yet
-                        name = "{}-{}".format(
-                            org["official_identifier"], org["slug"]
-                        )
+                        name = "{}-{}".format(org["official_identifier"], org["slug"])
                         path = create_org_package(name)
                     with open(os.path.join(path, "metadata.json"), "w") as f:
                         f.write(json.dumps(org))
