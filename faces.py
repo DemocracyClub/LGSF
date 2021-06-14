@@ -13,6 +13,7 @@ IGNORE_LIST = (
     "ashfield-dc.gov.uk/UserData/8/2/1/Info00000128/bigpic.jpg",
 )
 
+
 def make_face_dir(file_name):
     face_dir_name = "face_data"
     rk_json_path = file_name.replace("/json/", "/{}/".format(face_dir_name))
@@ -26,14 +27,16 @@ def detect_face(rk_json_path, photo_url, councillor_json):
     attributes = ["ALL"]
 
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36',
-        'referer': councillor_json['url'],
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36",
+        "referer": councillor_json["url"],
     }
-
 
     print(photo_url)
     image = requests.get(photo_url, headers=headers)
-    if 'Content-Length' in image.headers and int(image.headers['Content-Length']) < 4000:
+    if (
+        "Content-Length" in image.headers
+        and int(image.headers["Content-Length"]) < 4000
+    ):
         # this is tiny
         return
 
@@ -50,14 +53,14 @@ for file_name in glob.glob("./data/**/json/*.jsonss"):
         json_data = json.loads(f.read())
         if "photo_url" in json_data:
             photo_url = json_data["photo_url"]
-            if not photo_url.startswith('http'):
+            if not photo_url.startswith("http"):
                 continue
-            if 'http://modeste:9075' in photo_url:
+            if "http://modeste:9075" in photo_url:
                 continue
-            if 'doncaster' in photo_url:
+            if "doncaster" in photo_url:
                 continue
-            if 'https://www.democracy.caerphilly.gov.uk' in photo_url:
-                photo_url = photo_url.replace('https', 'http')
+            if "https://www.democracy.caerphilly.gov.uk" in photo_url:
+                photo_url = photo_url.replace("https", "http")
             if photo_url.endswith(IGNORE_LIST):
                 continue
             rk_json_path = make_face_dir(file_name)

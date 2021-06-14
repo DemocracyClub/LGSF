@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
 
-from lgsf.scrapers.councillors import HTMLCouncillorScraper
+from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
@@ -23,8 +23,6 @@ class Scraper(HTMLCouncillorScraper):
             url, identifier=url, name=name, party=party, division=division
         )
 
-        councillor.email = (
-            soup.find(text="Email:").findNext("a").get_text(strip=True)
-        )
-        councillor.photo_url = "https:" + soup.img['src']
+        councillor.email = soup.find(text="Email:").findNext("a").get_text(strip=True)
+        councillor.photo_url = "https:" + soup.img["src"]
         return councillor

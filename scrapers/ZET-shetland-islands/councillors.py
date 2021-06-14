@@ -1,6 +1,6 @@
 from slugify import slugify
 
-from lgsf.scrapers.councillors import HTMLCouncillorScraper
+from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
@@ -33,6 +33,6 @@ class Scraper(HTMLCouncillorScraper):
         )
 
         councillor.email = councillor_html.a.get_text(strip=True)
-        councillor.photo_url = self.base_url + councillor_html.img['src']
+        councillor.photo_url = self.base_url + councillor_html.img["src"]
 
         return councillor

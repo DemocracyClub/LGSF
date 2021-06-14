@@ -5,9 +5,7 @@ from slugify import slugify
 
 
 class CouncillorBase:
-    def __init__(
-        self, url, identifier=None, name=None, party=None, division=None
-    ):
+    def __init__(self, url, identifier=None, name=None, party=None, division=None):
         self.url = url.strip()
         self.identifier = identifier.strip()
         self.name = name.strip()
@@ -32,9 +30,7 @@ class CouncillorBase:
     def as_csv(self):
         out = csv.StringIO()
         out_csv = csv.writer(out)
-        out_csv.writerow(
-            [self.identifier, self.name, self.party, self.division]
-        )
+        out_csv.writerow([self.identifier, self.name, self.party, self.division])
         return out.getvalue()
 
     def as_dict(self):

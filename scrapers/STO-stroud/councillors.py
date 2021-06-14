@@ -2,7 +2,7 @@ import re
 
 from bs4 import BeautifulSoup
 
-from lgsf.scrapers.councillors import HTMLCouncillorScraper
+from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
@@ -20,9 +20,7 @@ class Scraper(HTMLCouncillorScraper):
         identifier = url.split("/")[-1]
         name = councillor_html.find_all("a")[0].text
         division = (
-            re.search("Ward: (.*)", councillor_html.find("p").text)
-            .group(1)
-            .strip()
+            re.search("Ward: (.*)", councillor_html.find("p").text).group(1).strip()
         )
         party = (
             re.search("Political Party: (.*)", councillor_html.find("p").text)
@@ -39,8 +37,6 @@ class Scraper(HTMLCouncillorScraper):
 
         req = self.get(url)
         soup = BeautifulSoup(req.text, "lxml")
-        councillor.email = (
-            soup.find(text="Email:").findNext("td").getText(strip=True)
-        )
+        councillor.email = soup.find(text="Email:").findNext("td").getText(strip=True)
 
         return councillor

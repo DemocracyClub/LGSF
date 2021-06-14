@@ -67,10 +67,12 @@ def load_scraper(code, command):
         )
     return scraper_class
 
+
 def load_council_info(code):
     path = os.path.join(scraper_abs_path(code), "metadata.json")
     if os.path.exists(path):
         return json.loads(open(path).read())
+
 
 def get_commands():
     command_path = os.path.join(settings.BASE_PATH, "lgsf")
@@ -78,9 +80,8 @@ def get_commands():
 
 
 def load_command_module(module_name):
-    return import_module(
-        "{}.{}".format(module_name, settings.COMMAND_FILE_NAME)
-    )
+    return import_module("{}.{}".format(module_name, settings.COMMAND_FILE_NAME))
+
 
 def load_command(module_name):
     module = load_command_module(module_name)

@@ -1,6 +1,6 @@
 import pytest
 
-from lgsf.scrapers.councillors import BaseCouncillorScraper
+from lgsf.councillors.scrapers import BaseCouncillorScraper
 
 
 def test_abc_raises():

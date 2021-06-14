@@ -158,11 +158,14 @@ class PerCouncilCommandBase(CommandBase):
     def output_status(self):
         from rich.columns import Columns
         from rich.panel import Panel
+
         missing = str(len(self.missing()))
         disabled = str(len(self.disabled()))
-        self.console.print(Columns(
-            [Panel(disabled, title="Disabled"), Panel(missing, title="Missing")]
-        ))
+        self.console.print(
+            Columns(
+                [Panel(disabled, title="Disabled"), Panel(missing, title="Missing")]
+            )
+        )
 
     def councils_to_run(self):
         councils = []

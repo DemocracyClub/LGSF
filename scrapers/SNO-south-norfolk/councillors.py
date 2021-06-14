@@ -1,6 +1,4 @@
-from bs4 import BeautifulSoup
-
-from lgsf.scrapers.councillors import PagedHTMLCouncillorScraper
+from lgsf.councillors.scrapers import PagedHTMLCouncillorScraper
 
 
 class Scraper(PagedHTMLCouncillorScraper):
@@ -19,9 +17,7 @@ class Scraper(PagedHTMLCouncillorScraper):
     def get_single_councillor(self, councillor_html):
         url = (
             "https://www.south-norfolk.gov.uk"
-            + councillor_html.select(".councillor-sub-details--top")[0].a[
-                "href"
-            ]
+            + councillor_html.select(".councillor-sub-details--top")[0].a["href"]
         )
         soup = self.get_page(url)
         name = soup.h1.get_text(strip=True)
@@ -33,14 +29,10 @@ class Scraper(PagedHTMLCouncillorScraper):
             url, identifier=url, name=name, party=party, division=division
         )
 
-        councillor.email = soup.select("a[href^=mailto]")[0].get_text(
-            strip=True
-        )
+        councillor.email = soup.select("a[href^=mailto]")[0].get_text(strip=True)
 
         councillor.photo_url = (
             "https://www.south-norfolk.gov.uk"
-            + soup.find("img", {"class": "image-style-councillor-profile"})[
-                "src"
-            ]
+            + soup.find("img", {"class": "image-style-councillor-profile"})["src"]
         )
         return councillor
