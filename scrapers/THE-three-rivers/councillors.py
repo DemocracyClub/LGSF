@@ -1,6 +1,4 @@
-from bs4 import BeautifulSoup
-
-from lgsf.scrapers.councillors import HTMLCouncillorScraper
+from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
@@ -29,11 +27,12 @@ class Scraper(HTMLCouncillorScraper):
             url, identifier=url, name=name, party=party, division=division
         )
 
-        councillor.email = soup.select("a[href^=mailto]")[0].get_text(
-            strip=True
-        )
+        councillor.email = soup.select("a[href^=mailto]")[0].get_text(strip=True)
         try:
-            councillor.photo_url = "https://www.threerivers.gov.uk" + soup.find("p", {"class": "image"}).img["src"]
+            councillor.photo_url = (
+                "https://www.threerivers.gov.uk"
+                + soup.find("p", {"class": "image"}).img["src"]
+            )
         except AttributeError:
             pass
         return councillor

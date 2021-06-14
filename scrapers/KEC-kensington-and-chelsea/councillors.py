@@ -1,6 +1,4 @@
-from bs4 import BeautifulSoup
-
-from lgsf.scrapers.councillors import HTMLCouncillorScraper
+from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
@@ -14,12 +12,14 @@ class Scraper(HTMLCouncillorScraper):
         return super().get_councillors()[1:]
 
     def get_single_councillor(self, councillor_html):
-        url = "https://www.rbkc.gov.uk" + councillor_html.a['href']
+        url = "https://www.rbkc.gov.uk" + councillor_html.a["href"]
         soup = self.get_page(url)
         councillor_table = soup.select(".organisationDetails")[0]
         name = soup.h1.get_text(strip=True)
         print(name)
-        import ipdb; ipdb.set_trace()
+        import ipdb
+
+        ipdb.set_trace()
         raise NotImplementedError
         # Find a way to call this and return the councillor object
         councillor = self.add_councillor(

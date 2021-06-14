@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
 from dateutil.parser import parse
 
-from lgsf.scrapers.councillors import HTMLCouncillorScraper
+from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
@@ -29,11 +29,16 @@ class Scraper(HTMLCouncillorScraper):
             party=party,
             division=division,
         )
-        councillor.email = soup.select('a[href^=mailto]')[0].get_text(strip=True)
-        councillor.photo_url = "https://www.north-norfolk.gov.uk" + soup.select(".related-box img")[0]['src'].split("?")[0]
+        councillor.email = soup.select("a[href^=mailto]")[0].get_text(strip=True)
+        councillor.photo_url = (
+            "https://www.north-norfolk.gov.uk"
+            + soup.select(".related-box img")[0]["src"].split("?")[0]
+        )
 
         try:
-            next_election = soup.find(text="Next election").findNext("p").get_text(strip=True)
+            next_election = (
+                soup.find(text="Next election").findNext("p").get_text(strip=True)
+            )
             standing_down = parse(next_election, dayfirst=True)
             councillor.standing_down = standing_down.isoformat()
         except AttributeError:

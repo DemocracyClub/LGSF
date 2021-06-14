@@ -3,7 +3,7 @@ import re
 import requests
 from bs4 import BeautifulSoup
 
-from lgsf.scrapers.councillors import HTMLCouncillorScraper
+from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
@@ -18,9 +18,7 @@ class Scraper(HTMLCouncillorScraper):
         req = requests.get(url)
         soup = BeautifulSoup(req.text, "lxml")
 
-        name = re.sub(
-            "[\s]+", " ", soup.findAll("td")[0].td.get_text(strip=True)
-        )
+        name = re.sub("[\s]+", " ", soup.findAll("td")[0].td.get_text(strip=True))
         party = soup.findAll("td")[3].findAll("a")[0].get_text(strip=True)
         division = soup.findAll("td")[3].findAll("a")[1].get_text(strip=True)
 
@@ -33,7 +31,5 @@ class Scraper(HTMLCouncillorScraper):
             "http://www.wyreforest.gov.uk/council/councillors/"
             + soup.findAll("td")[2].img["src"]
         )
-        councillor.email = (
-            soup.findAll("td")[5].findAll("a")[0].get_text(strip=True)
-        )
+        councillor.email = soup.findAll("td")[5].findAll("a")[0].get_text(strip=True)
         return councillor
