@@ -21,6 +21,7 @@ python-dateutil = "*"
 retry = "*"
 black = "*"
 rich = "*"
+arcgis2geojson = "*"
 
 [dev-packages]
 pytest-mypy-plugins = "*"
