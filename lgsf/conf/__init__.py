@@ -23,6 +23,7 @@ class BaseSettings(object):
             "councillors",
             "templates",
             "metadata",
+            "polling_stations"
             # 'parties',
             # "scrapers",
             # 'reconcilers',
