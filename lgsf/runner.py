@@ -22,7 +22,7 @@ class CommandRunner:
             self.stdout.write(self.format_help())
         else:
             Command = load_command(subcommand)
-            Command(argv[1:], self.stdout)
+            Command(argv[1:], self.stdout, pretty=True).execute()
 
     def format_help(self):
         help_text = [

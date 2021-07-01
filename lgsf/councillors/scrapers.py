@@ -55,7 +55,7 @@ class BaseCouncillorScraper(ScraperBase):
                 raise ValueError(
                     "Not many councillors found ({})".format(len(self.councillors))
                 )
-            self.console.print("Found {} councillors".format(len(self.councillors)))
+            self.console.log("Found {} councillors".format(len(self.councillors)))
 
 
 class HTMLCouncillorScraper(BaseCouncillorScraper):
