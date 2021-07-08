@@ -209,12 +209,14 @@ class PerCouncilCommandBase(CommandBase):
             "[progress.percentage]{task.percentage:>3.0f}%",
             TimeElapsedColumn(),
             console=self.console,
+            auto_refresh=False,
         ) as progress:
             total = progress.add_task(description=f"Total", total=len(to_run))
             while not progress.finished:
                 for council in to_run:
                     self.run_council(council)
                     progress.update(total, advance=1)
+                    progress.refresh()
 
     def _run_single(self, scraper):
         try:
