@@ -1,7 +1,9 @@
 import abc
 import os
+
+import boto3
 from dateutil import parser
-import datetime
+from datetime import datetime
 import traceback
 
 import requests
@@ -98,3 +100,193 @@ class ScraperBase(metaclass=abc.ABCMeta):
     def save_json(self, obj):
         file_name = "{}.json".format(obj.as_file_name())
         self._save_file("json", file_name, obj.as_json())
+
+
+class CodeCommitMixin:
+    def __init__(self, options, console):
+        super().__init__(options, console)
+
+        if self.options.get("aws_lambda"):
+            self.codecommit_client = boto3.client("codecommit")
+            self.put_files = []
+            self.today = datetime.now().strftime("%Y-%m-%d")
+            self._branch_head = ""
+            self.batch = 1
+            self.new_data = True
+
+    @property
+    def branch_head(self):
+        """returns today's branch's HEAD commit hash"""
+        if not self._branch_head:
+            try:
+                branch_info = self.codecommit_client.get_branch(
+                    repositoryName=self.repository, branchName=self.branch
+                )
+                self._branch_head = branch_info["branch"]["commitId"]
+            except self.codecommit_client.exceptions.BranchDoesNotExistException:
+                self._branch_head = self.create_branch(self.branch)
+
+        return self._branch_head
+
+    @branch_head.setter
+    def branch_head(self, commit_id):
+        self._branch_head = commit_id
+
+    @property
+    def branch(self):
+        """returns today's branch name"""
+        return f"{self.options['council']}-{self.today}"
+
+    def create_branch(self, branch_name):
+        """
+        `$ git checkout -b branch_name main`
+        ...or create a branch with HEAD pointing at main
+
+        returns commit hash of HEAD
+        """
+        main_info = self.codecommit_client.get_branch(
+            repositoryName=self.repository, branchName="main"
+        )
+        commit_id = main_info["branch"]["commitId"]
+
+        self.codecommit_client.create_branch(
+            repositoryName=self.repository, branchName=branch_name, commitId=commit_id
+        )
+
+        return commit_id
+
+    def delete_branch(self):
+        delete_info = self.codecommit_client.delete_branch(
+            repositoryName=self.repository, branchName=self.branch
+        )
+        if delete_info["deletedBranch"]:
+            self.console.log(f'deleted {delete_info["deletedBranch"]["branchName"]}')
+
+    def get_files(self, folder_path):
+        subfolder_paths = []
+        file_paths = []
+        try:
+            self.console.log(f"Getting all files in {folder_path}...")
+            folder = self.codecommit_client.get_folder(
+                repositoryName=self.repository,
+                commitSpecifier=self.branch,
+                folderPath=folder_path,
+            )
+            for subfolder in folder["subFolders"]:
+                subfolder_paths.append(subfolder["absolutePath"])
+            for file in folder["files"]:
+                file_paths.append(file["absolutePath"])
+
+            for subfolder_path in subfolder_paths:
+                sf_paths, f_paths = self.get_files(subfolder_path)
+                subfolder_paths.extend(sf_paths)
+                file_paths.extend(f_paths)
+
+            self.console.log(f"...found {len(file_paths)} files in {folder_path}")
+            return subfolder_paths, file_paths
+
+        except self.codecommit_client.exceptions.FolderDoesNotExistException:
+            self.console.log(f"{folder_path} Does not exist")
+            return subfolder_paths, file_paths
+
+    def delete_files(self, delete_files, commit_id, batch):
+        message = f"Deleting batch no. {batch} consisting of {len(delete_files)} files"
+        self.console.log(message)
+
+        delete_commit = self.codecommit_client.create_commit(
+            repositoryName=self.repository,
+            branchName=self.branch,
+            parentCommitId=commit_id,
+            commitMessage=message,
+            deleteFiles=delete_files,
+        )
+        return delete_commit
+
+    def delete_existing(self, commit_id):
+        _, file_paths = self.get_files(f"{self.options['council']}")
+        batch = 1
+        while len(file_paths) >= 100:
+            delete_files = [{"filePath": fp} for fp in file_paths[:100]]
+            delete_commit = self.delete_files(delete_files, commit_id, batch)
+            batch += 1
+            file_paths = file_paths[100:]
+            commit_id = delete_commit["commitId"]
+
+        if file_paths:
+            delete_files = [{"filePath": fp} for fp in file_paths]
+            delete_commit = self.delete_files(delete_files, commit_id, batch)
+            return delete_commit["commitId"]
+        else:
+            return commit_id
+
+    def delete_data_if_exists(self):
+        self.console.log("Deleting existing data...")
+        head = self.branch_head
+        delete_commit = self.delete_existing(head)
+        if head == delete_commit:
+            self.console.log("...no data to delete.")
+        else:
+            self.branch_head = delete_commit
+            self.console.log("...data deleted.")
+
+    def commit(self, put_files, message):
+        commit_info = self.codecommit_client.create_commit(
+            repositoryName=self.repository,
+            branchName=self.branch,
+            parentCommitId=self.branch_head,
+            commitMessage=message,
+            putFiles=put_files,
+        )
+        return commit_info
+
+    def process_batch(self):
+        self.console.log(
+            f"Committing batch {self.batch} consisting of {len(self.put_files)} files"
+        )
+        message = (
+            f"{self.options['council']} - batch {self.batch} - scraped on {self.today}"
+        )
+        commit_info = self.commit(self.put_files, message)
+        self.branch_head = commit_info["commitId"]
+        self.batch += 1
+        self.put_files = []
+
+    def attempt_merge(self):
+        self.console.log("Attempting to create merge commit...")
+        merge_info = self.codecommit_client.merge_branches_by_squash(
+            repositoryName=self.repository,
+            sourceCommitSpecifier=self.branch,
+            destinationCommitSpecifier="main",
+            commitMessage=f"{self.options['council']} - scraped on {self.today}",
+        )
+        self.console.log(
+            f"{self.branch} squashed and merged into main at {merge_info['commitId']}"
+        )
+
+    def aws_tidy_up(self):
+        if self.options.get("aws_lambda"):
+            # Check if there's anything left to commit...
+            if self.put_files:
+                self.process_batch()
+
+            # check for differences
+            try:
+                differences_response = self.codecommit_client.get_differences(
+                    repositoryName=self.repository,
+                    afterCommitSpecifier=self.branch,
+                    beforeCommitSpecifier="main",
+                    afterPath=self.options["council"],
+                    beforePath=self.options["council"],
+                    MaxResults=400,
+                )
+            except self.codecommit_client.exceptions.PathDoesNotExistException:
+                differences_response = {"differences": True}
+
+            if differences_response["differences"]:
+                # squash and merge
+                self.attempt_merge()
+            else:
+                self.new_data = False
+                self.console.log("No new councillor data found.")
+
+            self.delete_branch()
