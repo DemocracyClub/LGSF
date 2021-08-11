@@ -3,6 +3,7 @@ data
 .DS_Store
 .pytest_cache
 *.sqlite
+.aws-sam
 
 
 # Byte-compiled / optimized / DLL files
