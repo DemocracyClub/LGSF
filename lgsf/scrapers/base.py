@@ -5,9 +5,10 @@ import datetime
 import traceback
 
 import requests
-import requests_cache
 
-requests_cache.install_cache("scraper_cache", expire_after=60 * 60 * 24)
+# import requests_cache
+
+# requests_cache.install_cache("scraper_cache", expire_after=60 * 60 * 24)
 
 
 from lgsf.path_utils import data_abs_path
@@ -32,7 +33,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
         """
 
         if self.options.get("verbose"):
-            self.console.print(url)
+            self.console.log(f"Scraping from {url}")
         headers = {"User-Agent": "Scraper/DemocracyClub", "Accept": "*/*"}
 
         return requests.get(url, headers=headers, verify=verify)
