@@ -10,7 +10,24 @@ Globals:
   Function:
     Timeout: 300
 
+
 Resources:
+  QueueBuilderFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: .
+      Handler: lgsf.aws_lambda.handlers.queue_builder_handler
+      Runtime: python3.8
+      Events:
+        QueueBuilder:
+          Type: Schedule # More info about Schedule Event Source: https://github.com/aws/serverless-application-model/blob/master/versions/2016-10-31.md#schedule
+          Properties:
+            Description: Send scraper tasks to SQS
+            Enabled: true
+            Name: queue-builder
+            Schedule: rate(1 day)  # This could be 'cron ...': https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html
+      Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LGSFLambdaExecutionRole"
+
   SQSScraperQueue:
     Type: AWS::SQS::Queue
     Properties:
@@ -22,4 +39,14 @@ Resources:
       RepositoryName: CouncillorsRepo
       RepositoryDescription: Repository for scraped councillor data.
 
+
+Outputs:
+  # Find out more about other implicit resources you can reference within SAM
+  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
+  QueueBuilderFunction:
+    Description: "Queue Builder Lambda Function ARN"
+    Value: !GetAtt QueueBuilderFunction.Arn
+  QueueBuilderFunctionIamRole:
+    Description: "Implicit IAM Role created for Queue Builder function"
+    Value: !GetAtt QueueBuilderFunction.Arn
 
