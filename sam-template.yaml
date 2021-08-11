@@ -1,0 +1,25 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  lgsf-sam
+
+  Sample SAM Template for lgsf-sam
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 300
+
+Resources:
+  SQSScraperQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: "ScraperQueue"
+
+  CouncillorsRepo:
+    Type: AWS::CodeCommit::Repository
+    Properties:
+      RepositoryName: CouncillorsRepo
+      RepositoryDescription: Repository for scraped councillor data.
+
+
