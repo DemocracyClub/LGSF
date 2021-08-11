@@ -39,6 +39,22 @@ Resources:
       RepositoryName: CouncillorsRepo
       RepositoryDescription: Repository for scraped councillor data.
 
+  ScraperWorkerFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      CodeUri: .
+      Handler: lgsf.aws_lambda.handlers.scraper_worker_handler
+      Runtime: python3.8
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt SQSScraperQueue.Arn
+            BatchSize: 1
+            Enabled: true
+      Role: !Sub "arn:aws:iam::${AWS::AccountId}:role/LGSFLambdaExecutionRole"
+
+
 
 Outputs:
   # Find out more about other implicit resources you can reference within SAM
