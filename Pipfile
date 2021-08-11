@@ -21,9 +21,11 @@ python-dateutil = "*"
 retry = "*"
 black = "*"
 rich = "*"
+boto3 = "*"
 
 [dev-packages]
 pytest-mypy-plugins = "*"
+aws-sam-cli = "*"
 
 [requires]
 python_version = "3.8"
