@@ -3,11 +3,11 @@ import abc
 from bs4 import BeautifulSoup
 from dateutil.parser import parse
 
-from lgsf.scrapers import ScraperBase
-from lgsf.councillors import CouncillorBase
+from lgsf.scrapers import ScraperBase, CodeCommitMixin
+from lgsf.councillors import CouncillorBase, json
 
 
-class BaseCouncillorScraper(ScraperBase):
+class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
     tags = []
     class_tags = []
     ext = "html"
@@ -16,6 +16,7 @@ class BaseCouncillorScraper(ScraperBase):
     def __init__(self, options, console):
         super().__init__(options, console)
         self.councillors = set()
+        self.repository = "CouncillorsRepo"
 
     @abc.abstractmethod
     def get_councillors(self):
@@ -36,10 +37,46 @@ class BaseCouncillorScraper(ScraperBase):
 
     def run(self):
 
+        if self.options.get("aws_lambda"):
+            self.delete_data_if_exists()
+
         for councillor_html in self.get_councillors():
             councillor = self.get_single_councillor(councillor_html)
-            self.save_councillor(councillor_html, councillor)
+            self.process_councillor(councillor, councillor_html)
+
+        self.aws_tidy_up()
+
         self.report()
+
+    def process_councillor(self, councillor, councillor_raw_str):
+        if self.options.get("aws_lambda"):
+            # stage...
+            self.stage_councillor(councillor_raw_str, councillor)
+
+            # Do a batch commit if needed...
+            if len(self.put_files) > 90:
+                self.process_batch()
+        else:
+            self.save_councillor(councillor_raw_str, councillor)
+
+    def stage_councillor(self, councillor_html, councillor):
+        council = self.options["council"]
+        json_file_path = f"{council}/json/{councillor.as_file_name()}.json"
+        raw_file_path = f"{council}/raw/{councillor.as_file_name()}.html"
+        self.put_files.extend(
+            [
+                {
+                    "filePath": json_file_path,
+                    "fileContent": bytes(
+                        json.dumps(councillor.as_dict(), indent=4), "utf-8"
+                    ),
+                },
+                {
+                    "filePath": raw_file_path,
+                    "fileContent": bytes(councillor_html.prettify(), "utf-8"),
+                },
+            ]
+        )
 
     def save_councillor(self, raw_content, councillor_obj):
         assert (
@@ -55,7 +92,14 @@ class BaseCouncillorScraper(ScraperBase):
                 raise ValueError(
                     "Not many councillors found ({})".format(len(self.councillors))
                 )
-            self.console.log("Found {} councillors".format(len(self.councillors)))
+            if self.new_data:
+                self.console.log(
+                    f"Found {len(self.councillors)} councillors with some new data"
+                )
+            else:
+                self.console.log(
+                    f"Found {len(self.councillors)} councillors but no new data"
+                )
 
 
 class HTMLCouncillorScraper(BaseCouncillorScraper):
@@ -110,12 +154,16 @@ class ModGovCouncillorScraper(BaseCouncillorScraper):
     ext = "xml"
 
     def run(self):
-        wards = self.get_councillors()
 
+        if self.options.get("aws_lambda"):
+            self.delete_data_if_exists()
+        wards = self.get_councillors()
         for ward in wards:
             for councillor_xml in ward.find_all("councillor"):
                 councillor = self.get_single_councillor(ward, councillor_xml)
-                self.save_councillor(councillor_xml, councillor)
+                self.process_councillor(councillor, councillor_xml)
+
+        self.aws_tidy_up()
         self.report()
 
     def format_councillor_api_url(self):
