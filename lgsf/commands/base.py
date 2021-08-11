@@ -69,6 +69,11 @@ class PerCouncilCommandBase(CommandBase):
             help="Run this command for all councils",
         )
         self.parser.add_argument(
+            "--exclude-missing",
+            action="store_true",
+            help="Don't run councils missing a scraper matching command name",
+        )
+        self.parser.add_argument(
             "-t",
             "--tags",
             action="store",
@@ -195,6 +200,9 @@ class PerCouncilCommandBase(CommandBase):
             for council in self.options["council"].split(","):
                 council = council.strip().split("-")[0].upper()
                 councils.append(council)
+
+        if self.options["exclude_missing"]:
+            councils = list(set(councils) - set(c["code"] for c in self.missing()))
         return councils
 
     def run_councils(self):
