@@ -67,17 +67,25 @@ for file_name in glob.glob("./data/**/json/*.jsonss"):
             if not os.path.exists(rk_json_path):
                 try:
                     detect_face(rk_json_path, photo_url, json_data)
-                except:
+                except KeyboardInterrupt:
+                    import sys
+                    sys.exit()
+                except Exception as e:
+                    print(e)
                     pass
 # process and report
 out_csv = csv.DictWriter(
-    sys.stdout,
+    open("councillors-with-gender-2021-06-07.csv", "w"),
     fieldnames=[
-        "council",
+        "council_id",
         "name",
+        'division',
+        'party',
+        'email',
         "url",
         "photo_url",
-        "gender",
+        "gender_from_name",
+        "gender_from_photo",
         "age_low",
         "age_high",
         "smile",
@@ -94,11 +102,15 @@ for file_name in glob.glob("./data/**/face_data/*.json"):
     face = json_data["FaceDetails"][0]
     council = file_name.split("/data/")[1].split("/")[0]
     row = {
-        "council": council,
+        "council_id": council,
         "name": json_data["councillor_json"]["raw_name"],
+        "division": json_data["councillor_json"]["raw_division"],
+        "party": json_data["councillor_json"]["raw_party"],
+        "email": json_data["councillor_json"]["email"],
         "url": json_data["councillor_json"]["url"],
         "photo_url": json_data["councillor_json"]["photo_url"],
-        "gender": face["Gender"]["Value"],
+        "gender_from_name": gender_from_name(json_data["councillor_json"]["raw_name"]),
+        "gender_from_photo": face["Gender"]["Value"],
         "age_low": face["AgeRange"]["Low"],
         "age_high": face["AgeRange"]["High"],
         "smile": face["Smile"]["Value"],

@@ -49,7 +49,7 @@ class HTMLCouncillorTemplate(BaseTemplate):
 
     template = """from bs4 import BeautifulSoup
 
-from lgsf.scrapers.councillors import HTMLCouncillorScraper
+from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
