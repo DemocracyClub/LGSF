@@ -3,7 +3,7 @@ import os
 
 import boto3
 from dateutil import parser
-from datetime import datetime
+import datetime
 import traceback
 
 import requests
@@ -109,10 +109,10 @@ class CodeCommitMixin:
         if self.options.get("aws_lambda"):
             self.codecommit_client = boto3.client("codecommit")
             self.put_files = []
-            self.today = datetime.now().strftime("%Y-%m-%d")
+            self.today = datetime.datetime.now().strftime("%Y-%m-%d")
             self._branch_head = ""
             self.batch = 1
-            self.new_data = True
+
 
     @property
     def branch_head(self):
