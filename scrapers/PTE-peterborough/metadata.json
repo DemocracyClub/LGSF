@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/PTE/1998-04-01/", "official_identifier": "PTE", "organisation_type": "local-authority", "organisation_subtype": "UA", "official_name": "Peterborough City Council", "common_name": "Peterborough", "slug": "peterborough", "territory_code": "ENG", "election_name": "Peterborough local election", "start_date": "1998-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/PTE/1998-04-01/",
+    "official_identifier": "PTE",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "UA",
+    "official_name": "Peterborough City Council",
+    "common_name": "Peterborough",
+    "slug": "peterborough",
+    "territory_code": "ENG",
+    "election_name": "Peterborough local election",
+    "start_date": "1998-04-01",
+    "end_date": null
+}

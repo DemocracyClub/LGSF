@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/WOK/1998-04-01/", "official_identifier": "WOK", "organisation_type": "local-authority", "organisation_subtype": "UA", "official_name": "Wokingham Borough Council", "common_name": "Wokingham", "slug": "wokingham", "territory_code": "ENG", "election_name": "Wokingham local election", "start_date": "1998-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/WOK/1998-04-01/",
+    "official_identifier": "WOK",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "UA",
+    "official_name": "Wokingham Borough Council",
+    "common_name": "Wokingham",
+    "slug": "wokingham",
+    "territory_code": "ENG",
+    "election_name": "Wokingham local election",
+    "start_date": "1998-04-01",
+    "end_date": null
+}

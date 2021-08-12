@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/NWL/1974-04-01/", "official_identifier": "NWL", "organisation_type": "local-authority", "organisation_subtype": "NMD", "official_name": "North West Leicestershire District Council", "common_name": "North West Leicestershire", "slug": "north-west-leicestershire", "territory_code": "ENG", "election_name": "North West Leicestershire local election", "start_date": "1974-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/NWL/1974-04-01/",
+    "official_identifier": "NWL",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "NMD",
+    "official_name": "North West Leicestershire District Council",
+    "common_name": "North West Leicestershire",
+    "slug": "north-west-leicestershire",
+    "territory_code": "ENG",
+    "election_name": "North West Leicestershire local election",
+    "start_date": "1974-04-01",
+    "end_date": null
+}

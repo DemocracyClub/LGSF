@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/SED/1974-04-01/", "official_identifier": "SED", "organisation_type": "local-authority", "organisation_subtype": "NMD", "official_name": "St Edmundsbury Borough Council", "common_name": "St Edmundsbury", "slug": "st-edmundsbury", "territory_code": "ENG", "election_name": "St Edmundsbury local election", "start_date": "1974-04-01", "end_date": "2019-03-31"}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/SED/1974-04-01/",
+    "official_identifier": "SED",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "NMD",
+    "official_name": "St Edmundsbury Borough Council",
+    "common_name": "St Edmundsbury",
+    "slug": "st-edmundsbury",
+    "territory_code": "ENG",
+    "election_name": "St Edmundsbury local election",
+    "start_date": "1974-04-01",
+    "end_date": "2019-03-31"
+}

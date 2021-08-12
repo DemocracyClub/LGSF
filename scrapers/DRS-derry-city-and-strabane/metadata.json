@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/DRS/2015-04-01/", "official_identifier": "DRS", "organisation_type": "local-authority", "organisation_subtype": "", "official_name": "Derry City and Strabane District Council", "common_name": "Derry City and Strabane", "slug": "derry-city-and-strabane", "territory_code": "NIR", "election_name": "Derry City and Strabane local election", "start_date": "2015-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/DRS/2015-04-01/",
+    "official_identifier": "DRS",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "",
+    "official_name": "Derry City and Strabane District Council",
+    "common_name": "Derry City and Strabane",
+    "slug": "derry-city-and-strabane",
+    "territory_code": "NIR",
+    "election_name": "Derry City and Strabane local election",
+    "start_date": "2015-04-01",
+    "end_date": null
+}

@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/SWD/1997-04-01/", "official_identifier": "SWD", "organisation_type": "local-authority", "organisation_subtype": "UA", "official_name": "Swindon Borough Council", "common_name": "Swindon", "slug": "swindon", "territory_code": "ENG", "election_name": "Swindon local election", "start_date": "1997-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/SWD/1997-04-01/",
+    "official_identifier": "SWD",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "UA",
+    "official_name": "Swindon Borough Council",
+    "common_name": "Swindon",
+    "slug": "swindon",
+    "territory_code": "ENG",
+    "election_name": "Swindon local election",
+    "start_date": "1997-04-01",
+    "end_date": null
+}

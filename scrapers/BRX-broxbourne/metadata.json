@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/BRX/1974-04-01/", "official_identifier": "BRX", "organisation_type": "local-authority", "organisation_subtype": "NMD", "official_name": "Broxbourne Borough Council", "common_name": "Broxbourne", "slug": "broxbourne", "territory_code": "ENG", "election_name": "Broxbourne local election", "start_date": "1974-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/BRX/1974-04-01/",
+    "official_identifier": "BRX",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "NMD",
+    "official_name": "Broxbourne Borough Council",
+    "common_name": "Broxbourne",
+    "slug": "broxbourne",
+    "territory_code": "ENG",
+    "election_name": "Broxbourne local election",
+    "start_date": "1974-04-01",
+    "end_date": null
+}

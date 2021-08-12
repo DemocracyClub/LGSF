@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/ECA/1974-04-01/", "official_identifier": "ECA", "organisation_type": "local-authority", "organisation_subtype": "NMD", "official_name": "East Cambridgeshire District Council", "common_name": "East Cambridgeshire", "slug": "east-cambridgeshire", "territory_code": "ENG", "election_name": "East Cambridgeshire local election", "start_date": "1974-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/ECA/1974-04-01/",
+    "official_identifier": "ECA",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "NMD",
+    "official_name": "East Cambridgeshire District Council",
+    "common_name": "East Cambridgeshire",
+    "slug": "east-cambridgeshire",
+    "territory_code": "ENG",
+    "election_name": "East Cambridgeshire local election",
+    "start_date": "1974-04-01",
+    "end_date": null
+}

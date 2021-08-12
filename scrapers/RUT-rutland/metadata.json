@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/RUT/1997-04-01/", "official_identifier": "RUT", "organisation_type": "local-authority", "organisation_subtype": "UA", "official_name": "Rutland County Council", "common_name": "Rutland", "slug": "rutland", "territory_code": "ENG", "election_name": "Rutland local election", "start_date": "1997-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/RUT/1997-04-01/",
+    "official_identifier": "RUT",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "UA",
+    "official_name": "Rutland County Council",
+    "common_name": "Rutland",
+    "slug": "rutland",
+    "territory_code": "ENG",
+    "election_name": "Rutland local election",
+    "start_date": "1997-04-01",
+    "end_date": null
+}

@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/NMD/2015-04-01/", "official_identifier": "NMD", "organisation_type": "local-authority", "organisation_subtype": "", "official_name": "Newry, Mourne and Down District Council", "common_name": "Newry, Mourne and Down ", "slug": "newry-mourne-and-down", "territory_code": "NIR", "election_name": "Newry, Mourne and Down  local election", "start_date": "2015-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/NMD/2015-04-01/",
+    "official_identifier": "NMD",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "",
+    "official_name": "Newry, Mourne and Down District Council",
+    "common_name": "Newry, Mourne and Down ",
+    "slug": "newry-mourne-and-down",
+    "territory_code": "NIR",
+    "election_name": "Newry, Mourne and Down  local election",
+    "start_date": "2015-04-01",
+    "end_date": null
+}

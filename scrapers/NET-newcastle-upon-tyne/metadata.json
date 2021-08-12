@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/NET/1974-04-01/", "official_identifier": "NET", "organisation_type": "local-authority", "organisation_subtype": "MD", "official_name": "Newcastle City Council", "common_name": "Newcastle upon Tyne", "slug": "newcastle-upon-tyne", "territory_code": "ENG", "election_name": "Newcastle upon Tyne local election", "start_date": "1974-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/NET/1974-04-01/",
+    "official_identifier": "NET",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "MD",
+    "official_name": "Newcastle City Council",
+    "common_name": "Newcastle upon Tyne",
+    "slug": "newcastle-upon-tyne",
+    "territory_code": "ENG",
+    "election_name": "Newcastle upon Tyne local election",
+    "start_date": "1974-04-01",
+    "end_date": null
+}

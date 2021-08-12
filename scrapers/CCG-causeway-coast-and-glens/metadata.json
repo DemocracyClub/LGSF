@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/CCG/2015-04-01/", "official_identifier": "CCG", "organisation_type": "local-authority", "organisation_subtype": "", "official_name": "Causeway Coast and Glens Borough Council", "common_name": "Causeway Coast and Glens", "slug": "causeway-coast-and-glens", "territory_code": "NIR", "election_name": "Causeway Coast and Glens local election", "start_date": "2015-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/CCG/2015-04-01/",
+    "official_identifier": "CCG",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "",
+    "official_name": "Causeway Coast and Glens Borough Council",
+    "common_name": "Causeway Coast and Glens",
+    "slug": "causeway-coast-and-glens",
+    "territory_code": "NIR",
+    "election_name": "Causeway Coast and Glens local election",
+    "start_date": "2015-04-01",
+    "end_date": null
+}

@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/NEL/1996-04-01/", "official_identifier": "NEL", "organisation_type": "local-authority", "organisation_subtype": "UA", "official_name": "North East Lincolnshire Council", "common_name": "North East Lincolnshire", "slug": "north-east-lincolnshire", "territory_code": "ENG", "election_name": "North East Lincolnshire local election", "start_date": "1996-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/NEL/1996-04-01/",
+    "official_identifier": "NEL",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "UA",
+    "official_name": "North East Lincolnshire Council",
+    "common_name": "North East Lincolnshire",
+    "slug": "north-east-lincolnshire",
+    "territory_code": "ENG",
+    "election_name": "North East Lincolnshire local election",
+    "start_date": "1996-04-01",
+    "end_date": null
+}

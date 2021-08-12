@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/MEA/2015-04-01/", "official_identifier": "MEA", "organisation_type": "local-authority", "organisation_subtype": "", "official_name": "Mid and East Antrim Borough Council", "common_name": "Mid and East Antrim", "slug": "mid-and-east-antrim", "territory_code": "NIR", "election_name": "Mid and East Antrim local election", "start_date": "2015-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/MEA/2015-04-01/",
+    "official_identifier": "MEA",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "",
+    "official_name": "Mid and East Antrim Borough Council",
+    "common_name": "Mid and East Antrim",
+    "slug": "mid-and-east-antrim",
+    "territory_code": "NIR",
+    "election_name": "Mid and East Antrim local election",
+    "start_date": "2015-04-01",
+    "end_date": null
+}

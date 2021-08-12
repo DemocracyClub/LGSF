@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/HOR/1974-04-01/", "official_identifier": "HOR", "organisation_type": "local-authority", "organisation_subtype": "NMD", "official_name": "Horsham District Council", "common_name": "Horsham", "slug": "horsham", "territory_code": "ENG", "election_name": "Horsham local election", "start_date": "1974-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/HOR/1974-04-01/",
+    "official_identifier": "HOR",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "NMD",
+    "official_name": "Horsham District Council",
+    "common_name": "Horsham",
+    "slug": "horsham",
+    "territory_code": "ENG",
+    "election_name": "Horsham local election",
+    "start_date": "1974-04-01",
+    "end_date": null
+}

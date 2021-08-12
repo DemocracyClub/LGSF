@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/west-northamptonshire/2020-05-07/", "official_identifier": "west-northamptonshire", "organisation_type": "local-authority", "organisation_subtype": "UA", "official_name": "West Northamptonshire Council", "common_name": "West Northamptonshire", "slug": "west-northamptonshire", "territory_code": "ENG", "election_name": "West Northamptonshire local election", "start_date": "2020-05-07", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/west-northamptonshire/2020-05-07/",
+    "official_identifier": "west-northamptonshire",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "UA",
+    "official_name": "West Northamptonshire Council",
+    "common_name": "West Northamptonshire",
+    "slug": "west-northamptonshire",
+    "territory_code": "ENG",
+    "election_name": "West Northamptonshire local election",
+    "start_date": "2020-05-07",
+    "end_date": null
+}

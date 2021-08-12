@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/NOW/1974-04-01/", "official_identifier": "NOW", "organisation_type": "local-authority", "organisation_subtype": "NMD", "official_name": "Norwich City Council", "common_name": "Norwich", "slug": "norwich", "territory_code": "ENG", "election_name": "Norwich local election", "start_date": "1974-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/NOW/1974-04-01/",
+    "official_identifier": "NOW",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "NMD",
+    "official_name": "Norwich City Council",
+    "common_name": "Norwich",
+    "slug": "norwich",
+    "territory_code": "ENG",
+    "election_name": "Norwich local election",
+    "start_date": "1974-04-01",
+    "end_date": null
+}

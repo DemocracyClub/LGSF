@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/WAW/1974-04-01/", "official_identifier": "WAW", "organisation_type": "local-authority", "organisation_subtype": "NMD", "official_name": "Warwick District Council", "common_name": "Warwick", "slug": "warwick", "territory_code": "ENG", "election_name": "Warwick local election", "start_date": "1974-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/WAW/1974-04-01/",
+    "official_identifier": "WAW",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "NMD",
+    "official_name": "Warwick District Council",
+    "common_name": "Warwick",
+    "slug": "warwick",
+    "territory_code": "ENG",
+    "election_name": "Warwick local election",
+    "start_date": "1974-04-01",
+    "end_date": null
+}

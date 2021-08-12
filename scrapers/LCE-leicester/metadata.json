@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/LCE/1997-04-01/", "official_identifier": "LCE", "organisation_type": "local-authority", "organisation_subtype": "UA", "official_name": "Leicester City Council", "common_name": "Leicester City Council", "slug": "leicester", "territory_code": "ENG", "election_name": "Leicester City Council", "start_date": "1997-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/LCE/1997-04-01/",
+    "official_identifier": "LCE",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "UA",
+    "official_name": "Leicester City Council",
+    "common_name": "Leicester City Council",
+    "slug": "leicester",
+    "territory_code": "ENG",
+    "election_name": "Leicester City Council",
+    "start_date": "1997-04-01",
+    "end_date": null
+}

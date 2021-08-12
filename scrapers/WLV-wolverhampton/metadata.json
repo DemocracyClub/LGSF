@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/WLV/1974-04-01/", "official_identifier": "WLV", "organisation_type": "local-authority", "organisation_subtype": "MD", "official_name": "City of Wolverhampton Council", "common_name": "Wolverhampton", "slug": "wolverhampton", "territory_code": "ENG", "election_name": "Wolverhampton local election", "start_date": "1974-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/WLV/1974-04-01/",
+    "official_identifier": "WLV",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "MD",
+    "official_name": "City of Wolverhampton Council",
+    "common_name": "Wolverhampton",
+    "slug": "wolverhampton",
+    "territory_code": "ENG",
+    "election_name": "Wolverhampton local election",
+    "start_date": "1974-04-01",
+    "end_date": null
+}

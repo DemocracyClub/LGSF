@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/WBK/1998-04-01/", "official_identifier": "WBK", "organisation_type": "local-authority", "organisation_subtype": "UA", "official_name": "West Berkshire Council", "common_name": "West Berkshire", "slug": "west-berkshire", "territory_code": "ENG", "election_name": "West Berkshire local election", "start_date": "1998-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/WBK/1998-04-01/",
+    "official_identifier": "WBK",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "UA",
+    "official_name": "West Berkshire Council",
+    "common_name": "West Berkshire",
+    "slug": "west-berkshire",
+    "territory_code": "ENG",
+    "election_name": "West Berkshire local election",
+    "start_date": "1998-04-01",
+    "end_date": null
+}

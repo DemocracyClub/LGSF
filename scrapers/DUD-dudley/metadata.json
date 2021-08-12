@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/DUD/1974-04-01/", "official_identifier": "DUD", "organisation_type": "local-authority", "organisation_subtype": "MD", "official_name": "Dudley Metropolitan Borough Council", "common_name": "Dudley", "slug": "dudley", "territory_code": "ENG", "election_name": "Dudley local election", "start_date": "1974-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/DUD/1974-04-01/",
+    "official_identifier": "DUD",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "MD",
+    "official_name": "Dudley Metropolitan Borough Council",
+    "common_name": "Dudley",
+    "slug": "dudley",
+    "territory_code": "ENG",
+    "election_name": "Dudley local election",
+    "start_date": "1974-04-01",
+    "end_date": null
+}

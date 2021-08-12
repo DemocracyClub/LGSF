@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/SFK/1974-04-01/", "official_identifier": "SFK", "organisation_type": "local-authority", "organisation_subtype": "CTY", "official_name": "Suffolk County Council", "common_name": "Suffolk", "slug": "suffolk", "territory_code": "ENG", "election_name": "Suffolk local election", "start_date": "1974-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/SFK/1974-04-01/",
+    "official_identifier": "SFK",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "CTY",
+    "official_name": "Suffolk County Council",
+    "common_name": "Suffolk",
+    "slug": "suffolk",
+    "territory_code": "ENG",
+    "election_name": "Suffolk local election",
+    "start_date": "1974-04-01",
+    "end_date": null
+}

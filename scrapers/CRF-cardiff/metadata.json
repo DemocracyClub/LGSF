@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/CRF/1996-04-01/", "official_identifier": "CRF", "organisation_type": "local-authority", "organisation_subtype": "UA", "official_name": "City of Cardiff Council", "common_name": "Cardiff", "slug": "cardiff", "territory_code": "WLS", "election_name": "Cardiff local election", "start_date": "1996-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/CRF/1996-04-01/",
+    "official_identifier": "CRF",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "UA",
+    "official_name": "City of Cardiff Council",
+    "common_name": "Cardiff",
+    "slug": "cardiff",
+    "territory_code": "WLS",
+    "election_name": "Cardiff local election",
+    "start_date": "1996-04-01",
+    "end_date": null
+}

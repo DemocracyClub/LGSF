@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/BAR/1974-04-01/", "official_identifier": "BAR", "organisation_type": "local-authority", "organisation_subtype": "NMD", "official_name": "Barrow-in-Furness Borough Council", "common_name": "Barrow-in-Furness", "slug": "barrow-in-furness", "territory_code": "ENG", "election_name": "Barrow-in-Furness local election", "start_date": "1974-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/BAR/1974-04-01/",
+    "official_identifier": "BAR",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "NMD",
+    "official_name": "Barrow-in-Furness Borough Council",
+    "common_name": "Barrow-in-Furness",
+    "slug": "barrow-in-furness",
+    "territory_code": "ENG",
+    "election_name": "Barrow-in-Furness local election",
+    "start_date": "1974-04-01",
+    "end_date": null
+}

@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/STG/1996-04-01/", "official_identifier": "STG", "organisation_type": "local-authority", "organisation_subtype": "CA", "official_name": "The Stirling Council", "common_name": "Stirling", "slug": "stirling", "territory_code": "SCT", "election_name": "Stirling local election", "start_date": "1996-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/STG/1996-04-01/",
+    "official_identifier": "STG",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "CA",
+    "official_name": "The Stirling Council",
+    "common_name": "Stirling",
+    "slug": "stirling",
+    "territory_code": "SCT",
+    "election_name": "Stirling local election",
+    "start_date": "1996-04-01",
+    "end_date": null
+}

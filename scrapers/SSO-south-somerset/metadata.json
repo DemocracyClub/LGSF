@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/SSO/1974-04-01/", "official_identifier": "SSO", "organisation_type": "local-authority", "organisation_subtype": "NMD", "official_name": "South Somerset District Council", "common_name": "South Somerset", "slug": "south-somerset", "territory_code": "ENG", "election_name": "South Somerset local election", "start_date": "1974-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/SSO/1974-04-01/",
+    "official_identifier": "SSO",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "NMD",
+    "official_name": "South Somerset District Council",
+    "common_name": "South Somerset",
+    "slug": "south-somerset",
+    "territory_code": "ENG",
+    "election_name": "South Somerset local election",
+    "start_date": "1974-04-01",
+    "end_date": null
+}
