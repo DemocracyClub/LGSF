@@ -1,10 +1,12 @@
 import abc
+import json
 
 from bs4 import BeautifulSoup
 from dateutil.parser import parse
 
 from lgsf.scrapers import ScraperBase, CodeCommitMixin
-from lgsf.councillors import CouncillorBase, json
+from lgsf.councillors import CouncillorBase
+from councillors.exceptions import SkipCouncillorException
 
 
 class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
@@ -42,7 +44,11 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
             self.delete_data_if_exists()
 
         for councillor_html in self.get_councillors():
-            councillor = self.get_single_councillor(councillor_html)
+            try:
+                councillor = self.get_single_councillor(councillor_html)
+            except SkipCouncillorException:
+                continue
+
             self.process_councillor(councillor, councillor_html)
 
         self.aws_tidy_up()
@@ -161,10 +167,14 @@ class ModGovCouncillorScraper(BaseCouncillorScraper):
         wards = self.get_councillors()
         for ward in wards:
             for councillor_xml in ward.find_all("councillor"):
-                councillor = self.get_single_councillor(ward, councillor_xml)
-                self.process_councillor(councillor, councillor_xml)
+                try:
+                    councillor = self.get_single_councillor(ward, councillor_xml)
+                    self.process_councillor(councillor, councillor_xml)
+                except SkipCouncillorException:
+                    continue
 
         self.aws_tidy_up()
+
         self.report()
 
     def format_councillor_api_url(self):
