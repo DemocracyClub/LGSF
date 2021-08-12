@@ -268,3 +268,13 @@ class CMISCouncillorScraper(BaseCouncillorScraper):
             # Can't find an email, just ignore it
             pass
         return councillor
+
+
+class JSONCouncillorScraper(BaseCouncillorScraper):
+    def save_councillor(self, raw_content, councillor_obj):
+        assert (
+            type(councillor_obj) == CouncillorBase
+        ), "Scrapers must return a councillor object"
+        file_name = "{}.{}".format(councillor_obj.as_file_name(), self.ext)
+        self.save_raw(file_name, json.dumps(raw_content, indent=4))
+        self.save_json(councillor_obj)
