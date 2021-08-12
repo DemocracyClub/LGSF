@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/DAL/1997-04-01/", "official_identifier": "DAL", "organisation_type": "local-authority", "organisation_subtype": "UA", "official_name": "Darlington Borough Council", "common_name": "Darlington", "slug": "darlington", "territory_code": "ENG", "election_name": "Darlington local election", "start_date": "1997-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/DAL/1997-04-01/",
+    "official_identifier": "DAL",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "UA",
+    "official_name": "Darlington Borough Council",
+    "common_name": "Darlington",
+    "slug": "darlington",
+    "territory_code": "ENG",
+    "election_name": "Darlington local election",
+    "start_date": "1997-04-01",
+    "end_date": null
+}

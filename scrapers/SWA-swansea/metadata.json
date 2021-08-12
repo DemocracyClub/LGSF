@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/SWA/1996-04-01/", "official_identifier": "SWA", "organisation_type": "local-authority", "organisation_subtype": "UA", "official_name": "City and County of Swansea Council", "common_name": "Swansea", "slug": "swansea", "territory_code": "WLS", "election_name": "Swansea local election", "start_date": "1996-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/SWA/1996-04-01/",
+    "official_identifier": "SWA",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "UA",
+    "official_name": "City and County of Swansea Council",
+    "common_name": "Swansea",
+    "slug": "swansea",
+    "territory_code": "WLS",
+    "election_name": "Swansea local election",
+    "start_date": "1996-04-01",
+    "end_date": null
+}

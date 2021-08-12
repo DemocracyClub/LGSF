@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/CHW/2009-04-01/", "official_identifier": "CHW", "organisation_type": "local-authority", "organisation_subtype": "UA", "official_name": "Cheshire West and Chester Council", "common_name": "Cheshire West and Chester", "slug": "cheshire-west-and-chester", "territory_code": "ENG", "election_name": "Cheshire West and Chester local election", "start_date": "2009-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/CHW/2009-04-01/",
+    "official_identifier": "CHW",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "UA",
+    "official_name": "Cheshire West and Chester Council",
+    "common_name": "Cheshire West and Chester",
+    "slug": "cheshire-west-and-chester",
+    "territory_code": "ENG",
+    "election_name": "Cheshire West and Chester local election",
+    "start_date": "2009-04-01",
+    "end_date": null
+}

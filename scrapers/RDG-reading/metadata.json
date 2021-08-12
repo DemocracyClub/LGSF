@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/RDG/1974-04-01/", "official_identifier": "RDG", "organisation_type": "local-authority", "organisation_subtype": "UA", "official_name": "Reading Borough Council", "common_name": "Reading", "slug": "reading", "territory_code": "ENG", "election_name": "Reading local election", "start_date": "1974-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/RDG/1974-04-01/",
+    "official_identifier": "RDG",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "UA",
+    "official_name": "Reading Borough Council",
+    "common_name": "Reading",
+    "slug": "reading",
+    "territory_code": "ENG",
+    "election_name": "Reading local election",
+    "start_date": "1974-04-01",
+    "end_date": null
+}

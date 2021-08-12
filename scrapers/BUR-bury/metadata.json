@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/BUR/1974-04-01/", "official_identifier": "BUR", "organisation_type": "local-authority", "organisation_subtype": "MD", "official_name": "Bury Metropolitan Borough Council", "common_name": "Bury", "slug": "bury", "territory_code": "ENG", "election_name": "Bury local election", "start_date": "1974-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/BUR/1974-04-01/",
+    "official_identifier": "BUR",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "MD",
+    "official_name": "Bury Metropolitan Borough Council",
+    "common_name": "Bury",
+    "slug": "bury",
+    "territory_code": "ENG",
+    "election_name": "Bury local election",
+    "start_date": "1974-04-01",
+    "end_date": null
+}

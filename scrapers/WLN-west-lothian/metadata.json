@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/WLN/1996-04-01/", "official_identifier": "WLN", "organisation_type": "local-authority", "organisation_subtype": "CA", "official_name": "The West Lothian Council", "common_name": "West Lothian", "slug": "west-lothian", "territory_code": "SCT", "election_name": "West Lothian local election", "start_date": "1996-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/WLN/1996-04-01/",
+    "official_identifier": "WLN",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "CA",
+    "official_name": "The West Lothian Council",
+    "common_name": "West Lothian",
+    "slug": "west-lothian",
+    "territory_code": "SCT",
+    "election_name": "West Lothian local election",
+    "start_date": "1996-04-01",
+    "end_date": null
+}

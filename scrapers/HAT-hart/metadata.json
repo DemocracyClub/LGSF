@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/HAT/1974-04-01/", "official_identifier": "HAT", "organisation_type": "local-authority", "organisation_subtype": "NMD", "official_name": "Hart District Council", "common_name": "Hart", "slug": "hart", "territory_code": "ENG", "election_name": "Hart local election", "start_date": "1974-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/HAT/1974-04-01/",
+    "official_identifier": "HAT",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "NMD",
+    "official_name": "Hart District Council",
+    "common_name": "Hart",
+    "slug": "hart",
+    "territory_code": "ENG",
+    "election_name": "Hart local election",
+    "start_date": "1974-04-01",
+    "end_date": null
+}

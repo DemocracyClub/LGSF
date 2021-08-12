@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/GRY/1974-04-01/", "official_identifier": "GRY", "organisation_type": "local-authority", "organisation_subtype": "NMD", "official_name": "Great Yarmouth Borough Council", "common_name": "Great Yarmouth", "slug": "great-yarmouth", "territory_code": "ENG", "election_name": "Great Yarmouth local election", "start_date": "1974-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/GRY/1974-04-01/",
+    "official_identifier": "GRY",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "NMD",
+    "official_name": "Great Yarmouth Borough Council",
+    "common_name": "Great Yarmouth",
+    "slug": "great-yarmouth",
+    "territory_code": "ENG",
+    "election_name": "Great Yarmouth local election",
+    "start_date": "1974-04-01",
+    "end_date": null
+}

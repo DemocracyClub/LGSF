@@ -32,5 +32,5 @@ class Command(CommandBase):
                         name = "{}-{}".format(org["official_identifier"], org["slug"])
                         path = create_org_package(name)
                     with open(os.path.join(path, "metadata.json"), "w") as f:
-                        f.write(json.dumps(org))
+                        f.write(json.dumps(org, indent=4))
                     open(os.path.join(path, "__init__.py"), "a").close()

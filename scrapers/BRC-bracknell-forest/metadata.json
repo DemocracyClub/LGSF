@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/BRC/1998-04-01/", "official_identifier": "BRC", "organisation_type": "local-authority", "organisation_subtype": "UA", "official_name": "Bracknell Forest Council", "common_name": "Bracknell Forest", "slug": "bracknell-forest", "territory_code": "ENG", "election_name": "Bracknell Forest local election", "start_date": "1998-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/BRC/1998-04-01/",
+    "official_identifier": "BRC",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "UA",
+    "official_name": "Bracknell Forest Council",
+    "common_name": "Bracknell Forest",
+    "slug": "bracknell-forest",
+    "territory_code": "ENG",
+    "election_name": "Bracknell Forest local election",
+    "start_date": "1998-04-01",
+    "end_date": null
+}

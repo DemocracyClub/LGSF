@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/RDB/1965-04-01/", "official_identifier": "RDB", "organisation_type": "local-authority", "organisation_subtype": "LBO", "official_name": "London Borough of Redbridge", "common_name": "Redbridge", "slug": "redbridge", "territory_code": "ENG", "election_name": "Redbridge local election", "start_date": "1965-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/RDB/1965-04-01/",
+    "official_identifier": "RDB",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "LBO",
+    "official_name": "London Borough of Redbridge",
+    "common_name": "Redbridge",
+    "slug": "redbridge",
+    "territory_code": "ENG",
+    "election_name": "Redbridge local election",
+    "start_date": "1965-04-01",
+    "end_date": null
+}

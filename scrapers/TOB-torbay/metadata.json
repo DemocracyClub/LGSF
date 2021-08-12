@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/TOB/1998-04-01/", "official_identifier": "TOB", "organisation_type": "local-authority", "organisation_subtype": "UA", "official_name": "Torbay Council", "common_name": "Torbay Council", "slug": "torbay", "territory_code": "ENG", "election_name": "Torbay Council", "start_date": "1998-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/TOB/1998-04-01/",
+    "official_identifier": "TOB",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "UA",
+    "official_name": "Torbay Council",
+    "common_name": "Torbay Council",
+    "slug": "torbay",
+    "territory_code": "ENG",
+    "election_name": "Torbay Council",
+    "start_date": "1998-04-01",
+    "end_date": null
+}

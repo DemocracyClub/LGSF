@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/SHE/1974-04-01/", "official_identifier": "SHE", "organisation_type": "local-authority", "organisation_subtype": "NMD", "official_name": "Shepway District Council", "common_name": "Shepway", "slug": "shepway", "territory_code": "ENG", "election_name": "Shepway local election", "start_date": "1974-04-01", "end_date": "2018-03-31"}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/SHE/1974-04-01/",
+    "official_identifier": "SHE",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "NMD",
+    "official_name": "Shepway District Council",
+    "common_name": "Shepway",
+    "slug": "shepway",
+    "territory_code": "ENG",
+    "election_name": "Shepway local election",
+    "start_date": "1974-04-01",
+    "end_date": "2018-03-31"
+}

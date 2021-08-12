@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/EHE/1974-04-01/", "official_identifier": "EHE", "organisation_type": "local-authority", "organisation_subtype": "NMD", "official_name": "East Hertfordshire District Council", "common_name": "East Hertfordshire", "slug": "east-hertfordshire", "territory_code": "ENG", "election_name": "East Hertfordshire local election", "start_date": "1974-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/EHE/1974-04-01/",
+    "official_identifier": "EHE",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "NMD",
+    "official_name": "East Hertfordshire District Council",
+    "common_name": "East Hertfordshire",
+    "slug": "east-hertfordshire",
+    "territory_code": "ENG",
+    "election_name": "East Hertfordshire local election",
+    "start_date": "1974-04-01",
+    "end_date": null
+}

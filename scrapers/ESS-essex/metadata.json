@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/ESS/1998-04-01/", "official_identifier": "ESS", "organisation_type": "local-authority", "organisation_subtype": "CTY", "official_name": "Essex County Council", "common_name": "Essex", "slug": "essex", "territory_code": "ENG", "election_name": "Essex local election", "start_date": "1998-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/ESS/1998-04-01/",
+    "official_identifier": "ESS",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "CTY",
+    "official_name": "Essex County Council",
+    "common_name": "Essex",
+    "slug": "essex",
+    "territory_code": "ENG",
+    "election_name": "Essex local election",
+    "start_date": "1998-04-01",
+    "end_date": null
+}

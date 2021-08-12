@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/WFT/1965-04-01/", "official_identifier": "WFT", "organisation_type": "local-authority", "organisation_subtype": "LBO", "official_name": "London Borough of Waltham Forest", "common_name": "Waltham Forest", "slug": "waltham-forest", "territory_code": "ENG", "election_name": "Waltham Forest local election", "start_date": "1965-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/WFT/1965-04-01/",
+    "official_identifier": "WFT",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "LBO",
+    "official_name": "London Borough of Waltham Forest",
+    "common_name": "Waltham Forest",
+    "slug": "waltham-forest",
+    "territory_code": "ENG",
+    "election_name": "Waltham Forest local election",
+    "start_date": "1965-04-01",
+    "end_date": null
+}

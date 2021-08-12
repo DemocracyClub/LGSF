@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/FMO/2015-04-01/", "official_identifier": "FMO", "organisation_type": "local-authority", "organisation_subtype": "", "official_name": "Fermanagh and Omagh District Council", "common_name": "Fermanagh and Omagh", "slug": "fermanagh-and-omagh", "territory_code": "NIR", "election_name": "Fermanagh and Omagh local election", "start_date": "2015-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/FMO/2015-04-01/",
+    "official_identifier": "FMO",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "",
+    "official_name": "Fermanagh and Omagh District Council",
+    "common_name": "Fermanagh and Omagh",
+    "slug": "fermanagh-and-omagh",
+    "territory_code": "NIR",
+    "election_name": "Fermanagh and Omagh local election",
+    "start_date": "2015-04-01",
+    "end_date": null
+}

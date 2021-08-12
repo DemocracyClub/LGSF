@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/BOS/1974-04-01/", "official_identifier": "BOS", "organisation_type": "local-authority", "organisation_subtype": "NMD", "official_name": "Bolsover District Council", "common_name": "Bolsover", "slug": "bolsover", "territory_code": "ENG", "election_name": "Bolsover local election", "start_date": "1974-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/BOS/1974-04-01/",
+    "official_identifier": "BOS",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "NMD",
+    "official_name": "Bolsover District Council",
+    "common_name": "Bolsover",
+    "slug": "bolsover",
+    "territory_code": "ENG",
+    "election_name": "Bolsover local election",
+    "start_date": "1974-04-01",
+    "end_date": null
+}

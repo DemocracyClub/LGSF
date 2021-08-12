@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/ABC/2015-04-01/", "official_identifier": "ABC", "organisation_type": "local-authority", "organisation_subtype": "", "official_name": "Armagh City, Banbridge and Craigavon Borough Council", "common_name": "Armagh City, Banbridge and Craigavon", "slug": "armagh-city-banbridge-and-craigavon", "territory_code": "NIR", "election_name": "Armagh City, Banbridge and Craigavon local election", "start_date": "2015-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/ABC/2015-04-01/",
+    "official_identifier": "ABC",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "",
+    "official_name": "Armagh City, Banbridge and Craigavon Borough Council",
+    "common_name": "Armagh City, Banbridge and Craigavon",
+    "slug": "armagh-city-banbridge-and-craigavon",
+    "territory_code": "NIR",
+    "election_name": "Armagh City, Banbridge and Craigavon local election",
+    "start_date": "2015-04-01",
+    "end_date": null
+}

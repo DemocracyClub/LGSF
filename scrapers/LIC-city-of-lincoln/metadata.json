@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/LIC/1974-04-01/", "official_identifier": "LIC", "organisation_type": "local-authority", "organisation_subtype": "NMD", "official_name": "City of Lincoln Council", "common_name": "City of Lincoln", "slug": "city-of-lincoln", "territory_code": "ENG", "election_name": "City of Lincoln local election", "start_date": "1974-04-01", "end_date": null}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/LIC/1974-04-01/",
+    "official_identifier": "LIC",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "NMD",
+    "official_name": "City of Lincoln Council",
+    "common_name": "City of Lincoln",
+    "slug": "city-of-lincoln",
+    "territory_code": "ENG",
+    "election_name": "City of Lincoln local election",
+    "start_date": "1974-04-01",
+    "end_date": null
+}

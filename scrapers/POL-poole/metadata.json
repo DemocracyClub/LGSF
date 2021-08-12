@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/POL/1997-04-01/", "official_identifier": "POL", "organisation_type": "local-authority", "organisation_subtype": "UA", "official_name": "Borough of Poole", "common_name": "Poole", "slug": "poole", "territory_code": "ENG", "election_name": "Poole local election", "start_date": "1997-04-01", "end_date": "2019-03-31"}
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/POL/1997-04-01/",
+    "official_identifier": "POL",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "UA",
+    "official_name": "Borough of Poole",
+    "common_name": "Poole",
+    "slug": "poole",
+    "territory_code": "ENG",
+    "election_name": "Poole local election",
+    "start_date": "1997-04-01",
+    "end_date": "2019-03-31"
+}
