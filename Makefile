@@ -1,11 +1,14 @@
 .DEFAULT_GOAL := help
 
 .PHONY: all
-all: clean requirements.txt
+all: clean lambda-layers/DependenciesLayer/requirements.txt
 
 .PHONY: clean
-clean: ## Delete requirements.txt
-	rm -rf requirements.txt
+clean: ## Delete lambda-layers/DependenciesLayer/requirements.txt
+	rm -rf lambda-layers/DependenciesLayer/requirements.txt
+
+lambda-layers/DependenciesLayer/requirements.txt: Pipfile Pipfile.lock ## Update the requirements.txt file used to build this Lambda function's DependenciesLayer
+	pipenv lock -r > lambda-layers/DependenciesLayer/requirements.txt
 
 requirements.txt: Pipfile Pipfile.lock ## Update the requirements.txt file used to build this Lambda function's DependenciesLayer
 	pipenv lock -r > requirements.txt
