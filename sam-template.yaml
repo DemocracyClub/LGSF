@@ -12,12 +12,25 @@ Globals:
 
 
 Resources:
+  DependenciesLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      ContentUri: ./lambda-layers/DependenciesLayer/
+      CompatibleRuntimes:
+        - python3.6
+    Metadata:
+      BuildMethod: makefile
+    RetentionPolicy: Delete
+
+
   QueueBuilderFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
       CodeUri: .
       Handler: lgsf.aws_lambda.handlers.queue_builder_handler
       Runtime: python3.8
+      Layers:
+        - !Ref DependenciesLayer
       Events:
         QueueBuilder:
           Type: Schedule # More info about Schedule Event Source: https://github.com/aws/serverless-application-model/blob/master/versions/2016-10-31.md#schedule
@@ -45,6 +58,8 @@ Resources:
       CodeUri: .
       Handler: lgsf.aws_lambda.handlers.scraper_worker_handler
       Runtime: python3.8
+      Layers:
+        - !Ref DependenciesLayer
       Events:
         SQSEvent:
           Type: SQS
