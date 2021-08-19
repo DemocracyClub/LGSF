@@ -1,10 +1,1 @@
-version = 0.1
-[default]
-[default.deploy]
-[default.deploy.parameters]
-stack_name = "lgsf-dev"
-s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-mw12yk2c9frr"
-s3_prefix = "lgsf-dev"
-region = "eu-west-2"
-profile = "dc-lgsf-dev"
-capabilities = "CAPABILITY_IAM"
+samconfig.toml.d/development.toml

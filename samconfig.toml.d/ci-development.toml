@@ -1,0 +1,9 @@
+version = 0.1
+[development]
+[development.deploy]
+[development.deploy.parameters]
+stack_name = "lgsf-dev"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-mw12yk2c9frr"
+s3_prefix = "lgsf-dev"
+region = "eu-west-2"
+capabilities = "CAPABILITY_IAM"

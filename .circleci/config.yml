@@ -1,0 +1,111 @@
+# https://circleci.com/docs/2.0/configuration-reference/
+
+# NB https://circleci.com/docs/2.0/configuration-reference/#default-shell-options:
+#  * CircleCI explicitly sets `set -eo pipefail`, which several of this project's
+#    `run` steps rely on. The construct of `<failing-command> | <decorator-command>`
+#    is used throughout, and needs to be present in any shell environment this
+#    workflow evolves into.
+
+version: 2.1
+
+jobs:
+
+  install_and_update_dependencies:
+    docker:
+    - image: circleci/python:3.8
+    working_directory: ~/repo
+    steps:
+    - checkout
+    - restore_cache:
+        keys:
+        - v2-dependencies-{{ checksum "Pipfile.lock" }}
+    - run: &install-pipenv sudo pip install -U pipenv urllib3 pip --quiet --no-input
+    - run: pipenv install --dev
+    - run: pipenv run pipenv check # before save_cache so an insecure cache is never saved
+#    - run: make lambda-layers/DependenciesLayer/requirements.txt
+    - run: make requirements.txt
+    - persist_to_workspace:
+        root: ~/repo/
+#        paths: [ lambda-layers/DependenciesLayer/requirements.txt ]
+        paths: [ requirements.txt ]
+    - save_cache:
+        when: on_success
+        paths:
+        - ~/.local/share/virtualenvs/
+        key: v2-dependencies-{{ checksum "Pipfile.lock" }}
+
+  sam_build:
+    docker:
+    - image: amazon/aws-sam-cli-build-image-python3.8:latest
+    working_directory: ~/repo
+    steps:
+    - checkout
+    - attach_workspace:
+        at: ~/repo/
+    - run: pip install --upgrade pip
+#    - run: pip install -r lambda-layers/DependenciesLayer/requirements.txt
+    - run: pip install -r requirements.txt
+    - run: sam build  --template sam-template.yaml
+    - persist_to_workspace:
+        root: ~/repo/
+        paths: [ .aws-sam/build/ ]
+
+  sam_deploy:
+    docker:
+    - image: circleci/python:3.8
+    working_directory: ~/repo/
+    parameters:
+      dc-environment:
+        type: enum
+        enum: [ development, staging, production ]
+    environment:
+      SAM_CONFIG_FILE: samconfig.toml.d/ci-<<parameters.dc-environment>>.toml
+      SAM_LAMBDA_CONFIG_ENV: <<parameters.dc-environment>>
+    steps:
+    - checkout
+    - attach_workspace:
+        at: ~/repo/
+    - restore_cache:
+        keys:
+        - v2-dependencies-{{ checksum "Pipfile.lock" }}
+
+    - run: *install-pipenv
+    - run: pipenv install --dev
+    - run: printenv SAM_CONFIG_FILE SAM_LAMBDA_CONFIG_ENV
+    - run: printenv AWS_ACCESS_KEY_ID | md5sum
+    - run:
+        name: "pipenv run sam deploy"
+        command: |
+          pipenv run sam deploy \
+          --debug \
+          --config-env $SAM_LAMBDA_CONFIG_ENV \
+          --config-file ~/repo/${SAM_CONFIG_FILE} \
+          --template-file ~/repo/sam-template.yaml \
+
+
+workflows:
+  version: 2
+  test_build_deploy:
+    jobs:
+
+    - install_and_update_dependencies
+
+    - sam_build:
+        requires:
+        - install_and_update_dependencies # DependenciesLayer build needs lambda-layers/DependenciesLayer/requirements.txt
+
+    # This deployment tracks the tip of the main branch in Github. It is not intended
+    # to block staging (hence production) deployments: staging is the testing ground for
+    # production. This deployment is intended to give developers a target in their main
+    # AWS account that they can debug against, read its logs, etc, without having to escalate
+    # their access to the staging account. This deployment should not be modified manually,
+    # but only through commits which also reach staging and then production.
+    # This deployment doesn't wait on the `test` job to succeed.
+    - sam_deploy:
+        name: sam_deploy_development
+        dc-environment: development
+        requires:
+        - install_and_update_dependencies # SAM CLI is in the dev package set
+        - sam_build                       # deploy needs .aws-sam/build/
+        context: [ deployment-development-lgsf ]
+        filters: { branches: { only: [ main, master ] } }
