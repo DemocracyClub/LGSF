@@ -67,6 +67,10 @@ Running the scrapers will create a `data` directory with raw and JSON folders
 and a file in each per councillor.
 
 ### Contributing
+
+Install pre-commit hooks:
+`$ pre-commit install`
+
 If you want to add a scraper for a new council:
 
 

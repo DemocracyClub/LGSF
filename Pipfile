@@ -22,6 +22,7 @@ retry = "*"
 black = "*"
 rich = "*"
 boto3 = "*"
+pre-commit = "*"
 
 [dev-packages]
 pytest-mypy-plugins = "*"
