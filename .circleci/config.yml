@@ -42,10 +42,10 @@ jobs:
     - checkout
     - attach_workspace:
         at: ~/repo/
-    - run: pip install --upgrade pip
+    - run: pipenv run pip install --upgrade pip
 #    - run: pip install -r lambda-layers/DependenciesLayer/requirements.txt
-    - run: pip install -r requirements.txt
-    - run: sam build  --template sam-template.yaml
+    - run: pipenv run pip install -r requirements.txt
+    - run: pipenv run sam build  --template sam-template.yaml
     - persist_to_workspace:
         root: ~/repo/
         paths: [ .aws-sam/build/ ]
