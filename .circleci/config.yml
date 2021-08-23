@@ -14,11 +14,14 @@ jobs:
     docker:
     - image: circleci/python:3.8
     working_directory: ~/repo
+    environment:
+      PIPENV_VENV_IN_PROJECT: enabled
     steps:
     - checkout
     - restore_cache:
         keys:
         - v2-dependencies-{{ checksum "Pipfile.lock" }}
+        - v2-dependencies-
     - run: &install-pipenv sudo pip install -U pipenv urllib3 pip --quiet --no-input
     - run: pipenv install --dev
     - run: pipenv run pipenv check # before save_cache so an insecure cache is never saved
@@ -31,7 +34,8 @@ jobs:
     - save_cache:
         when: on_success
         paths:
-        - ~/.local/share/virtualenvs/
+#        - ~/.local/share/virtualenvs/
+        - ~/repo/.venv
         key: v2-dependencies-{{ checksum "Pipfile.lock" }}
 
   sam_build:
@@ -42,10 +46,9 @@ jobs:
     - checkout
     - attach_workspace:
         at: ~/repo/
-    - run: pipenv run pip install --upgrade pip
-#    - run: pip install -r lambda-layers/DependenciesLayer/requirements.txt
-    - run: pipenv run pip install -r requirements.txt
-    - run: pipenv run sam build  --template sam-template.yaml
+    - run: pip install --upgrade pip
+    - run: pip install -r requirements.txt
+    - run: sam build  --template sam-template.yaml
     - persist_to_workspace:
         root: ~/repo/
         paths: [ .aws-sam/build/ ]
@@ -61,6 +64,7 @@ jobs:
     environment:
       SAM_CONFIG_FILE: samconfig.toml.d/ci-<<parameters.dc-environment>>.toml
       SAM_LAMBDA_CONFIG_ENV: <<parameters.dc-environment>>
+      PIPENV_VENV_IN_PROJECT: enabled
     steps:
     - checkout
     - attach_workspace:
@@ -68,15 +72,17 @@ jobs:
     - restore_cache:
         keys:
         - v2-dependencies-{{ checksum "Pipfile.lock" }}
+        - v2-dependencies-
 
     - run: *install-pipenv
-    - run: pipenv install --dev
+
     - run: printenv SAM_CONFIG_FILE SAM_LAMBDA_CONFIG_ENV
     - run: printenv AWS_ACCESS_KEY_ID | md5sum
+    - run: echo $PATH
     - run:
         name: "pipenv run sam deploy"
         command: |
-          pipenv run sam deploy \
+          pipenv run ~/repo/.venv/bin/sam deploy \
           --debug \
           --config-env $SAM_LAMBDA_CONFIG_ENV \
           --config-file ~/repo/${SAM_CONFIG_FILE} \
