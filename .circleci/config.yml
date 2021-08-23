@@ -108,4 +108,4 @@ workflows:
         - install_and_update_dependencies # SAM CLI is in the dev package set
         - sam_build                       # deploy needs .aws-sam/build/
         context: [ deployment-development-lgsf ]
-        filters: { branches: { only: [ main, master ] } }
+#        filters: { branches: { only: [ main, master ] } }
