@@ -80,7 +80,7 @@ jobs:
           --debug \
           --config-env $SAM_LAMBDA_CONFIG_ENV \
           --config-file ~/repo/${SAM_CONFIG_FILE} \
-          --template-file ~/repo/sam-template.yaml \
+          --template-file ~/repo/.aws-sam/build/template.yaml
 
 
 workflows:
