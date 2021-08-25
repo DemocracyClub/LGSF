@@ -1,0 +1,6 @@
+# Onetime Usage: git blame foo.py --ignore-revs-file .git-blame-ignore-revs
+# Always Use: git config blame.ignoreRevsFile .git-blame-ignore-revs
+# Add complete commit hashes below.
+
+Run pre-commit on all files
+cfb6c39027617f381917960a0ede2a06f477a291
