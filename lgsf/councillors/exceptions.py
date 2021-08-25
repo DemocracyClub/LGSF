@@ -8,4 +8,5 @@ class SkipCouncillorException(ValueError):
     contains information about more than one council, meaning we need to skip
     some people
     """
+
     pass

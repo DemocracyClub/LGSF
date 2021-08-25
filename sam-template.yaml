@@ -80,4 +80,3 @@ Outputs:
   QueueBuilderFunctionIamRole:
     Description: "Implicit IAM Role created for Queue Builder function"
     Value: !GetAtt QueueBuilderFunction.Arn
-

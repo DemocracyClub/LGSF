@@ -58,7 +58,7 @@ class Scraper(HTMLCouncillorScraper):
         "container_css_selector": "EDITME",
         "councillor_css_selector": "EDITME",
     }
-    
+
     def get_single_councillor(self, councillor_html):
         raise NotImplementedError
         # Find a way to call this and return the councillor object
