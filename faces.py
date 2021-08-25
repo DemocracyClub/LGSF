@@ -69,6 +69,7 @@ for file_name in glob.glob("./data/**/json/*.jsonss"):
                     detect_face(rk_json_path, photo_url, json_data)
                 except KeyboardInterrupt:
                     import sys
+
                     sys.exit()
                 except Exception as e:
                     print(e)
@@ -79,9 +80,9 @@ out_csv = csv.DictWriter(
     fieldnames=[
         "council_id",
         "name",
-        'division',
-        'party',
-        'email',
+        "division",
+        "party",
+        "email",
         "url",
         "photo_url",
         "gender_from_name",

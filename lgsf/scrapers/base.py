@@ -113,7 +113,6 @@ class CodeCommitMixin:
             self._branch_head = ""
             self.batch = 1
 
-
     @property
     def branch_head(self):
         """returns today's branch's HEAD commit hash"""

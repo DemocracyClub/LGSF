@@ -23,10 +23,10 @@ class Scraper(HTMLCouncillorScraper):
     def get_ward_for_person(self, name):
         raw_html = self.get_raw_html()
         title_tag = raw_html.find(string=re.compile(name))
-        ward = title_tag.find_all_previous('div', {"class": re.compile("wrapper-*")})[0].h2.get_text(strip=True)
+        ward = title_tag.find_all_previous("div", {"class": re.compile("wrapper-*")})[
+            0
+        ].h2.get_text(strip=True)
         return ward.replace(" Councillors", "").strip()
-
-
 
     def get_single_councillor(self, councillor_html):
         image_style = councillor_html.select("div.img")[0]["style"]
@@ -43,6 +43,8 @@ class Scraper(HTMLCouncillorScraper):
             url, identifier=url, name=name, party=party, division=division
         )
 
-        councillor.email = councillor.email = councillor_html.select("a[href^=mailto]")[0]["href"].split(":")[1]
+        councillor.email = councillor.email = councillor_html.select("a[href^=mailto]")[
+            0
+        ]["href"].split(":")[1]
         councillor.photo_url = image_url
         return councillor

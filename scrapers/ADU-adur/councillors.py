@@ -23,5 +23,3 @@ class Scraper(ModGovCouncillorScraper):
             return councillor
         else:
             raise SkipCouncillorException()
-
-
