@@ -1,4 +1,4 @@
-from lgsf.councillors.exceptions import SkipCouncillorException
+from lgsf.councillors import SkipCouncillorException
 from lgsf.councillors.scrapers import ModGovCouncillorScraper
 
 
