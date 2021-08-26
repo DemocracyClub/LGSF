@@ -5,8 +5,7 @@ from bs4 import BeautifulSoup
 from dateutil.parser import parse
 
 from lgsf.scrapers import ScraperBase, CodeCommitMixin
-from lgsf.councillors import CouncillorBase
-from exceptions import SkipCouncillorException
+from lgsf.councillors import CouncillorBase, SkipCouncillorException
 
 
 class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
