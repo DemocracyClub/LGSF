@@ -23,7 +23,10 @@ def scraper_worker_handler(event, context):
     options = {"council": council, "verbose": True, "aws_lambda": True}
     scraper = scraper_cls(options, console)
     try:
-        scraper.run()
+        if not scraper.disabled:
+            scraper.run()
+        else:
+            console.log(f"Scraper for {council} is disabled")
     except Exception as e:
         scraper.console.log(e)
         scraper.delete_branch()
