@@ -6,7 +6,7 @@ from dateutil.parser import parse
 
 from lgsf.scrapers import ScraperBase, CodeCommitMixin
 from lgsf.councillors import CouncillorBase
-from councillors.exceptions import SkipCouncillorException
+from exceptions import SkipCouncillorException
 
 
 class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):

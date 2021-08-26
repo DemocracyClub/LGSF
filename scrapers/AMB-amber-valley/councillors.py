@@ -1,4 +1,4 @@
-from councillors.scrapers import JSONCouncillorScraper
+from lgsf.councillors.scrapers import JSONCouncillorScraper
 
 
 class Scraper(JSONCouncillorScraper):
