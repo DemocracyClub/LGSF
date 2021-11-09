@@ -280,12 +280,16 @@ class CodeCommitMixin:
                     MaxResults=400,
                 )
             except self.codecommit_client.exceptions.PathDoesNotExistException:
+                # The council has never been scraped before - so everything is new,
+                # but we can just treat it as differences, and fake the necessary
+                # bit of a differences response object
                 differences_response = {"differences": True}
 
             if differences_response["differences"]:
                 # squash and merge
                 self.attempt_merge()
             else:
+                # noinspection PyAttributeOutsideInit
                 self.new_data = False
                 self.console.log("No new councillor data found.")
 
