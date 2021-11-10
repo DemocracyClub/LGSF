@@ -1,4 +1,5 @@
 import abc
+import json
 import os
 
 import boto3
@@ -15,6 +16,7 @@ import requests
 
 from lgsf.path_utils import data_abs_path
 from .checks import ScraperChecker
+from ..aws_lambda.run_log import RunLog
 
 
 class ScraperBase(metaclass=abc.ABCMeta):
@@ -113,6 +115,7 @@ class CodeCommitMixin:
             self.today = datetime.datetime.now().strftime("%Y-%m-%d")
             self._branch_head = ""
             self.batch = 1
+            self.log_file_path = f"{self.options['council']}/logbook.json"
 
     @property
     def branch_head(self):
@@ -276,7 +279,7 @@ class CodeCommitMixin:
             f"{self.branch} squashed and merged into main at {merge_info['commitId']}"
         )
 
-    def aws_tidy_up(self):
+    def aws_tidy_up(self, run_log: RunLog):
         if self.options.get("aws_lambda"):
             # Check if there's anything left to commit...
             if self.put_files:
@@ -306,6 +309,57 @@ class CodeCommitMixin:
             self.console.log(
                 f"Finished attempting to scrape: {self.options['council']}"
             )
+            self.commit_run_log(run_log)
             # squash and merge
             self.attempt_merge()
             self.delete_branch()
+
+    def get_logbook(self):
+        try:
+            logbook_response = self.codecommit_client.get_file(
+                repositoryName=self.repository, filePath=self.log_file_path
+            )
+        except self.codecommit_client.exceptions.FileDoesNotExistException:
+            logbook_response = self.create_log_file()
+
+        return json.loads(logbook_response["fileContent"])
+
+    def create_log_file(self):
+        bare_log = json.dumps({"name": self.options["council"], "runs": []})
+        response = self.commit(
+            put_files=[
+                {"filePath": self.log_file_path, "fileContent": bare_log},
+            ],
+            message=f"Creating empty log file for {self.options['council']}",
+        )
+
+        # construct a similar return obj to client.create_commit
+        return {
+            "commitId": response["commitId"],
+            "blobId": response["filesAdded"][0]["blobId"],
+            "filePath": response["filesAdded"][0]["absolutePath"],
+            "fileContent": bare_log,
+        }
+
+    def commit_run_log(self, run_log: RunLog):
+        run_log.log = (
+            self.console.export_text()
+        )  # maybe this wants to be export_html()?
+        run_log.end = datetime.datetime.utcnow()
+        run_log.duration = run_log.end - run_log.start
+
+        log_book = self.get_logbook()
+        if len(log_book["runs"]) > 20:
+            log_book["runs"].pop(0)
+
+        log_book["runs"].append(run_log.as_json)
+        commit_info = self.commit(
+            put_files=[
+                {
+                    "filePath": self.log_file_path,
+                    "fileContent": json.dumps(log_book),
+                }
+            ],
+            message="Logging run for {self.options['council']}",
+        )
+        self.console.log(f"Created log commit {commit_info['commitId']}")
