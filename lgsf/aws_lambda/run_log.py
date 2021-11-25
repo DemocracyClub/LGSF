@@ -12,6 +12,7 @@ class RunLog:
     duration: datetime.timedelta = 0
     log: str = ""
     error: str = ""
+    status_codes: dict = None
 
     @property
     def as_json(self) -> str:

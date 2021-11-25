@@ -39,9 +39,18 @@ class ScraperBase(metaclass=abc.ABCMeta):
         if self.options.get("verbose"):
             self.console.log(f"Scraping from {url}")
         headers = {"User-Agent": "Scraper/DemocracyClub", "Accept": "*/*"}
+
         if extra_headers:
             headers.update(extra_headers)
-        return requests.get(url, headers=headers, verify=verify)
+
+        response = requests.get(url, headers=headers, verify=verify)
+        status_code = response.status_code
+        status_codes = getattr(self, "status_codes", {})
+        if status_code in status_codes.keys():
+            status_codes[status_code].append(url)
+        else:
+            status_codes[status_code] = [url]
+        return response
 
     def check(self):
         checker = ScraperChecker(self.__class__)
@@ -116,6 +125,7 @@ class CodeCommitMixin:
             self._branch_head = ""
             self.batch = 1
             self.log_file_path = f"{self.options['council']}/logbook.json"
+            self.status_codes = {}
 
     @property
     def branch_head(self):
@@ -309,6 +319,7 @@ class CodeCommitMixin:
             self.console.log(
                 f"Finished attempting to scrape: {self.options['council']}"
             )
+            run_log.status_codes = self.status_codes
             self.commit_run_log(run_log)
             # squash and merge
             self.attempt_merge()
