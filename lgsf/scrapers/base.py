@@ -132,6 +132,10 @@ class CodeCommitMixin:
     def branch_head(self, commit_id):
         self._branch_head = commit_id
 
+    @branch_head.deleter
+    def branch_head(self):
+        self._branch_head = ""
+
     @property
     def branch(self):
         """returns today's branch name"""
@@ -189,17 +193,11 @@ class CodeCommitMixin:
             self.console.log(f"{folder_path} Does not exist")
             return subfolder_paths, file_paths
 
-    def delete_files(self, delete_files, commit_id, batch):
+    def delete_files(self, delete_files, batch):
         message = f"Deleting batch no. {batch} consisting of {len(delete_files)} files"
         self.console.log(message)
 
-        delete_commit = self.codecommit_client.create_commit(
-            repositoryName=self.repository,
-            branchName=self.branch,
-            parentCommitId=commit_id,
-            commitMessage=message,
-            deleteFiles=delete_files,
-        )
+        delete_commit = self.commit(message=message, delete_files=delete_files)
         return delete_commit
 
     def delete_existing(self, commit_id):
@@ -207,14 +205,14 @@ class CodeCommitMixin:
         batch = 1
         while len(file_paths) >= 100:
             delete_files = [{"filePath": fp} for fp in file_paths[:100]]
-            delete_commit = self.delete_files(delete_files, commit_id, batch)
+            delete_commit = self.delete_files(delete_files, batch)
             batch += 1
             file_paths = file_paths[100:]
             commit_id = delete_commit["commitId"]
 
         if file_paths:
             delete_files = [{"filePath": fp} for fp in file_paths]
-            delete_commit = self.delete_files(delete_files, commit_id, batch)
+            delete_commit = self.delete_files(delete_files, batch)
             return delete_commit["commitId"]
         else:
             return commit_id
@@ -229,14 +227,29 @@ class CodeCommitMixin:
             self.branch_head = delete_commit
             self.console.log("...data deleted.")
 
-    def commit(self, put_files, message):
-        commit_info = self.codecommit_client.create_commit(
-            repositoryName=self.repository,
-            branchName=self.branch,
-            parentCommitId=self.branch_head,
-            commitMessage=message,
-            putFiles=put_files,
-        )
+    def commit(
+        self, message: str = "", put_files: list = None, delete_files: list = None
+    ):
+        try:
+            commit_info = self.codecommit_client.create_commit(
+                repositoryName=self.repository,
+                branchName=self.branch,
+                parentCommitId=self.branch_head,
+                commitMessage=message,
+                putFiles=put_files if put_files else [],
+                deleteFiles=delete_files if delete_files else [],
+            )
+        except self.codecommit_client.exceptions.ParentCommitIdOutdatedException:
+            del self.branch_head
+            commit_info = self.codecommit_client.create_commit(
+                repositoryName=self.repository,
+                branchName=self.branch,
+                parentCommitId=self.branch_head,
+                commitMessage=message,
+                putFiles=put_files if put_files else [],
+                deleteFiles=delete_files if delete_files else [],
+            )
+        self.branch_head = commit_info["commitId"]
         return commit_info
 
     def process_batch(self):
@@ -246,7 +259,7 @@ class CodeCommitMixin:
         message = (
             f"{self.options['council']} - batch {self.batch} - scraped on {self.today}"
         )
-        commit_info = self.commit(self.put_files, message)
+        commit_info = self.commit(put_files=self.put_files, message=message)
         self.branch_head = commit_info["commitId"]
         self.batch += 1
         self.put_files = []
