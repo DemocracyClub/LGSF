@@ -29,9 +29,11 @@ def scraper_worker_handler(event, context):
             console.log(f"Scraper for {council} is disabled")
     except Exception as e:
         scraper.console.log(e)
-        scraper.delete_branch()
+        # This probably means aws_tidy_up hasn't been called.
+        # Let's do that ourselves then
+        scraper.aws_tidy_up(run_log)
 
-    console.log(f"Finished attempting to scrape: {council}")
+    console.log(f"Finished running scraper for: {council}")
 
 
 def queue_builder_handler(event, context):

@@ -298,12 +298,14 @@ class CodeCommitMixin:
                 # bit of a differences response object
                 differences_response = {"differences": True}
 
-            if differences_response["differences"]:
-                # squash and merge
-                self.attempt_merge()
-            else:
+            if not differences_response["differences"]:
                 # noinspection PyAttributeOutsideInit
                 self.new_data = False
                 self.console.log("No new councillor data found.")
 
+            self.console.log(
+                f"Finished attempting to scrape: {self.options['council']}"
+            )
+            # squash and merge
+            self.attempt_merge()
             self.delete_branch()
