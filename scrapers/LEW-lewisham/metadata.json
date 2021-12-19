@@ -9,5 +9,6 @@
     "territory_code": "ENG",
     "election_name": "London Borough of Lewisham",
     "start_date": "1965-04-01",
-    "end_date": null
+    "end_date": null,
+    "created": "1965-04-01T00:00:00Z"
 }

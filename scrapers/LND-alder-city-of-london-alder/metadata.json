@@ -1,0 +1,14 @@
+{
+    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/LND-alder/1994-01-01/",
+    "official_identifier": "LND-alder",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "CC",
+    "official_name": "City of London Corporation",
+    "common_name": "City of London",
+    "slug": "city-of-london-alder",
+    "territory_code": "ENG",
+    "election_name": "City of London aldermanic election",
+    "start_date": "1994-01-01",
+    "end_date": null,
+    "created": "2021-12-14T16:38:58.624153Z"
+}

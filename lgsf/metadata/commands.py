@@ -25,6 +25,7 @@ class Command(CommandBase):
             for org in data["results"]:
                 if org["organisation_type"] == "local-authority":
                     print(org["official_identifier"])
+                    del org["modified"]
                     try:
                         path = scraper_abs_path(org["official_identifier"])
                     except IOError:

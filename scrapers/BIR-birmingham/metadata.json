@@ -9,5 +9,6 @@
     "territory_code": "ENG",
     "election_name": "Birmingham local election",
     "start_date": "1986-07-01",
-    "end_date": null
+    "end_date": null,
+    "created": "1986-07-01T00:00:00Z"
 }
