@@ -25,7 +25,7 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
         pass
 
     @abc.abstractmethod
-    def get_single_councillor(self):
+    def get_single_councillor(self, councillor_html):
         pass
 
     def add_councillor(self, url, **kwargs):
