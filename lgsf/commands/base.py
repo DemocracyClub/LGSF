@@ -36,9 +36,17 @@ class CommandBase(metaclass=abc.ABCMeta):
         self.parser.add_argument(
             "-v", "--verbose", action="store_true", help="Verbose output"
         )
+        self.parser.add_argument(
+            "-u",
+            "--unpretty",
+            action="store_false",
+            help="Disable pretty output (Rich)",
+        )
 
     def execute(self):
         self.options = vars(self.create_parser())
+        if "unpretty" in self.options:
+            self.pretty = self.options["unpretty"]
         return self.handle(self.options)
 
     @abc.abstractmethod
