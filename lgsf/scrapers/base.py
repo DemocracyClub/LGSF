@@ -29,7 +29,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
         self.console = console
         self.check()
 
-    def get(self, url, verify=True):
+    def get(self, url, verify=True, extra_headers=None):
         """
         Wraps `requests.get`
         """
@@ -37,7 +37,8 @@ class ScraperBase(metaclass=abc.ABCMeta):
         if self.options.get("verbose"):
             self.console.log(f"Scraping from {url}")
         headers = {"User-Agent": "Scraper/DemocracyClub", "Accept": "*/*"}
-
+        if extra_headers:
+            headers.update(extra_headers)
         return requests.get(url, headers=headers, verify=verify)
 
     def check(self):
