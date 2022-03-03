@@ -3,6 +3,8 @@ import argparse
 import os
 import json
 
+from dateutil.parser import parse
+from dateutil.utils import today
 from rich.console import Console
 from rich.progress import Progress, BarColumn, TimeElapsedColumn
 from rich.table import Table
@@ -34,9 +36,17 @@ class CommandBase(metaclass=abc.ABCMeta):
         self.parser.add_argument(
             "-v", "--verbose", action="store_true", help="Verbose output"
         )
+        self.parser.add_argument(
+            "-u",
+            "--unpretty",
+            action="store_false",
+            help="Disable pretty output (Rich)",
+        )
 
     def execute(self):
         self.options = vars(self.create_parser())
+        if "unpretty" in self.options:
+            self.pretty = self.options["unpretty"]
         return self.handle(self.options)
 
     @abc.abstractmethod
@@ -134,6 +144,12 @@ class PerCouncilCommandBase(CommandBase):
                     "metadata.json",
                 )
                 council_metadata = json.load(open(metadata_path))
+                if council_metadata["end_date"]:
+                    # This council has a known end data, check if it's in the past
+                    if parse(council_metadata["end_date"]) < today():
+                        continue
+                if parse(council_metadata["start_date"]) > today():
+                    continue
                 council_info = {
                     "code": council,
                     "name": council_metadata["official_name"],

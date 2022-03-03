@@ -9,5 +9,6 @@
     "territory_code": "ENG",
     "election_name": "Christchurch local election",
     "start_date": "1974-04-01",
-    "end_date": "2019-03-31"
+    "end_date": "2019-03-31",
+    "created": "1974-04-01T00:00:00Z"
 }
