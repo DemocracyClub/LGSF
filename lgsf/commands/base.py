@@ -20,7 +20,7 @@ class CommandBase(metaclass=abc.ABCMeta):
         self.argv = argv
         self.create_parser()
         self.stdout = stdout
-        self.console = Console(file=self.stdout)
+        self.console = Console(file=self.stdout, record=True)
         self.pretty = pretty
 
     def create_parser(self):

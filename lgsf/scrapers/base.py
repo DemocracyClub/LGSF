@@ -1,4 +1,5 @@
 import abc
+import json
 import os
 
 import boto3
@@ -15,6 +16,7 @@ import requests
 
 from lgsf.path_utils import data_abs_path
 from .checks import ScraperChecker
+from ..aws_lambda.run_log import RunLog
 
 
 class ScraperBase(metaclass=abc.ABCMeta):
@@ -37,9 +39,18 @@ class ScraperBase(metaclass=abc.ABCMeta):
         if self.options.get("verbose"):
             self.console.log(f"Scraping from {url}")
         headers = {"User-Agent": "Scraper/DemocracyClub", "Accept": "*/*"}
+
         if extra_headers:
             headers.update(extra_headers)
-        return requests.get(url, headers=headers, verify=verify)
+
+        response = requests.get(url, headers=headers, verify=verify)
+        status_code = response.status_code
+        status_codes = getattr(self, "status_codes", {})
+        if status_code in status_codes.keys():
+            status_codes[status_code].append(url)
+        else:
+            status_codes[status_code] = [url]
+        return response
 
     def check(self):
         checker = ScraperChecker(self.__class__)
@@ -113,6 +124,8 @@ class CodeCommitMixin:
             self.today = datetime.datetime.now().strftime("%Y-%m-%d")
             self._branch_head = ""
             self.batch = 1
+            self.log_file_path = f"{self.options['council']}/logbook.json"
+            self.status_codes = {}
 
     @property
     def branch_head(self):
@@ -131,6 +144,10 @@ class CodeCommitMixin:
     @branch_head.setter
     def branch_head(self, commit_id):
         self._branch_head = commit_id
+
+    @branch_head.deleter
+    def branch_head(self):
+        self._branch_head = ""
 
     @property
     def branch(self):
@@ -189,17 +206,11 @@ class CodeCommitMixin:
             self.console.log(f"{folder_path} Does not exist")
             return subfolder_paths, file_paths
 
-    def delete_files(self, delete_files, commit_id, batch):
+    def delete_files(self, delete_files, batch):
         message = f"Deleting batch no. {batch} consisting of {len(delete_files)} files"
         self.console.log(message)
 
-        delete_commit = self.codecommit_client.create_commit(
-            repositoryName=self.repository,
-            branchName=self.branch,
-            parentCommitId=commit_id,
-            commitMessage=message,
-            deleteFiles=delete_files,
-        )
+        delete_commit = self.commit(message=message, delete_files=delete_files)
         return delete_commit
 
     def delete_existing(self, commit_id):
@@ -207,14 +218,14 @@ class CodeCommitMixin:
         batch = 1
         while len(file_paths) >= 100:
             delete_files = [{"filePath": fp} for fp in file_paths[:100]]
-            delete_commit = self.delete_files(delete_files, commit_id, batch)
+            delete_commit = self.delete_files(delete_files, batch)
             batch += 1
             file_paths = file_paths[100:]
             commit_id = delete_commit["commitId"]
 
         if file_paths:
             delete_files = [{"filePath": fp} for fp in file_paths]
-            delete_commit = self.delete_files(delete_files, commit_id, batch)
+            delete_commit = self.delete_files(delete_files, batch)
             return delete_commit["commitId"]
         else:
             return commit_id
@@ -229,14 +240,29 @@ class CodeCommitMixin:
             self.branch_head = delete_commit
             self.console.log("...data deleted.")
 
-    def commit(self, put_files, message):
-        commit_info = self.codecommit_client.create_commit(
-            repositoryName=self.repository,
-            branchName=self.branch,
-            parentCommitId=self.branch_head,
-            commitMessage=message,
-            putFiles=put_files,
-        )
+    def commit(
+        self, message: str = "", put_files: list = None, delete_files: list = None
+    ):
+        try:
+            commit_info = self.codecommit_client.create_commit(
+                repositoryName=self.repository,
+                branchName=self.branch,
+                parentCommitId=self.branch_head,
+                commitMessage=message,
+                putFiles=put_files if put_files else [],
+                deleteFiles=delete_files if delete_files else [],
+            )
+        except self.codecommit_client.exceptions.ParentCommitIdOutdatedException:
+            del self.branch_head
+            commit_info = self.codecommit_client.create_commit(
+                repositoryName=self.repository,
+                branchName=self.branch,
+                parentCommitId=self.branch_head,
+                commitMessage=message,
+                putFiles=put_files if put_files else [],
+                deleteFiles=delete_files if delete_files else [],
+            )
+        self.branch_head = commit_info["commitId"]
         return commit_info
 
     def process_batch(self):
@@ -246,7 +272,7 @@ class CodeCommitMixin:
         message = (
             f"{self.options['council']} - batch {self.batch} - scraped on {self.today}"
         )
-        commit_info = self.commit(self.put_files, message)
+        commit_info = self.commit(put_files=self.put_files, message=message)
         self.branch_head = commit_info["commitId"]
         self.batch += 1
         self.put_files = []
@@ -263,7 +289,7 @@ class CodeCommitMixin:
             f"{self.branch} squashed and merged into main at {merge_info['commitId']}"
         )
 
-    def aws_tidy_up(self):
+    def aws_tidy_up(self, run_log: RunLog):
         if self.options.get("aws_lambda"):
             # Check if there's anything left to commit...
             if self.put_files:
@@ -280,13 +306,71 @@ class CodeCommitMixin:
                     MaxResults=400,
                 )
             except self.codecommit_client.exceptions.PathDoesNotExistException:
+                # The council has never been scraped before - so everything is new,
+                # but we can just treat it as differences, and fake the necessary
+                # bit of a differences response object
                 differences_response = {"differences": True}
 
-            if differences_response["differences"]:
-                # squash and merge
-                self.attempt_merge()
-            else:
+            if not differences_response["differences"]:
+                # noinspection PyAttributeOutsideInit
                 self.new_data = False
                 self.console.log("No new councillor data found.")
 
+            self.console.log(
+                f"Finished attempting to scrape: {self.options['council']}"
+            )
+            run_log.status_codes = self.status_codes
+            self.commit_run_log(run_log)
+            # squash and merge
+            self.attempt_merge()
             self.delete_branch()
+
+    def get_logbook(self):
+        try:
+            logbook_response = self.codecommit_client.get_file(
+                repositoryName=self.repository, filePath=self.log_file_path
+            )
+        except self.codecommit_client.exceptions.FileDoesNotExistException:
+            logbook_response = self.create_log_file()
+
+        return json.loads(logbook_response["fileContent"])
+
+    def create_log_file(self):
+        bare_log = json.dumps({"name": self.options["council"], "runs": []})
+        response = self.commit(
+            put_files=[
+                {"filePath": self.log_file_path, "fileContent": bare_log},
+            ],
+            message=f"Creating empty log file for {self.options['council']}",
+        )
+
+        # construct a similar return obj to client.create_commit
+        return {
+            "commitId": response["commitId"],
+            "blobId": response["filesAdded"][0]["blobId"],
+            "filePath": response["filesAdded"][0]["absolutePath"],
+            "fileContent": bare_log,
+        }
+
+    def commit_run_log(self, run_log: RunLog):
+        run_log.log = (
+            self.console.export_text()
+        )  # maybe this wants to be export_html()?
+        run_log.end = datetime.datetime.utcnow()
+        run_log.duration = run_log.end - run_log.start
+
+        log_book = self.get_logbook()
+        if len(log_book["runs"]) > 20:
+            log_book["runs"].pop(0)
+
+        log_book["runs"].append(run_log.as_json)
+        commit_info = self.commit(
+            put_files=[
+                {
+                    "filePath": self.log_file_path,
+                    "fileContent": json.dumps(log_book),
+                }
+            ],
+            message="Logging run for {self.options['council']}",
+        )
+        self.console.log(f"Created log commit {commit_info['commitId']}")

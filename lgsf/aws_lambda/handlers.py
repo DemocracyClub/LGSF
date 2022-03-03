@@ -1,16 +1,18 @@
 import json
 import sys
-from datetime import datetime
+import datetime
 
 import boto3
 from rich.console import Console
 
+from lgsf.aws_lambda.run_log import RunLog
 from lgsf.councillors.commands import Command
 from lgsf.path_utils import load_scraper
 
 
 def scraper_worker_handler(event, context):
-    console = Console(file=sys.stdout)
+    console = Console(file=sys.stdout, record=True)
+    run_log = RunLog(start=datetime.datetime.utcnow())
 
     message = json.loads(event["Records"][0]["body"])
 
@@ -24,14 +26,17 @@ def scraper_worker_handler(event, context):
     scraper = scraper_cls(options, console)
     try:
         if not scraper.disabled:
-            scraper.run()
+            scraper.run(run_log)
         else:
             console.log(f"Scraper for {council} is disabled")
     except Exception as e:
         scraper.console.log(e)
-        scraper.delete_branch()
+        run_log.error = e
+        # This probably means aws_tidy_up hasn't been called.
+        # Let's do that ourselves then
+        scraper.aws_tidy_up(run_log)
 
-    console.log(f"Finished attempting to scrape: {council}")
+    console.log(f"Finished running scraper for: {council}")
 
 
 def queue_builder_handler(event, context):
