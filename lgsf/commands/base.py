@@ -253,6 +253,9 @@ class PerCouncilCommandBase(CommandBase):
         except:
             if self.options.get("verbose"):
                 raise
+        
+        self.console.print(run_log.as_rich_table)
+        
 
     def run_council(self, council):
         self.options["council"] = council
