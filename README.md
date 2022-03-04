@@ -129,6 +129,15 @@ for each element that contains a single councillor.
 The `get_single_councillor` method is required, and needs to return
 `Councillor` object.
 
+#### PagedHTMLCouncillorScraper
+
+A subclass of `HTMLCouncillorScraper` that supports pagination in on the
+container page (the list of coucillors is split over different pages).
+
+Looks for a new key in `self.list_page` called `"next_page_css_selector"`
+and uses that to iterate over the pages calling `get_single_councillor` for
+each as it goes.
+
 #### CMISCouncillorScraper
 
 This is a scraper sub-class for councils using CMIS. You can tell these
@@ -153,6 +162,23 @@ The `base_url` should be the URL above the `mgWebService.asmx` script, e.g.
 `http://democracy.kirklees.gov.uk/councillors/` if it’s installed at a
 sub-path.
 
+
+### Skipping councillors
+
+The contract of `get_single_councillor` is that it must return a 
+`Councillor` object.
+
+However in some cases the source requires that this can't happen. Two examples:
+
+1. With `HTMLCouncillorScraper` when iteration over all rows in a table, we
+   sometimes see inline header rows. They can get passed to
+   `get_single_councillor`, but don't contain a councillor
+2. Adur and Worthing have one page for all their councillors and we need to
+   remove Adur councillors from Worthing's scraper and vise versa.
+
+To deal with this we have `SkipCouncillorException`. If
+`get_single_councillor` raises this exception then the loop continues on to
+the next councillor.
 
 ### Councillor objects
 
