@@ -4,9 +4,10 @@ import json
 from bs4 import BeautifulSoup
 from dateutil.parser import parse
 
+from councillors.exceptions import SkipCouncillorException
 from lgsf.aws_lambda.run_log import RunLog
 from lgsf.scrapers import ScraperBase, CodeCommitMixin
-from lgsf.councillors import CouncillorBase, SkipCouncillorException
+from lgsf.councillors import CouncillorBase
 
 
 class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
@@ -46,10 +47,10 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
         for councillor_html in self.get_councillors():
             try:
                 councillor = self.get_single_councillor(councillor_html)
+                self.process_councillor(councillor, councillor_html)
             except SkipCouncillorException:
                 continue
 
-            self.process_councillor(councillor, councillor_html)
 
         self.aws_tidy_up(run_log)
 
