@@ -1,5 +1,6 @@
 import abc
 import argparse
+import datetime
 import os
 import json
 
@@ -9,6 +10,7 @@ from rich.console import Console
 from rich.progress import Progress, BarColumn, TimeElapsedColumn
 from rich.table import Table
 
+from aws_lambda.run_log import RunLog
 from lgsf.conf import settings
 from lgsf.path_utils import _abs_path, load_scraper, load_council_info
 
@@ -243,8 +245,9 @@ class PerCouncilCommandBase(CommandBase):
                     progress.refresh()
 
     def _run_single(self, scraper):
+        run_log = RunLog(start=datetime.datetime.utcnow())
         try:
-            scraper.run()
+            scraper.run(run_log)
         except KeyboardInterrupt:
             raise
         except:
