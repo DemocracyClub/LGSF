@@ -24,8 +24,6 @@ class Scraper(JSONCouncillorScraper):
             division=councillor_json["Ward"],
         )
         councillor.email = councillor_json.get("Email")
-        councillor.photo_url = (
-            urljoin(self.base_url, councillor_json["Photo"])
-        )
+        councillor.photo_url = urljoin(self.base_url, councillor_json["Photo"])
 
         return councillor
