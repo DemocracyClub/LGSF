@@ -1,7 +1,7 @@
 import re
 from urllib.parse import urljoin
 
-from councillors import SkipCouncillorException
+from councillors.exceptions import SkipCouncillorException
 from councillors.scrapers import HTMLCouncillorScraper
 
 

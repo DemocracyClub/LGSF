@@ -5,14 +5,14 @@ import datetime
 import boto3
 from rich.console import Console
 
-from lgsf.aws_lambda.run_log import RunLog
+from lgsf.conf import settings
 from lgsf.councillors.commands import Command
 from lgsf.path_utils import load_scraper
 
 
 def scraper_worker_handler(event, context):
     console = Console(file=sys.stdout, record=True)
-    run_log = RunLog(start=datetime.datetime.utcnow())
+    run_log = settings.RUN_LOGGER(start=datetime.datetime.utcnow())
 
     message = json.loads(event["Records"][0]["body"])
 

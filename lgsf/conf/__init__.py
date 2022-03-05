@@ -1,4 +1,5 @@
 import os
+from typing import Type
 
 
 class BaseSettings(object):
@@ -18,6 +19,10 @@ class BaseSettings(object):
         self.SCRAPER_DIR_NAME = "scrapers"
         self.DATA_DIR_NAME = "data"
         self.COMMAND_FILE_NAME = "commands"
+
+        from lgsf.aws_lambda.run_log import RunLog
+
+        self.RUN_LOGGER: Type[RunLog] = RunLog
 
         self.APPS = (
             "councillors",

@@ -16,15 +16,15 @@ class RunLog:
     log: str = ""
     error: str = ""
     status_codes: dict = None
-    
+
     @property
     def as_dict(self) -> Dict:
         return asdict(self)
-    
+
     @property
     def as_json(self) -> str:
         return json.dumps(self.as_dict, default=str)
-    
+
     @property
     def as_rich_table(self):
         table = Table(title="Run report")

@@ -15,8 +15,8 @@ import requests
 
 
 from lgsf.path_utils import data_abs_path
+from lgsf.conf import settings
 from .checks import ScraperChecker
-from ..aws_lambda.run_log import RunLog
 
 
 class ScraperBase(metaclass=abc.ABCMeta):
@@ -289,7 +289,7 @@ class CodeCommitMixin:
             f"{self.branch} squashed and merged into main at {merge_info['commitId']}"
         )
 
-    def aws_tidy_up(self, run_log: RunLog):
+    def aws_tidy_up(self, run_log: "lgsf.aws_lambda.run_log.RunLog"):
         if self.options.get("aws_lambda"):
             # Check if there's anything left to commit...
             if self.put_files:
@@ -352,7 +352,7 @@ class CodeCommitMixin:
             "fileContent": bare_log,
         }
 
-    def commit_run_log(self, run_log: RunLog):
+    def commit_run_log(self, run_log: "lgsf.aws_lambda.RunLog"):
         run_log.log = (
             self.console.export_text()
         )  # maybe this wants to be export_html()?

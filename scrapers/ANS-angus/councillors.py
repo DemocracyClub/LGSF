@@ -13,7 +13,6 @@ class Scraper(HTMLCouncillorScraper):
         "councillor_css_selector": ".col-sm-4",
     }
 
-
     def get_single_councillor(self, councillor_html):
         url = "https://www.angus.gov.uk{}".format(
             councillor_html.find_all("a")[0]["href"]

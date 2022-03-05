@@ -4,8 +4,8 @@ import json
 from bs4 import BeautifulSoup
 from dateutil.parser import parse
 
-from councillors.exceptions import SkipCouncillorException
-from lgsf.aws_lambda.run_log import RunLog
+from lgsf.conf import settings
+from lgsf.councillors.exceptions import SkipCouncillorException
 from lgsf.scrapers import ScraperBase, CodeCommitMixin
 from lgsf.councillors import CouncillorBase
 
@@ -39,7 +39,7 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
     def get_tags(self):
         return self.tags + self.class_tags
 
-    def run(self, run_log: RunLog):
+    def run(self, run_log: "lgsf.aws_lambda.RunLog"):
 
         if self.options.get("aws_lambda"):
             self.delete_data_if_exists()
@@ -50,7 +50,6 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
                 self.process_councillor(councillor, councillor_html)
             except SkipCouncillorException:
                 continue
-
 
         self.aws_tidy_up(run_log)
 
@@ -161,7 +160,7 @@ class ModGovCouncillorScraper(BaseCouncillorScraper):
     class_tags = ["modgov"]
     ext = "xml"
 
-    def run(self, run_log: RunLog):
+    def run(self, run_log: "lgsf.aws_lambda.run_log.RunLog"):
 
         if self.options.get("aws_lambda"):
             self.delete_data_if_exists()
