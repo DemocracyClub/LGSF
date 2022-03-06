@@ -1,4 +1,5 @@
 import json
+import random
 import sys
 import datetime
 
@@ -53,5 +54,6 @@ def queue_builder_handler(event, context):
             "scraper_type": "councillors",
             "council": council,
         }  # TODO Define this somewhere else so scraper_worker_handler can share it.
-        queue.send_message(MessageBody=json.dumps(message))
+        start_jitter = random.randrange(0, 900)
+        queue.send_message(MessageBody=json.dumps(message), DelaySeconds=start_jitter)
         print(message)
