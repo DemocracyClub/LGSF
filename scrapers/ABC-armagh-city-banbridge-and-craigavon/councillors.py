@@ -1,3 +1,4 @@
+import codecs
 import re
 from urllib.parse import unquote
 
@@ -8,34 +9,29 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.armaghbanbridgecraigavon.gov.uk/team-showcase/councillors/"
+    base_url = "https://www.armaghbanbridgecraigavon.gov.uk/councillors/"
     list_page = {
-        "container_css_selector": ".wmts_members",
-        "councillor_css_selector": ".wmts_member",
+        "container_css_selector": ".td-main-content",
+        "councillor_css_selector": ".council-wrap-inner",
     }
 
     def decode_email(self, councillor_html):
-        js_string = councillor_html.noscript.previous
-        mi = re.search('mi="([^"]+)', js_string).group(1)
-        ml = re.search('ml="([^"]+)', js_string).group(1)
+        borked_email = councillor_html.select_one("a.mailto-link")['data-enc-email']
+        email = borked_email.replace("[at]", "@")
+        return codecs.encode(email, 'rot_13')
 
-        ret = []
-        for i, char in enumerate(mi):
-            try:
-                ret.append(ml[ord(char) - 48])
-            except ValueError:
-                pass
-        html_string = unquote("".join(ret))
-        soup = BeautifulSoup(html_string, "lxml")
-        return soup.a["href"].split(":")[1]
 
     def get_single_councillor(self, councillor_html):
-        name = councillor_html.h2.get_text(strip=True)
-        party = councillor_html.h3.get_text(strip=True)
-        division = councillor_html.find(text="District:").next_element.get_text(
-            strip=True
+        header = councillor_html.h3
+        name = header.get_text(strip=True)
+        party = header.find_next("p").get_text(strip=True)
+        division = (
+            councillor_html.find(text=re.compile("District:"))
+            .get_text(strip=True)
+            .replace("District:", "")
+            .strip()
         )
-        identifier = "--".join([slugify(x) for x in [name, party, division]])
+        identifier = header.a["href"]
         email = self.decode_email(councillor_html)
 
         councillor = self.add_councillor(
@@ -46,5 +42,7 @@ class Scraper(HTMLCouncillorScraper):
             division=division,
         )
         councillor.email = email
-        councillor.photo_url = councillor_html.findAll("img")[1]["data-wmts-lazysrc"]
+
+        councillor.photo_url = councillor_html.select_one("img")['src']
+        councillor.photo_url = councillor.photo_url.replace("120x150", "240x300")
         return councillor
