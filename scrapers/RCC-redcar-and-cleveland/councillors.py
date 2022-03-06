@@ -1,6 +1,6 @@
 from urllib.parse import urljoin
 
-from councillors.scrapers import JSONCouncillorScraper
+from lgsf.councillors.scrapers import JSONCouncillorScraper
 
 
 class Scraper(JSONCouncillorScraper):

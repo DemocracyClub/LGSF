@@ -4,7 +4,6 @@ import json
 from bs4 import BeautifulSoup
 from dateutil.parser import parse
 
-from lgsf.conf import settings
 from lgsf.councillors.exceptions import SkipCouncillorException
 from lgsf.scrapers import ScraperBase, CodeCommitMixin
 from lgsf.councillors import CouncillorBase

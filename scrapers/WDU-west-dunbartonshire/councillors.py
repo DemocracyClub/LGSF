@@ -1,4 +1,4 @@
-from councillors.scrapers import CMISCouncillorScraper
+from lgsf.councillors.scrapers import CMISCouncillorScraper
 
 
 class Scraper(CMISCouncillorScraper):

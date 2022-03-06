@@ -1,4 +1,4 @@
-from councillors.scrapers import HTMLCouncillorScraper
+from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
