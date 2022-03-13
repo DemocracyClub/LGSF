@@ -319,11 +319,14 @@ class CodeCommitMixin:
             self.console.log(
                 f"Finished attempting to scrape: {self.options['council']}"
             )
-            run_log.status_codes = self.status_codes
-            self.commit_run_log(run_log)
+
             # squash and merge
             self.attempt_merge()
             self.delete_branch()
+            run_log.status_codes = self.status_codes
+            self.commit_run_log(run_log)
+
+        run_log.finish()
 
     def get_logbook(self):
         try:
@@ -356,8 +359,7 @@ class CodeCommitMixin:
         run_log.log = (
             self.console.export_text()
         )  # maybe this wants to be export_html()?
-        run_log.end = datetime.datetime.utcnow()
-        run_log.duration = run_log.end - run_log.start
+        run_log.finish()
 
         log_book = self.get_logbook()
         if len(log_book["runs"]) > 20:

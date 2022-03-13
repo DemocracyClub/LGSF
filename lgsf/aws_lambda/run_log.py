@@ -17,6 +17,10 @@ class RunLog:
     error: str = ""
     status_codes: dict = None
 
+    def finish(self):
+        self.end = datetime.datetime.utcnow()
+        self.duration = self.end - self.start
+
     @property
     def as_dict(self) -> Dict:
         return asdict(self)
