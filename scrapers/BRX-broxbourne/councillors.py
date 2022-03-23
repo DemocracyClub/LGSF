@@ -1,4 +1,3 @@
-from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
@@ -13,13 +12,13 @@ class Scraper(HTMLCouncillorScraper):
 
     def get_single_councillor(self, councillor_html):
         name = councillor_html.h2.get_text(strip=True)
-        url = councillor_html.findAll("a")[0]["href"]
-
-        councillor_html = self.get_page(urljoin(self.base_url, url))
+        url = urljoin(self.base_url, councillor_html.findAll("a")[0]["href"])
+        identifier = url.split("/")[-2]
+        councillor_html = self.get_page(url)
         division = councillor_html.find(text="Ward:").next.strip()
         party = councillor_html.find(text="Party:").next.strip()
         councillor = self.add_councillor(
-            url, identifier=url, name=name, party=party, division=division
+            url, identifier=identifier, name=name, party=party, division=division
         )
         try:
             councillor.email = (
