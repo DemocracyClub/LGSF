@@ -3,6 +3,7 @@ import argparse
 import datetime
 import os
 import json
+import traceback
 
 from dateutil.parser import parse
 from dateutil.utils import today
@@ -249,9 +250,11 @@ class PerCouncilCommandBase(CommandBase):
             scraper.run(run_log)
         except KeyboardInterrupt:
             raise
-        except:
+        except Exception as e:
+            run_log.error = traceback.format_exc()
             if self.options.get("verbose"):
                 raise
+        run_log.finish()
 
         self.console.print(run_log.as_rich_table)
 

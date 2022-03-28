@@ -2,6 +2,7 @@ import json
 import random
 import sys
 import datetime
+import traceback
 
 import boto3
 from rich.console import Console
@@ -32,7 +33,7 @@ def scraper_worker_handler(event, context):
             console.log(f"Scraper for {council} is disabled")
     except Exception as e:
         scraper.console.log(e)
-        run_log.error = e
+        run_log.error = traceback.format_exc()
         # This probably means aws_tidy_up hasn't been called.
         # Let's do that ourselves then
         scraper.aws_tidy_up(run_log)

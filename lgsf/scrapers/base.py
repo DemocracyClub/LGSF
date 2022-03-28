@@ -44,12 +44,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
             headers.update(extra_headers)
 
         response = requests.get(url, headers=headers, verify=verify)
-        status_code = response.status_code
-        status_codes = getattr(self, "status_codes", {})
-        if status_code in status_codes.keys():
-            status_codes[status_code].append(url)
-        else:
-            status_codes[status_code] = [url]
+        response.raise_for_status()
         return response
 
     def check(self):
@@ -125,7 +120,6 @@ class CodeCommitMixin:
             self._branch_head = ""
             self.batch = 1
             self.log_file_path = f"{self.options['council']}/logbook.json"
-            self.status_codes = {}
 
     @property
     def branch_head(self):
@@ -323,7 +317,6 @@ class CodeCommitMixin:
             # squash and merge
             self.attempt_merge()
             self.delete_branch()
-            run_log.status_codes = self.status_codes
             self.commit_run_log(run_log)
 
         run_log.finish()

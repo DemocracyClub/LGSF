@@ -1,10 +1,15 @@
 import json
 from dataclasses import dataclass, asdict
 import datetime
+from enum import Enum
 from typing import Dict
 
 from rich.table import Table
 
+
+class RunStatus(Enum):
+    OK = 0
+    ERROR = 1
 
 @dataclass
 class RunLog:
@@ -15,11 +20,13 @@ class RunLog:
     duration: datetime.timedelta = 0
     log: str = ""
     error: str = ""
-    status_codes: dict = None
+    status_code: int = RunStatus.OK.value
 
     def finish(self):
         self.end = datetime.datetime.utcnow()
         self.duration = self.end - self.start
+        if self.error:
+            self.status_code = RunStatus.ERROR.value
 
     @property
     def as_dict(self) -> Dict:
