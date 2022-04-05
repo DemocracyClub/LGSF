@@ -44,12 +44,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
             headers.update(extra_headers)
 
         response = requests.get(url, headers=headers, verify=verify)
-        status_code = response.status_code
-        status_codes = getattr(self, "status_codes", {})
-        if status_code in status_codes.keys():
-            status_codes[status_code].append(url)
-        else:
-            status_codes[status_code] = [url]
+        response.raise_for_status()
         return response
 
     def check(self):
@@ -125,7 +120,6 @@ class CodeCommitMixin:
             self._branch_head = ""
             self.batch = 1
             self.log_file_path = f"{self.options['council']}/logbook.json"
-            self.status_codes = {}
 
     @property
     def branch_head(self):
@@ -319,11 +313,13 @@ class CodeCommitMixin:
             self.console.log(
                 f"Finished attempting to scrape: {self.options['council']}"
             )
-            run_log.status_codes = self.status_codes
-            self.commit_run_log(run_log)
+
             # squash and merge
             self.attempt_merge()
             self.delete_branch()
+            self.commit_run_log(run_log)
+
+        run_log.finish()
 
     def get_logbook(self):
         try:
@@ -356,8 +352,7 @@ class CodeCommitMixin:
         run_log.log = (
             self.console.export_text()
         )  # maybe this wants to be export_html()?
-        run_log.end = datetime.datetime.utcnow()
-        run_log.duration = run_log.end - run_log.start
+        run_log.finish()
 
         log_book = self.get_logbook()
         if len(log_book["runs"]) > 20:

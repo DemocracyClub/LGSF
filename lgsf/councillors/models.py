@@ -1,16 +1,18 @@
 import csv
 import json
+from dataclasses import dataclass, field
 
 from slugify import slugify
 
-
+@dataclass
 class CouncillorBase:
-    def __init__(self, url, identifier=None, name=None, party=None, division=None):
-        self.url = url.strip()
-        self.identifier = identifier.strip()
-        self.name = name.strip()
-        self.party = party.strip()
-        self.division = division.strip()
+    url: str
+    identifier: str
+    name: str
+    party: str
+    division: str
+    email: str = field(init=False, hash=False, compare=False)
+    photo_url: str = field(init=False, hash=False, compare=False)
 
     def __repr__(self):
         return "<Councillor: Name: {}>".format(self.name)
