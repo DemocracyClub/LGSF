@@ -4,6 +4,7 @@ import datetime
 import os
 import json
 import traceback
+from dataclasses import dataclass, field
 
 from dateutil.parser import parse
 from dateutil.utils import today
@@ -60,6 +61,31 @@ class CommandBase(metaclass=abc.ABCMeta):
         raise NotImplementedError(
             "subclasses of BaseCommand must provide a handle() method"
         )
+
+@dataclass(unsafe_hash=True)
+class Council:
+    _metadata_cache: dict = field(default_factory=dict, init=False, repr=False, hash=False)
+    council_id: str
+
+    @property
+    def metadata(self):
+        if not self._metadata_cache:
+            metadata_path = os.path.join(
+                _abs_path(settings.SCRAPER_DIR_NAME, self.council_id)[0],
+                "metadata.json",
+            )
+            self._metadata_cache = json.load(open(metadata_path))
+        return self._metadata_cache
+
+    @property
+    def current(self):
+        if self.metadata["end_date"]:
+            # This council has a known end data, check if it's in the past
+            if parse(self.metadata["end_date"]) < today():
+                return False
+        if parse(self.metadata["start_date"]) > today():
+            return False
+        return True
 
 
 class PerCouncilCommandBase(CommandBase):
@@ -136,25 +162,23 @@ class PerCouncilCommandBase(CommandBase):
             and not d.startswith("__")
         ]
 
+    @property
+    def all_councils(self):
+        return [Council(council_id) for council_id in self._all_council_dirs]
+
     def missing(self):
         missing_councils = []
-        for council in self._all_council_dirs:
-            scraper = load_scraper(council, self.command_name)
+        for council in self.all_councils:
+
+            # non-current councils are never classes as missing
+            if not council.current:
+                continue
+
+            scraper = load_scraper(council.council_id, self.command_name)
             if not scraper:
-                metadata_path = os.path.join(
-                    _abs_path(settings.SCRAPER_DIR_NAME, council)[0],
-                    "metadata.json",
-                )
-                council_metadata = json.load(open(metadata_path))
-                if council_metadata["end_date"]:
-                    # This council has a known end data, check if it's in the past
-                    if parse(council_metadata["end_date"]) < today():
-                        continue
-                if parse(council_metadata["start_date"]) > today():
-                    continue
                 council_info = {
-                    "code": council,
-                    "name": council_metadata["official_name"],
+                    "code": council.council_id,
+                    "name": council.metadata["official_name"],
                 }
                 missing_councils.append(council_info)
         return sorted(missing_councils, key=lambda d: d["code"])
@@ -171,20 +195,19 @@ class PerCouncilCommandBase(CommandBase):
 
     def disabled(self):
         disabled_councils = []
-        for council in self._all_council_dirs:
-            scraper = load_scraper(council, self.command_name)
+        for council in self.all_councils:
+            scraper = load_scraper(council.council_id, self.command_name)
             if scraper and scraper.disabled:
-                metadata_path = os.path.join(
-                    _abs_path(settings.SCRAPER_DIR_NAME, council)[0],
-                    "metadata.json",
-                )
-                council_metadata = json.load(open(metadata_path))
                 council_info = {
-                    "code": council,
-                    "name": council_metadata["official_name"],
+                    "code": council.council_id,
+                    "name": council.metadata["official_name"],
                 }
                 disabled_councils.append(council_info)
         return sorted(disabled_councils, key=lambda d: d["code"])
+
+    @property
+    def current_councils(self):
+        return [council for council in self.all_councils if council.current]
 
     def output_disabled(self):
         table = Table(title=f"Councils with '{self.command_name}' disabled scraper")
@@ -212,20 +235,21 @@ class PerCouncilCommandBase(CommandBase):
     def councils_to_run(self):
         councils = []
         if self.options["all_councils"] or self.options["tags"]:
-            councils = self._all_council_dirs
+            councils = self.current_councils
 
         else:
             for council in self.options["council"].split(","):
-                council = council.strip().split("-")[0].upper()
+                council = Council(council.strip().split("-")[0].upper())
                 councils.append(council)
 
         if self.options["exclude_missing"]:
-            councils = list(set(councils) - set(c["code"] for c in self.missing()))
+            missing_councils = set(c["code"] for c in self.missing())
+            councils = list(set(councils) - missing_councils)
         return councils
 
     def run_councils(self):
         for council in self.councils_to_run:
-            self.run_council(council)
+            self.run_council(council.council_id)
 
     def run_councils_with_progress(self):
         to_run = self.councils_to_run
@@ -240,7 +264,7 @@ class PerCouncilCommandBase(CommandBase):
             total = progress.add_task(description=f"Total", total=len(to_run))
             while not progress.finished:
                 for council in to_run:
-                    self.run_council(council)
+                    self.run_council(council.council_id)
                     progress.update(total, advance=1)
                     progress.refresh()
 
