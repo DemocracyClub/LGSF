@@ -53,7 +53,7 @@ def queue_builder_handler(event, context):
     for council in councils:
         message = {
             "scraper_type": "councillors",
-            "council": council,
+            "council": council.council_id,
         }  # TODO Define this somewhere else so scraper_worker_handler can share it.
         start_jitter = random.randrange(0, 900)
         queue.send_message(MessageBody=json.dumps(message), DelaySeconds=start_jitter)
