@@ -315,9 +315,9 @@ class CodeCommitMixin:
             )
 
             # squash and merge
+            self.commit_run_log(run_log)
             self.attempt_merge()
             self.delete_branch()
-            self.commit_run_log(run_log)
 
         run_log.finish()
 
@@ -366,6 +366,6 @@ class CodeCommitMixin:
                     "fileContent": json.dumps(log_book),
                 }
             ],
-            message="Logging run for {self.options['council']}",
+            message=f"Logging run for {self.options['council']}",
         )
         self.console.log(f"Created log commit {commit_info['commitId']}")
