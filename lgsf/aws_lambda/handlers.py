@@ -22,7 +22,8 @@ def scraper_worker_handler(event, context):
     command_name = message["scraper_type"]
     console.log(f"Fetching Scraper for: {council}")
     scraper_cls = load_scraper(council, command_name)
-
+    if not scraper_cls:
+        return
     console.log(f"Begin attempting to scrape: {council}")
     options = {"council": council, "verbose": True, "aws_lambda": True}
     scraper = scraper_cls(options, console)
