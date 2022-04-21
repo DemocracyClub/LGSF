@@ -1,7 +1,7 @@
 import abc
 import json
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from dateutil.parser import parse
 
 from lgsf.councillors.exceptions import SkipCouncillorException
@@ -54,18 +54,26 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
 
         self.report()
 
+    def prettify_councillor_str(self, councillor_raw_str):
+        if isinstance(councillor_raw_str, dict):
+            return json.dumps(councillor_raw_str, indent=4)
+        if isinstance(councillor_raw_str, Tag):
+            return councillor_raw_str.prettify()
+
     def process_councillor(self, councillor, councillor_raw_str):
+        formatted_councillor_raw_str = self.prettify_councillor_str(councillor_raw_str)
+
         if self.options.get("aws_lambda"):
             # stage...
-            self.stage_councillor(councillor_raw_str, councillor)
+            self.stage_councillor(formatted_councillor_raw_str, councillor)
 
             # Do a batch commit if needed...
             if len(self.put_files) > 90:
                 self.process_batch()
         else:
-            self.save_councillor(councillor_raw_str, councillor)
+            self.save_councillor(formatted_councillor_raw_str, councillor)
 
-    def stage_councillor(self, councillor_html, councillor):
+    def stage_councillor(self, councillor_data_string, councillor):
         council = self.options["council"]
         json_file_path = f"{council}/json/{councillor.as_file_name()}.json"
         raw_file_path = f"{council}/raw/{councillor.as_file_name()}.html"
@@ -79,7 +87,7 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
                 },
                 {
                     "filePath": raw_file_path,
-                    "fileContent": bytes(councillor_html.prettify(), "utf-8"),
+                    "fileContent": bytes(councillor_data_string, "utf-8"),
                 },
             ]
         )
@@ -89,7 +97,7 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
             type(councillor_obj) == CouncillorBase
         ), "Scrapers must return a councillor object"
         file_name = "{}.{}".format(councillor_obj.as_file_name(), self.ext)
-        self.save_raw(file_name, raw_content.prettify())
+        self.save_raw(file_name, raw_content)
         self.save_json(councillor_obj)
 
     def report(self):
@@ -270,10 +278,4 @@ class CMISCouncillorScraper(BaseCouncillorScraper):
 
 
 class JSONCouncillorScraper(BaseCouncillorScraper):
-    def save_councillor(self, raw_content, councillor_obj):
-        assert (
-            type(councillor_obj) == CouncillorBase
-        ), "Scrapers must return a councillor object"
-        file_name = "{}.{}".format(councillor_obj.as_file_name(), self.ext)
-        self.save_raw(file_name, json.dumps(raw_content, indent=4))
-        self.save_json(councillor_obj)
+    pass
