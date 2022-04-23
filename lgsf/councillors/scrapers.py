@@ -240,7 +240,7 @@ class CMISCouncillorScraper(BaseCouncillorScraper):
     class_tags = ["cmis"]
 
     def get_councillors(self):
-        req = self.get(self.base_url)
+        req = self.get(self.base_url, extra_headers=self.extra_headers)
         soup = BeautifulSoup(req.text, "lxml")
         return soup.findAll("div", {"class": self.person_block_class_name})
 
