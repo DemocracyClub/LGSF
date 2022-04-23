@@ -1,5 +1,6 @@
 import re
 
+from lgsf.councillors.exceptions import SkipCouncillorException
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
@@ -17,7 +18,8 @@ class Scraper(HTMLCouncillorScraper):
         soup = page.select(".wp-block-column")[0]
         party_guess = soup.find_all("p")[1].get_text(strip=True)
         title = soup.h2.get_text(strip=True)
-        assert title.startswith(party_guess)
+        if not title.startswith(party_guess):
+            raise SkipCouncillorException("Party doesn't match")
         name = soup.p.get_text(strip=True)
         party = party_guess
         ward = soup.find("a", href=re.compile("ward")).get_text(strip=True)
