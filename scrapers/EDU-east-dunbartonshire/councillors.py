@@ -2,7 +2,7 @@ import re
 from urllib.parse import urljoin
 
 from lgsf.councillors import SkipCouncillorException
-from councillors.scrapers import HTMLCouncillorScraper
+from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
