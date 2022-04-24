@@ -168,12 +168,7 @@ class PerCouncilCommandBase(CommandBase):
 
     def missing(self):
         missing_councils = []
-        for council in self.all_councils:
-
-            # non-current councils are never classes as missing
-            if not council.current:
-                continue
-
+        for council in self.current_councils:
             scraper = load_scraper(council.council_id, self.command_name)
             if not scraper:
                 council_info = {
@@ -195,7 +190,7 @@ class PerCouncilCommandBase(CommandBase):
 
     def disabled(self):
         disabled_councils = []
-        for council in self.all_councils:
+        for council in self.current_councils:
             scraper = load_scraper(council.council_id, self.command_name)
             if scraper and scraper.disabled:
                 council_info = {
@@ -317,10 +312,10 @@ class PerCouncilCommandBase(CommandBase):
         self.options = options
 
         if options["list_missing"]:
-            self.output_missing()
+            return self.output_missing()
 
         if options["list_disabled"]:
-            self.output_disabled()
+            return self.output_disabled()
 
         self.output_status()
         self.normalise_codes()

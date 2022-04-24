@@ -1,6 +1,5 @@
-from lgsf.councillors.scrapers import ModGovCouncillorScraper
+from councillors.scrapers import CMISCouncillorScraper
 
 
-class Scraper(ModGovCouncillorScraper):
-    base_url = "http://committees.royalgreenwich.gov.uk"
-    disabled = True
+class Scraper(CMISCouncillorScraper):
+    base_url = "https://committees.royalgreenwich.gov.uk/Councillors/tabid/63/ScreenMode/Alphabetical/Default.aspx"

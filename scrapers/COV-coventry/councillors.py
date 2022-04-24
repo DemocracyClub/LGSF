@@ -1,7 +1,5 @@
-from lgsf.councillors.scrapers import CMISCouncillorScraper
+from councillors.scrapers import ModGovCouncillorScraper
 
 
-class Scraper(CMISCouncillorScraper):
-    disabled = True
-
-    base_url = "https://www.coventry.gov.uk/councillors/name"
+class Scraper(ModGovCouncillorScraper):
+    base_url = "https://edemocracy.coventry.gov.uk"
