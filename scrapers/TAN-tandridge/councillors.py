@@ -1,5 +1,5 @@
-from lgsf.councillors.scrapers import CMISCouncillorScraper
+from councillors.scrapers import ModGovCouncillorScraper
 
 
-class Scraper(CMISCouncillorScraper):
-    base_url = "http://www.councillors.tandridge.gov.uk/cmis5/Councillors/tabid/62/ScreenMode/Alphabetical/Default.aspx"
+class Scraper(ModGovCouncillorScraper):
+    base_url = "https://tandridge.moderngov.co.uk"

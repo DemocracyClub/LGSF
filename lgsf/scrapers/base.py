@@ -12,10 +12,9 @@ import requests
 # import requests_cache
 
 # requests_cache.install_cache("scraper_cache", expire_after=60 * 60 * 24)
-
+from requests import Session
 
 from lgsf.path_utils import data_abs_path
-from lgsf.conf import settings
 from .checks import ScraperChecker
 
 
@@ -25,11 +24,14 @@ class ScraperBase(metaclass=abc.ABCMeta):
     """
 
     disabled = False
+    extra_headers = {}
+
 
     def __init__(self, options, console):
         self.options = options
         self.console = console
         self.check()
+        self.requests_session = Session()
 
     def get(self, url, verify=True, extra_headers=None):
         """
@@ -43,7 +45,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
         if extra_headers:
             headers.update(extra_headers)
 
-        response = requests.get(url, headers=headers, verify=verify)
+        response = self.requests_session.get(url, headers=headers, verify=verify)
         response.raise_for_status()
         return response
 
