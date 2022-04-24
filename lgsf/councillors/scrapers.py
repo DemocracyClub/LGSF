@@ -130,13 +130,12 @@ class HTMLCouncillorScraper(BaseCouncillorScraper):
         `list_page['container_css_selector']`
 
         :return: A :class:`BeautifulSoup` object
-
-
-        .. todo::
-            raise if more than one node found
         """
-        soup = self.get_page(self.base_url)
-        return soup.select(self.list_page["container_css_selector"])[0]
+        self.base_url_soup = self.get_page(self.base_url)
+        selected =  self.base_url_soup.select(self.list_page["container_css_selector"])
+        if len(selected) > 1:
+            raise ValueError("More than one element selected")
+        return selected[0]
 
     def get_councillors(self):
         container = self.get_list_container()
