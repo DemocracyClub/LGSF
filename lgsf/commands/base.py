@@ -6,6 +6,7 @@ import json
 import traceback
 from dataclasses import dataclass, field
 
+import requests
 from dateutil.parser import parse
 from dateutil.utils import today
 from rich.console import Console
@@ -62,9 +63,12 @@ class CommandBase(metaclass=abc.ABCMeta):
             "subclasses of BaseCommand must provide a handle() method"
         )
 
+
 @dataclass(unsafe_hash=True)
 class Council:
-    _metadata_cache: dict = field(default_factory=dict, init=False, repr=False, hash=False)
+    _metadata_cache: dict = field(
+        default_factory=dict, init=False, repr=False, hash=False
+    )
     council_id: str
 
     @property
@@ -138,6 +142,11 @@ class PerCouncilCommandBase(CommandBase):
             action="store_true",
             help="Print disabled councils",
         )
+        self.parser.add_argument(
+            "--list-failing",
+            action="store_true",
+            help="Print failing councils",
+        )
 
         self.add_default_arguments(self.parser)
 
@@ -145,7 +154,7 @@ class PerCouncilCommandBase(CommandBase):
             self.add_arguments(self.parser)
 
         args = self.parser.parse_args(self.argv[1:])
-        if args.list_missing or args.list_disabled:
+        if args.list_missing or args.list_disabled or args.list_failing:
             return args
         if not any((args.council, args.all_councils, args.tags)):
             self.parser.error("one of --council or --all-councils or --tags required")
@@ -212,6 +221,20 @@ class PerCouncilCommandBase(CommandBase):
         for council in self.disabled():
             table.add_row(council["code"], council["name"])
 
+        self.console.print(table)
+
+    def failing(self):
+        req = requests.get(
+            "https://democracyclub.github.io/lgsf-dashboard/api/failing.json"
+        )
+        return req.json()
+
+    def output_failing(self):
+        table = Table(title=f"Councils with '{self.command_name}' failing")
+        table.add_column("Code", style="magenta")
+        table.add_column("Error", style="red")
+        for council in self.failing():
+            table.add_row(council["council_id"], council["latest_run"]["log_text"])
         self.console.print(table)
 
     def output_status(self):
@@ -316,6 +339,9 @@ class PerCouncilCommandBase(CommandBase):
 
         if options["list_disabled"]:
             return self.output_disabled()
+
+        if options["list_failing"]:
+            return self.output_failing()
 
         self.output_status()
         self.normalise_codes()
