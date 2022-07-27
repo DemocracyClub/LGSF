@@ -3,6 +3,7 @@ import json
 import os
 
 import boto3
+from botocore.exceptions import ClientError
 from dateutil import parser
 import datetime
 import traceback
@@ -25,7 +26,6 @@ class ScraperBase(metaclass=abc.ABCMeta):
 
     disabled = False
     extra_headers = {}
-
 
     def __init__(self, options, console):
         self.options = options
@@ -116,7 +116,16 @@ class CodeCommitMixin:
         super().__init__(options, console)
 
         if self.options.get("aws_lambda"):
+            self.repository = self.options["council"]
             self.codecommit_client = boto3.client("codecommit")
+            try:
+                self.codecommit_client.get_repository(repositoryName=self.repository)
+            except ClientError as error:
+                error_code = error.response["Error"]["Code"]
+                if error_code == "RepositoryDoesNotExistException":
+                    self.create_repo()
+                else:
+                    raise
             self.put_files = []
             self.today = datetime.datetime.now().strftime("%Y-%m-%d")
             self._branch_head = ""
@@ -371,3 +380,13 @@ class CodeCommitMixin:
             message=f"Logging run for {self.options['council']}",
         )
         self.console.log(f"Created log commit {commit_info['commitId']}")
+
+    def create_repo(self):
+        try:
+            self.codecommit_client.create_repository(repositoryName=self.repository)
+        except ClientError as error:
+            error_code = error.response["Error"]["Code"]
+            if error_code == "RepositoryNameExistsException":
+                return
+            else:
+                raise

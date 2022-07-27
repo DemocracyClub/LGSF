@@ -18,7 +18,6 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
     def __init__(self, options, console):
         super().__init__(options, console)
         self.councillors = set()
-        self.repository = "CouncillorsRepo"
         self.new_data = True
 
     @abc.abstractmethod
