@@ -130,7 +130,7 @@ class CodeCommitMixin:
             self.today = datetime.datetime.now().strftime("%Y-%m-%d")
             self._branch_head = ""
             self.batch = 1
-            self.log_file_path = f"{self.options['council']}/logbook.json"
+            self.log_file_path = f"{self.scraper_object_type}/logbook.json"
 
     @property
     def branch_head(self):
@@ -219,7 +219,7 @@ class CodeCommitMixin:
         return delete_commit
 
     def delete_existing(self, commit_id):
-        _, file_paths = self.get_files(f"{self.options['council']}")
+        _, file_paths = self.get_files(f"{self.scraper_object_type}")
         batch = 1
         while len(file_paths) >= 100:
             delete_files = [{"filePath": fp} for fp in file_paths[:100]]
@@ -275,7 +275,7 @@ class CodeCommitMixin:
             f"Committing batch {self.batch} consisting of {len(self.put_files)} files"
         )
         message = (
-            f"{self.options['council']} - batch {self.batch} - scraped on {self.today}"
+            f"{self.scraper_object_type} - batch {self.batch} - scraped on {self.today}"
         )
         commit_info = self.commit(put_files=self.put_files, message=message)
         self.branch_head = commit_info["commitId"]
@@ -288,7 +288,7 @@ class CodeCommitMixin:
             repositoryName=self.repository,
             sourceCommitSpecifier=self.branch,
             destinationCommitSpecifier="main",
-            commitMessage=f"{self.options['council']} - scraped on {self.today}",
+            commitMessage=f"{self.scraper_object_type} - scraped on {self.today}",
         )
         self.console.log(
             f"{self.branch} squashed and merged into main at {merge_info['commitId']}"
@@ -306,8 +306,8 @@ class CodeCommitMixin:
                     repositoryName=self.repository,
                     afterCommitSpecifier=self.branch,
                     beforeCommitSpecifier="main",
-                    afterPath=self.options["council"],
-                    beforePath=self.options["council"],
+                    afterPath=self.scraper_object_type,
+                    beforePath=self.scraper_object_type,
                     MaxResults=400,
                 )
             except self.codecommit_client.exceptions.PathDoesNotExistException:
