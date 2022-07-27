@@ -12,14 +12,14 @@ jobs:
 
   install_and_update_dependencies:
     docker:
-    - image: circleci/python:3.8
+    - image: cimg/python:3.8.12
     working_directory: ~/repo
     steps:
     - checkout
     - restore_cache:
         keys:
         - v2-dependencies-{{ checksum "Pipfile.lock" }}
-    - run: &install-pipenv sudo pip install -U pipenv urllib3 pip --quiet --no-input
+    - run: &install-pipenv pip install -U pipenv urllib3 pip --quiet --no-input
     - run: pipenv install --dev
     - run: pipenv run pipenv check # before save_cache so an insecure cache is never saved
     - run: make lambda-layers/DependenciesLayer/requirements.txt
@@ -42,6 +42,7 @@ jobs:
         at: ~/repo/
     - run: pip install --upgrade pip
     - run: pip install -r lambda-layers/DependenciesLayer/requirements.txt
+    - run: pip install -U aws-sam-cli
     - run: sam build  --template sam-template.yaml
     - persist_to_workspace:
         root: ~/repo/
@@ -70,6 +71,8 @@ jobs:
     - run: pipenv install --dev
     - run: printenv SAM_CONFIG_FILE SAM_LAMBDA_CONFIG_ENV
     - run: printenv AWS_ACCESS_KEY_ID | md5sum
+    - run: pip install -U aws-sam-cli
+
     - run:
         name: "pipenv run sam deploy"
         command: |
