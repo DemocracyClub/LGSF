@@ -74,8 +74,8 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
 
     def stage_councillor(self, councillor_data_string, councillor):
         council = self.options["council"]
-        json_file_path = f"{council}/json/{councillor.as_file_name()}.json"
-        raw_file_path = f"{council}/raw/{councillor.as_file_name()}.html"
+        json_file_path = f"Councillors/json/{councillor.as_file_name()}.json"
+        raw_file_path = f"Councillors/raw/{councillor.as_file_name()}.html"
         self.put_files.extend(
             [
                 {
