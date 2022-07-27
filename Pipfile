@@ -28,7 +28,6 @@ werkzeug = "==2.0.3"
 
 [dev-packages]
 pytest-mypy-plugins = "1.9.3"
-aws-sam-cli = "*"
 pystache = "==0.6.0"
 
 [requires]

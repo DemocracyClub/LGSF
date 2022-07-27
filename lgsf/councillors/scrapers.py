@@ -14,11 +14,11 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
     class_tags = []
     ext = "html"
     verify_requests = True
+    scraper_object_type = "Councillors"
 
     def __init__(self, options, console):
         super().__init__(options, console)
         self.councillors = set()
-        self.repository = "CouncillorsRepo"
         self.new_data = True
 
     @abc.abstractmethod
@@ -75,8 +75,8 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
 
     def stage_councillor(self, councillor_data_string, councillor):
         council = self.options["council"]
-        json_file_path = f"{council}/json/{councillor.as_file_name()}.json"
-        raw_file_path = f"{council}/raw/{councillor.as_file_name()}.html"
+        json_file_path = f"{self.scraper_object_type}/json/{councillor.as_file_name()}.json"
+        raw_file_path = f"{self.scraper_object_type}/raw/{councillor.as_file_name()}.html"
         self.put_files.extend(
             [
                 {
