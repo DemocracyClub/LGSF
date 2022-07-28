@@ -25,6 +25,7 @@ boto3 = "*"
 pre-commit = "*"
 ipython = "==8.1.1"
 werkzeug = "==2.0.3"
+boto3-stubs = {extras = ["codecommit"], version = "*"}
 
 [dev-packages]
 pytest-mypy-plugins = "1.9.3"

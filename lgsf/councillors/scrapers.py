@@ -5,19 +5,15 @@ from bs4 import BeautifulSoup, Tag
 from dateutil.parser import parse
 
 from lgsf.councillors.exceptions import SkipCouncillorException
-from lgsf.scrapers import ScraperBase, CodeCommitMixin
+from lgsf.scrapers import ScraperBase
 from lgsf.councillors import CouncillorBase
 
 
-class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
-    tags = []
-    class_tags = []
-    ext = "html"
-    verify_requests = True
+class BaseCouncillorScraper(ScraperBase):
     scraper_object_type = "Councillors"
 
-    def __init__(self, options, console):
-        super().__init__(options, console)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.councillors = set()
         self.new_data = True
 
@@ -39,9 +35,7 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
         return self.tags + self.class_tags
 
     def run(self, run_log: "lgsf.aws_lambda.RunLog"):
-
-        if self.options.get("aws_lambda"):
-            self.delete_data_if_exists()
+        self.storage.pre_run()
 
         for councillor_html in self.get_councillors():
             try:
@@ -50,7 +44,7 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
             except SkipCouncillorException:
                 continue
 
-        self.aws_tidy_up(run_log)
+        self.storage.post_run()
 
         self.report()
 
@@ -60,45 +54,15 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
         if isinstance(councillor_raw_str, Tag):
             return councillor_raw_str.prettify()
 
-    def process_councillor(self, councillor, councillor_raw_str):
+    def process_councillor(
+        self, councillor_obj: CouncillorBase, councillor_raw_str: str
+    ):
         formatted_councillor_raw_str = self.prettify_councillor_str(councillor_raw_str)
-
-        if self.options.get("aws_lambda"):
-            # stage...
-            self.stage_councillor(formatted_councillor_raw_str, councillor)
-
-            # Do a batch commit if needed...
-            if len(self.put_files) > 90:
-                self.process_batch()
-        else:
-            self.save_councillor(formatted_councillor_raw_str, councillor)
-
-    def stage_councillor(self, councillor_data_string, councillor):
-        council = self.options["council"]
-        json_file_path = f"{self.scraper_object_type}/json/{councillor.as_file_name()}.json"
-        raw_file_path = f"{self.scraper_object_type}/raw/{councillor.as_file_name()}.html"
-        self.put_files.extend(
-            [
-                {
-                    "filePath": json_file_path,
-                    "fileContent": bytes(
-                        json.dumps(councillor.as_dict(), indent=4), "utf-8"
-                    ),
-                },
-                {
-                    "filePath": raw_file_path,
-                    "fileContent": bytes(councillor_data_string, "utf-8"),
-                },
-            ]
-        )
-
-    def save_councillor(self, raw_content, councillor_obj):
         assert (
             type(councillor_obj) == CouncillorBase
         ), "Scrapers must return a councillor object"
-        file_name = "{}.{}".format(councillor_obj.as_file_name(), self.ext)
-        self.save_raw(file_name, raw_content)
-        self.save_json(councillor_obj)
+
+        self.storage.save_file(councillor_obj, formatted_councillor_raw_str)
 
     def report(self):
         if self.options.get("verbose"):
@@ -132,7 +96,7 @@ class HTMLCouncillorScraper(BaseCouncillorScraper):
         :return: A :class:`BeautifulSoup` object
         """
         self.base_url_soup = self.get_page(self.base_url)
-        selected =  self.base_url_soup.select(self.list_page["container_css_selector"])
+        selected = self.base_url_soup.select(self.list_page["container_css_selector"])
         if len(selected) > 1:
             raise ValueError("More than one element selected")
         return selected[0]

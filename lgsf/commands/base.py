@@ -15,6 +15,7 @@ from rich.table import Table
 
 from lgsf.conf import settings
 from lgsf.path_utils import _abs_path, load_scraper, load_council_info
+from lgsf.scrapers.storage import LocalFileStorage
 
 
 class CommandBase(metaclass=abc.ABCMeta):
@@ -306,7 +307,8 @@ class PerCouncilCommandBase(CommandBase):
         scraper_cls = load_scraper(council, self.command_name)
         if not scraper_cls:
             return
-        with scraper_cls(self.options, self.console) as scraper:
+        storage = LocalFileStorage()
+        with scraper_cls(self.options, self.console, storage) as scraper:
             should_run = True
             if scraper.disabled:
                 should_run = False
