@@ -1,0 +1,38 @@
+import re
+from urllib.parse import urljoin
+
+from lgsf.councillors.scrapers import HTMLCouncillorScraper
+
+
+class Scraper(HTMLCouncillorScraper):
+    base_url = "https://www.staffordbc.gov.uk/DemServCouncillors"
+
+    list_page = {
+        "container_css_selector": ".demserv-councillor-list",
+        "councillor_css_selector": "tbody tr",
+    }
+
+    def get_single_councillor(self, councillor_html):
+        url = urljoin(self.base_url, councillor_html.select_one("a")["href"])
+        soup = self.get_page(url)
+        name = soup.select_one("h1.page-header").get_text(strip=True).replace("Councillor ", "")
+
+        ward = (
+            soup.find("td", text=re.compile("Ward"))
+            .find_next("td")
+            .get_text(strip=True)
+        )
+
+
+        party = soup.select_one("table#single-councillor-party td").get_text(strip=True)
+
+        councillor = self.add_councillor(
+            url, name=name, division=ward, party=party, identifier=url
+        )
+        councillor.email = soup.select("a[href^=mailto]")[0].get_text(
+            strip=True)
+        councillor.photo_url = urljoin(
+            self.base_url, soup.select_one("img.img-responsive")["src"]
+        )
+
+        return councillor
