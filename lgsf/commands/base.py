@@ -176,8 +176,11 @@ class PerCouncilCommandBase(CommandBase):
         return [Council(council_id) for council_id in self._all_council_dirs]
 
     def missing(self):
+        always_excluded = ["GLA", "london"]
         missing_councils = []
         for council in self.current_councils:
+            if council.council_id in always_excluded:
+                continue
             scraper = load_scraper(council.council_id, self.command_name)
             if not scraper:
                 council_info = {
