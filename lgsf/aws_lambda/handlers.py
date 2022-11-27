@@ -10,6 +10,7 @@ from rich.console import Console
 from lgsf.conf import settings
 from lgsf.councillors.commands import Command
 from lgsf.path_utils import load_scraper
+from lgsf.scrapers.storage import CodeCommitStorage
 
 
 def scraper_worker_handler(event, context):
@@ -26,7 +27,8 @@ def scraper_worker_handler(event, context):
         return
     console.log(f"Begin attempting to scrape: {council}")
     options = {"council": council, "verbose": True, "aws_lambda": True}
-    scraper = scraper_cls(options, console)
+    storage = CodeCommitStorage(repository=council)
+    scraper = scraper_cls(options, console, storage)
     try:
         if not scraper.disabled:
             scraper.run(run_log)
