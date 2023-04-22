@@ -1,6 +1,7 @@
 import re
 from urllib.parse import urljoin
 
+from lgsf.councillors import SkipCouncillorException
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
@@ -16,6 +17,10 @@ class Scraper(HTMLCouncillorScraper):
 
     def get_single_councillor(self, councillor_html):
         link = councillor_html.find("a", href=re.compile("/council/"))
+        if not link:
+            vacant = councillor_html.find("a", href=re.compile("/vacant-seat"))
+            if vacant:
+                raise SkipCouncillorException("Vacancy")
         url = urljoin(self.base_url, link["href"])
 
         soup = self.get_page(url)
@@ -27,8 +32,6 @@ class Scraper(HTMLCouncillorScraper):
             .find_next("div", {"class": "desc"})
             .get_text(strip=True)
         )
-        print(name, party)
-        print(name, division)
 
         councillor = self.add_councillor(
             url,
