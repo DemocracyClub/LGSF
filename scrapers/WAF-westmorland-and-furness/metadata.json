@@ -1,0 +1,14 @@
+{
+    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WAF/2022-05-05/",
+    "official_identifier": "WAF",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "UA",
+    "official_name": "Westmorland and Furness Council",
+    "common_name": "Westmorland and Furness",
+    "slug": "westmorland-and-furness",
+    "territory_code": "ENG",
+    "election_name": "Westmorland and Furness local election",
+    "start_date": "2022-05-05",
+    "end_date": null,
+    "created": "2022-03-23T12:57:20.379652Z"
+}
