@@ -29,8 +29,12 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
     def get_single_councillor(self, councillor_html):
         pass
 
-    def add_councillor(self, url, **kwargs):
-        councillor = CouncillorBase(url, **kwargs)
+    def add_councillor(
+        self, url, identifier: str, name: str, division: str, party: str
+    ):
+        councillor = CouncillorBase(
+            url, identifier=identifier, name=name, division=division, party=party
+        )
         self.councillors.add(councillor)
         return councillor
 
@@ -39,7 +43,6 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
         return self.tags + self.class_tags
 
     def run(self, run_log: "lgsf.aws_lambda.RunLog"):
-
         if self.options.get("aws_lambda"):
             self.delete_data_if_exists()
 
@@ -75,8 +78,12 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
 
     def stage_councillor(self, councillor_data_string, councillor):
         council = self.options["council"]
-        json_file_path = f"{self.scraper_object_type}/json/{councillor.as_file_name()}.json"
-        raw_file_path = f"{self.scraper_object_type}/raw/{councillor.as_file_name()}.html"
+        json_file_path = (
+            f"{self.scraper_object_type}/json/{councillor.as_file_name()}.json"
+        )
+        raw_file_path = (
+            f"{self.scraper_object_type}/raw/{councillor.as_file_name()}.html"
+        )
         self.put_files.extend(
             [
                 {
@@ -132,7 +139,7 @@ class HTMLCouncillorScraper(BaseCouncillorScraper):
         :return: A :class:`BeautifulSoup` object
         """
         self.base_url_soup = self.get_page(self.base_url)
-        selected =  self.base_url_soup.select(self.list_page["container_css_selector"])
+        selected = self.base_url_soup.select(self.list_page["container_css_selector"])
         if len(selected) > 1:
             raise ValueError("More than one element selected")
         return selected[0]
@@ -167,7 +174,6 @@ class ModGovCouncillorScraper(BaseCouncillorScraper):
     ext = "xml"
 
     def run(self, run_log: "lgsf.aws_lambda.run_log.RunLog"):
-
         if self.options.get("aws_lambda"):
             self.delete_data_if_exists()
         wards = self.get_councillors()
@@ -255,6 +261,8 @@ class CMISCouncillorScraper(BaseCouncillorScraper):
         url = list_page_html.a["href"]
         identifier = url.split("/id/")[1].split("/")[0]
         name = list_page_html.find("div", {"class": "NameLink"}).getText(strip=True)
+        if "Vacancy " in name:
+            raise SkipCouncillorException("Vacancy")
         division = list_page_html.find(text=self.division_text).next.strip()
         party = self.get_party_name(list_page_html)
 

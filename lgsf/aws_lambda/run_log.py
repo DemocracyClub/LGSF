@@ -11,6 +11,7 @@ class RunStatus(Enum):
     OK = 0
     ERROR = 1
 
+
 @dataclass
 class RunLog:
     """Class for keeping track of a single run of a scraper."""

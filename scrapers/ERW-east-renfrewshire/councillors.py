@@ -22,7 +22,6 @@ class Scraper(HTMLCouncillorScraper):
         return ward
 
     def get_single_councillor(self, councillor_html):
-
         print(councillor_html)
         url = urljoin(self.base_url, councillor_html["href"])
         soup = self.get_page(url)

@@ -12,7 +12,6 @@ class Scraper(HTMLCouncillorScraper):
     }
 
     def get_single_councillor(self, councillor_html):
-
         url = "https://www.suffolk.gov.uk{}".format(
             councillor_html.find_all("a")[1]["href"]
         )

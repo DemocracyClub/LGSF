@@ -11,7 +11,6 @@ class Scraper(HTMLCouncillorScraper):
     }
 
     def get_single_councillor(self, councillor_html):
-
         url = f"https://www.castlepoint.gov.uk{councillor_html['href']}"
         soup = self.get_page(url)
         name = soup.find(text=re.compile("Councillor:")).next.get_text(strip=True)
