@@ -22,10 +22,14 @@ class Scraper(HTMLCouncillorScraper):
         name = " ".join(name.split(" ")[1::-1]).replace(",", "")
 
         division = soup.find("span", text="Ward").find_next("div").get_text(strip=True)
-        party = soup.find("span", text="Political Party").find_next("div").get_text(strip=True)
-        councillor = self.add_councillor(url, identifier=url, party=party, division=division, name=name)
-        councillor.email = soup.select("a[href^=mailto]")[
-            0
-        ].get_text(strip=True)
+        party = (
+            soup.find("span", text="Political Party")
+            .find_next("div")
+            .get_text(strip=True)
+        )
+        councillor = self.add_councillor(
+            url, identifier=url, party=party, division=division, name=name
+        )
+        councillor.email = soup.select("a[href^=mailto]")[0].get_text(strip=True)
         councillor.photo_url = soup.select_one("img")["src"]
         return councillor

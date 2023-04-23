@@ -12,7 +12,6 @@ class Scraper(HTMLCouncillorScraper):
         container = self.get_list_container()
         councillor_soups = []
         for ward in container.select(self.list_page["councillor_css_selector"]):
-
             councillor_soups += self.get_councillors_from_ward(ward)
         return councillor_soups
 

@@ -50,7 +50,8 @@ class Scraper(HTMLCouncillorScraper):
             url, name=name, division=ward, party=party, identifier=url
         )
         councillor.email = initial_soup.select("a[href^=mailto]")[0].get_text(
-            strip=True)
+            strip=True
+        )
         councillor.photo_url = urljoin(
             self.base_url, detail_soup.select_one("img.phototgraph")["src"]
         )

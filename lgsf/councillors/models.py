@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 
 from slugify import slugify
 
+
 @dataclass
 class CouncillorBase:
     url: str

@@ -17,11 +17,10 @@ class Scraper(HTMLCouncillorScraper):
         tgt = soup.find("input", {"name": "tgt"})["value"]
         next_page = 1
         while next_page:
-            results = self.requests_session.post("https://www.chelmsford.gov.uk/api/directories/search", data={
-                "drc": drc,
-                "tgt": tgt,
-                "page": next_page
-            })
+            results = self.requests_session.post(
+                "https://www.chelmsford.gov.uk/api/directories/search",
+                data={"drc": drc, "tgt": tgt, "page": next_page},
+            )
             page_soup = BeautifulSoup(results.text, "html5lib")
             if page_soup.find(text="No records found"):
                 break
@@ -35,11 +34,21 @@ class Scraper(HTMLCouncillorScraper):
         name = soup.h1.get_text(strip=True).replace("Councillor ", "")
         if name == "Vacant councillor post":
             raise SkipCouncillorException("Vacant")
-        division = soup.find("h2", text=re.compile("Ward")).find_next("p").get_text(strip=True)
-        party = soup.find("h2", text=re.compile("Political party")).find_next("p").get_text(strip=True)
-        councillor = self.add_councillor(url, identifier=url, name=name, division=division, party=party)
+        division = (
+            soup.find("h2", text=re.compile("Ward")).find_next("p").get_text(strip=True)
+        )
+        party = (
+            soup.find("h2", text=re.compile("Political party"))
+            .find_next("p")
+            .get_text(strip=True)
+        )
+        councillor = self.add_councillor(
+            url, identifier=url, name=name, division=division, party=party
+        )
         email = soup.find("h2", text=re.compile("Email address"))
         if email:
             councillor.email = email.find_next("a")["href"]
-        councillor.photo_url = urljoin(self.base_url, soup.select_one("picture img")["src"])
+        councillor.photo_url = urljoin(
+            self.base_url, soup.select_one("picture img")["src"]
+        )
         return councillor
