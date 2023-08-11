@@ -1,0 +1,14 @@
+{
+    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/NYE/2023-04-01/",
+    "official_identifier": "NYE",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "UA",
+    "official_name": "North Yorkshire Council",
+    "common_name": "North Yorkshire",
+    "slug": "north-yorkshire",
+    "territory_code": "ENG",
+    "election_name": "North Yorkshire local election",
+    "start_date": "2023-04-01",
+    "end_date": null,
+    "created": "2023-07-12T11:49:22.704819Z"
+}
