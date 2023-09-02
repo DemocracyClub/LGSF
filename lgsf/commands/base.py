@@ -5,6 +5,7 @@ import os
 import json
 import traceback
 from dataclasses import dataclass, field
+from functools import cached_property
 
 import requests
 from dateutil.parser import parse
@@ -216,6 +217,10 @@ class PerCouncilCommandBase(CommandBase):
     def current_councils(self):
         return [council for council in self.all_councils if council.current]
 
+    @cached_property
+    def current_council_ids(self):
+        return set([c.council_id for c in self.current_councils])
+
     def output_disabled(self):
         table = Table(title=f"Councils with '{self.command_name}' disabled scraper")
 
@@ -233,11 +238,13 @@ class PerCouncilCommandBase(CommandBase):
         return req.json()
 
     def output_failing(self):
+
         table = Table(title=f"Councils with '{self.command_name}' failing")
         table.add_column("Code", style="magenta")
         table.add_column("Error", style="red")
         for council in self.failing():
-            table.add_row(council["council_id"], council["latest_run"]["log_text"])
+            if council["council_id"] in self.current_council_ids:
+                table.add_row(council["council_id"], council["latest_run"]["log_text"])
         self.console.print(table)
 
     def output_status(self):
