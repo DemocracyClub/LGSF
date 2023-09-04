@@ -15,16 +15,6 @@ class Scraper(HTMLCouncillorScraper):
         "councillor_css_selector": "li",
     }
 
-    # def get_councillors(self):
-    #     container = self.get_list_container()
-    #     councillors = []
-    #     import ipdb; ipdb.set_trace()
-    #     for grouping in container.find_all("ul", recursive=False):
-    #         councillors += grouping.find_all(
-    #         self.list_page["councillor_css_selector"], recursive=False
-    #     )
-    #     return councillors
-
     raw_html = None
 
     def get_raw_html(self):
