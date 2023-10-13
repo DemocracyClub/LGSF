@@ -1,5 +1,6 @@
 import abc
 import json
+from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup, Tag
 from dateutil.parser import parse
@@ -152,7 +153,7 @@ class HTMLCouncillorScraper(BaseCouncillorScraper):
 class PagedHTMLCouncillorScraper(HTMLCouncillorScraper):
     def get_next_link(self, soup):
         try:
-            return soup.select(self.list_page["next_page_css_selector"])[0].a["href"]
+            return urljoin(self.base_url, soup.select_one(self.list_page["next_page_css_selector"]).a["href"])
         except:
             return None
 
