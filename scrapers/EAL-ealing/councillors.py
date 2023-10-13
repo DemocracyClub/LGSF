@@ -1,5 +1,5 @@
-from lgsf.councillors.scrapers import CMISCouncillorScraper
+from lgsf.councillors.scrapers import ModGovCouncillorScraper
 
 
-class Scraper(CMISCouncillorScraper):
-    base_url = "http://ealing.cmis.uk.com/ealing/Councillors.aspx"
+class Scraper(ModGovCouncillorScraper):
+    base_url = "https://ealing.moderngov.co.uk"
