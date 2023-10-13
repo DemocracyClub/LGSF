@@ -2,4 +2,5 @@ from lgsf.councillors.scrapers import ModGovCouncillorScraper
 
 
 class Scraper(ModGovCouncillorScraper):
-    base_url = "http://democracy.camden.gov.uk"
+    verify_requests = False
+    base_url = "https://democracy.camden.gov.uk"
