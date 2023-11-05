@@ -24,7 +24,7 @@ rich = "*"
 boto3 = "*"
 pre-commit = "*"
 ipython = "==8.10.0"
-werkzeug = "==2.2.3"
+werkzeug = "==3.0.1"
 
 [dev-packages]
 pytest-mypy-plugins = "1.9.3"
