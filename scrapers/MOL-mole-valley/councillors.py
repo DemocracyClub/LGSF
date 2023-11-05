@@ -6,6 +6,7 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 class Scraper(HTMLCouncillorScraper):
     base_url = "https://www.molevalley.gov.uk/home/council/councillors/who-are-your-councillors"
+    verify_requests = False
 
     list_page = {
         "container_css_selector": "table.w3-table-all",
