@@ -239,7 +239,13 @@ class ModGovCouncillorScraper(BaseCouncillorScraper):
         except AttributeError:
             pass
 
+        if self.exclude_councillor_hook(councillor):
+            raise SkipCouncillorException
+
         return councillor
+
+    def exclude_councillor_hook(self, councillor: CouncillorBase):
+        return False
 
 
 class CMISCouncillorScraper(BaseCouncillorScraper):
