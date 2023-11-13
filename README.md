@@ -39,7 +39,7 @@ supported.
 
 ### Requirements
 
-* Python 3.8
+* Python 3.10
 * `pipenv`
 
 ### Installation
