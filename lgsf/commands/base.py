@@ -1,8 +1,8 @@
 import abc
 import argparse
 import datetime
-import os
 import json
+import os
 import traceback
 from dataclasses import dataclass, field
 from functools import cached_property
@@ -11,11 +11,11 @@ import requests
 from dateutil.parser import parse
 from dateutil.utils import today
 from rich.console import Console
-from rich.progress import Progress, BarColumn, TimeElapsedColumn
+from rich.progress import BarColumn, Progress, TimeElapsedColumn
 from rich.table import Table
 
 from lgsf.conf import settings
-from lgsf.path_utils import _abs_path, load_scraper, load_council_info
+from lgsf.path_utils import _abs_path, load_council_info, load_scraper
 
 
 class CommandBase(metaclass=abc.ABCMeta):
@@ -79,15 +79,15 @@ class Council:
                 _abs_path(settings.SCRAPER_DIR_NAME, self.council_id)[0],
                 "metadata.json",
             )
-            self._metadata_cache = json.load(open(metadata_path))
+            with open(metadata_path) as f:
+                self._metadata_cache = json.load(f)
         return self._metadata_cache
 
     @property
     def current(self):
-        if self.metadata["end_date"]:
-            # This council has a known end data, check if it's in the past
-            if parse(self.metadata["end_date"]) < today():
-                return False
+        if self.metadata["end_date"] and parse(self.metadata["end_date"]) < today():
+            # This council has a known end data, and that date is in the past
+            return False
         if parse(self.metadata["start_date"]) > today():
             return False
         return True
@@ -219,7 +219,7 @@ class PerCouncilCommandBase(CommandBase):
 
     @cached_property
     def current_council_ids(self):
-        return set([c.council_id for c in self.current_councils])
+        return {c.council_id for c in self.current_councils}
 
     def output_disabled(self):
         table = Table(title=f"Councils with '{self.command_name}' disabled scraper")
@@ -271,7 +271,7 @@ class PerCouncilCommandBase(CommandBase):
                 councils.append(council)
 
         if self.options["exclude_missing"]:
-            missing_councils = set(c["code"] for c in self.missing())
+            missing_councils = {c["code"] for c in self.missing()}
             councils = list(set(councils) - missing_councils)
         return councils
 
@@ -289,7 +289,7 @@ class PerCouncilCommandBase(CommandBase):
             console=self.console,
             auto_refresh=False,
         ) as progress:
-            total = progress.add_task(description=f"Total", total=len(to_run))
+            total = progress.add_task(description="Total", total=len(to_run))
             while not progress.finished:
                 for council in to_run:
                     self.run_council(council.council_id)
@@ -302,7 +302,7 @@ class PerCouncilCommandBase(CommandBase):
             scraper.run(run_log)
         except KeyboardInterrupt:
             raise
-        except Exception as e:
+        except Exception:
             run_log.error = traceback.format_exc()
             if self.options.get("verbose"):
                 raise
@@ -320,9 +320,8 @@ class PerCouncilCommandBase(CommandBase):
             should_run = True
             if scraper.disabled:
                 should_run = False
-            if should_run and self.options["refresh"]:
-                if scraper.run_since():
-                    should_run = False
+            if should_run and self.options["refresh"] and scraper.run_since():
+                should_run = False
             if should_run and self.options["tags"]:
                 required_tags = set(self.options["tags"].split(","))
                 scraper_tags = set(scraper.get_tags)
@@ -357,5 +356,6 @@ class PerCouncilCommandBase(CommandBase):
         self.normalise_codes()
         if self.pretty:
             self.run_councils_with_progress()
-        else:
-            self.run_councils()
+            return None
+        self.run_councils()
+        return None

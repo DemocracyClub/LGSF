@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import os
-import re
-import pkgutil
-from importlib.machinery import SourceFileLoader
-from importlib import import_module
 import glob
 import json
+import os
+import pkgutil
+import re
+from importlib import import_module
+from importlib.machinery import SourceFileLoader
 
 from lgsf.conf import settings
 
@@ -20,10 +20,9 @@ def _abs_path(base_dir, code):
         file_name = os.path.split(file_path)[-1]
         if re.match("{}-[a-z\-]+".format(code.upper()), file_name):
             return (file_path, code)
-        else:
-            parts = file_name.lower().split("-")
-            if code.lower() in parts:
-                return (file_path, parts[0])
+        parts = file_name.lower().split("-")
+        if code.lower() in parts:
+            return (file_path, parts[0])
     raise IOError("No scraper file at path")
 
 
@@ -71,7 +70,9 @@ def load_scraper(code, command):
 def load_council_info(code):
     path = os.path.join(scraper_abs_path(code), "metadata.json")
     if os.path.exists(path):
-        return json.loads(open(path).read())
+        with open(path) as f:
+            return json.loads(f.read())
+    return None
 
 
 def get_commands():
@@ -87,5 +88,4 @@ def load_command(module_name):
     module = load_command_module(module_name)
     if hasattr(module, "Command"):
         return module.Command
-    else:
-        raise ValueError(f"{module_name} doesn't contain a class")
+    raise ValueError(f"{module_name} doesn't contain a class")

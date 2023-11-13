@@ -1,7 +1,7 @@
+import datetime
 import json
 import random
 import sys
-import datetime
 import traceback
 
 import boto3
