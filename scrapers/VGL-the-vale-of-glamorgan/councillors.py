@@ -33,7 +33,9 @@ class Scraper(HTMLCouncillorScraper):
         if email_link:
             councillor.email = email_link.get_text(strip=True)
         else:
-            email_text = soup.select_one("#S4_EmailPlaceholder").get_text(strip=True)
+            email_text = soup.select_one("#S4_EmailPlaceholder").get_text(
+                strip=True
+            )
             councillor.email = email_text
         councillor.photo_url = councillor_html.select_one("img")["src"]
         return councillor

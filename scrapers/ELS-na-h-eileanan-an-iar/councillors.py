@@ -24,7 +24,9 @@ class Scraper(HTMLCouncillorScraper):
         )
 
         ward = (
-            soup.find("p", text=re.compile("Ward:")).find_next("p").get_text(strip=True)
+            soup.find("p", text=re.compile("Ward:"))
+            .find_next("p")
+            .get_text(strip=True)
         )
 
         party_row = soup.find("p", text=re.compile("Party:"))

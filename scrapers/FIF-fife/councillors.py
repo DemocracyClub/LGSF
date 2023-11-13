@@ -27,7 +27,9 @@ class Scraper(HTMLCouncillorScraper):
         soup = self.get_page(url)
 
         name = (
-            soup.select_one("h1.page-title").get_text(strip=True).replace("Cllr. ", "")
+            soup.select_one("h1.page-title")
+            .get_text(strip=True)
+            .replace("Cllr. ", "")
         )
         ward = (
             soup.find("b", text=re.compile("Ward:"))
@@ -52,9 +54,9 @@ class Scraper(HTMLCouncillorScraper):
             division=ward,
         )
 
-        councillor.email = soup.select_one(".councillor-social a[href^=mailto]")[
-            "href"
-        ].replace("mailto:", "")
+        councillor.email = soup.select_one(
+            ".councillor-social a[href^=mailto]"
+        )["href"].replace("mailto:", "")
         councillor.photo_url = urljoin(
             self.base_url,
             soup.select_one(".asset-contents img")["src"],

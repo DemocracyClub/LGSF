@@ -26,12 +26,28 @@ class Scraper(HTMLCouncillorScraper):
     def get_single_councillor(self, councillor_html):
         url = urljoin(self.base_url, councillor_html["href"])
         soup = self.get_page(url)
-        name = soup.find("dt", text=re.compile("Name")).find_next_sibling("dd").get_text(strip=True)
+        name = (
+            soup.find("dt", text=re.compile("Name"))
+            .find_next_sibling("dd")
+            .get_text(strip=True)
+        )
         name = name.replace("Councillor ", "").strip()
 
-        party = soup.find("dt", text=re.compile("Political party")).find_next_sibling("dd").get_text(strip=True)
-        division = soup.find("dt", text=re.compile("Ward")).find_next_sibling("dd").get_text(strip=True)
-        email = soup.find("dt", text=re.compile("Ward")).find_next_sibling("dd").get_text(strip=True)
+        party = (
+            soup.find("dt", text=re.compile("Political party"))
+            .find_next_sibling("dd")
+            .get_text(strip=True)
+        )
+        division = (
+            soup.find("dt", text=re.compile("Ward"))
+            .find_next_sibling("dd")
+            .get_text(strip=True)
+        )
+        email = (
+            soup.find("dt", text=re.compile("Ward"))
+            .find_next_sibling("dd")
+            .get_text(strip=True)
+        )
 
         councillor = self.add_councillor(
             url,

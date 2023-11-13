@@ -33,11 +33,7 @@ class Scraper(HTMLCouncillorScraper):
         party = soup.find("h2", text=re.compile("Party"))
         if not party:
             party = soup.find(text=re.compile("Party")).parent
-        party = (
-            party
-            .find_next("p")
-            .get_text(strip=True)
-        )
+        party = party.find_next("p").get_text(strip=True)
 
         councillor = self.add_councillor(
             url,
