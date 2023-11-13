@@ -1,6 +1,5 @@
-import json
 import glob
-
+import json
 
 ALL_UP_IDS = [
     "MDB",
@@ -158,9 +157,8 @@ def should_output(content, council_id):
         return True
 
     standing_down = content.get("standing_down")
-    if standing_down:
-        if "2019-05" in standing_down:
-            return True
+    if standing_down and "2019-05" in standing_down:
+        return True
 
     return False
 
