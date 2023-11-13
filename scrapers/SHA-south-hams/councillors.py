@@ -1,6 +1,5 @@
-import re
 
-from lgsf.councillors.scrapers import HTMLCouncillorScraper, ModGovCouncillorScraper
+from lgsf.councillors.scrapers import ModGovCouncillorScraper
 
 
 class Scraper(ModGovCouncillorScraper):

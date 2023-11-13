@@ -1,3 +1,4 @@
+import re
 import time
 from urllib.parse import urljoin
 

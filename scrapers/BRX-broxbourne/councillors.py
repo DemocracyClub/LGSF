@@ -1,4 +1,3 @@
-from urllib.parse import urljoin
 from lgsf.councillors.scrapers import ModGovCouncillorScraper
 
 

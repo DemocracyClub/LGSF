@@ -3,7 +3,9 @@ from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 
 from lgsf.councillors import SkipCouncillorException
-from lgsf.councillors.scrapers import HTMLCouncillorScraper, PagedHTMLCouncillorScraper
+from lgsf.councillors.scrapers import (
+    PagedHTMLCouncillorScraper,
+)
 
 
 class Scraper(PagedHTMLCouncillorScraper):

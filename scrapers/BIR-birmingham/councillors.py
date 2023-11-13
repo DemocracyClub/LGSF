@@ -43,7 +43,7 @@ class Scraper(CMISCouncillorScraper):
         try:
             profile_url = soup.select(".Biog")[0].a["href"].strip()
             councillor = self.get_from_profile_page(profile_url)
-        except:
+        except Exception:
             # This person doesn't have a profile page or something else went
             # wrong, do what we can with this page
             councillor = super().get_single_councillor(list_page_html)

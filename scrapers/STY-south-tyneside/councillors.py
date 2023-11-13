@@ -8,7 +8,7 @@ class Scraper(HTMLCouncillorScraper):
         pass
 
     def get_councillors(self):
-        base_soup = self.get_page(
+        self.get_page(
             f"{self.base_url}/article/60208/Find-your-councillors"
         )
         import ipdb

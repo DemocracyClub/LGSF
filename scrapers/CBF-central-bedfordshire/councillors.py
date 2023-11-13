@@ -1,8 +1,9 @@
 import re
 from urllib.parse import urljoin
 
-from lgsf.councillors import SkipCouncillorException
-from lgsf.councillors.scrapers import ModGovCouncillorScraper, HTMLCouncillorScraper
+from lgsf.councillors.scrapers import (
+    HTMLCouncillorScraper,
+)
 
 
 class Scraper(HTMLCouncillorScraper):

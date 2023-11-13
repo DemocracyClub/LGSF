@@ -1,9 +1,5 @@
 import codecs
 import re
-from urllib.parse import unquote
-
-from bs4 import BeautifulSoup
-from slugify import slugify
 
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 

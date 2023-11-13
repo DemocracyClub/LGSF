@@ -24,7 +24,7 @@ class Scraper(HTMLCouncillorScraper):
             e.get_text(strip=True)
             for e in soup.select("a[href^=mailto]")
             if "@" in e.get_text(strip=True)
-            and "info@castlepoint.gov.uk" != e.get_text(strip=True)
+            and e.get_text(strip=True) != "info@castlepoint.gov.uk"
         ]
         if len(emails) == 1:
             councillor.email = emails[0]

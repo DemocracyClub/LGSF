@@ -1,8 +1,6 @@
 import re
 from urllib.parse import urljoin
 
-from bs4 import BeautifulSoup
-
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 

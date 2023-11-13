@@ -1,3 +1,4 @@
+import contextlib
 import re
 
 from lgsf.councillors.exceptions import SkipCouncillorException
@@ -26,14 +27,13 @@ class Scraper(HTMLCouncillorScraper):
         councillor = self.add_councillor(
             url, identifier=url, name=name, party=party, division=ward
         )
-        try:
+        with contextlib.suppress(AttributeError):
             councillor.email = (
                 page.select(".wp-block-column")[1]
                 .find(lambda t: t.name == "p" and "Email" in t.text)
                 .a["href"]
             ).replace("mailto:", "")
-        except AttributeError:
-            pass
+
         if soup.img:
             councillor.photo_url = soup.img["src"]
         return councillor
