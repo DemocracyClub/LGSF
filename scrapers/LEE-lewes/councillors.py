@@ -12,5 +12,4 @@ class Scraper(ModGovCouncillorScraper):
             return councillor
         if email and "lewes.gov.uk" in email:
             return councillor
-        else:
-            raise SkipCouncillorException()
+        raise SkipCouncillorException()

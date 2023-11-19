@@ -18,8 +18,7 @@ class Scraper(HTMLCouncillorScraper):
             .find_previous("h2")
             .get_text(strip=True)
         )
-        ward = re.sub(r"Ward [0-9]+ - (.*)", r"\1", ward)
-        return ward
+        return re.sub(r"Ward [0-9]+ - (.*)", r"\1", ward)
 
     def get_single_councillor(self, councillor_html):
         url = urljoin(self.base_url, councillor_html["href"])

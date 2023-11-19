@@ -1,3 +1,4 @@
+import re
 import time
 from urllib.parse import urljoin
 
@@ -12,7 +13,7 @@ class Scraper(HTMLCouncillorScraper):
     }
 
     def get_single_councillor(self, councillor_html):
-        councillor_url = councillor_html.select_one("a")['href']
+        councillor_url = councillor_html.select_one("a")["href"]
         url = urljoin(self.base_url, councillor_url)
         soup = self.get_page(url)
         name = soup.h1.get_text(strip=True)
@@ -35,9 +36,9 @@ class Scraper(HTMLCouncillorScraper):
         )
         container = soup.select_one(".page-content-section")
 
-        councillor.email = container.select_one("a[href^=mailto]")["href"].replace(
-            "mailto:", ""
-        )
+        councillor.email = container.select_one("a[href^=mailto]")[
+            "href"
+        ].replace("mailto:", "")
 
         councillor.photo_url = container.select_one("img")["src"]
 

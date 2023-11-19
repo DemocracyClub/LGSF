@@ -8,3 +8,4 @@ class Scraper(ModGovCouncillorScraper):
     def exclude_councillor_hook(self, councillor: CouncillorBase):
         if "(SNC)" not in councillor.division:
             return True
+        return None

@@ -32,7 +32,9 @@ class Scraper(HTMLCouncillorScraper):
         elif name == "Tina Large":
             url = "http://www.egenda.stockton.gov.uk/aksstockton/users/public/admin/main.pl?op=MemberDetails&keyid=703"
         else:
-            url = initial_soup.find("a", href=re.compile("egenda.stockton"))["href"]
+            url = initial_soup.find("a", href=re.compile("egenda.stockton"))[
+                "href"
+            ]
         detail_soup = self.get_page(url)
 
         ward = (

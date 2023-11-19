@@ -12,7 +12,7 @@ jobs:
 
   install_and_update_dependencies:
     docker:
-    - image: cimg/python:3.8.12
+    - image: cimg/python:3.10
     working_directory: ~/repo
     steps:
     - checkout
@@ -35,7 +35,7 @@ jobs:
 
   sam_build:
     docker:
-    - image: amazon/aws-sam-cli-build-image-python3.8:latest
+    - image: public.ecr.aws/sam/build-python3.10:latest
     working_directory: ~/repo
     steps:
     - checkout
@@ -43,7 +43,6 @@ jobs:
         at: ~/repo/
     - run: pip install --upgrade pip
     - run: pip install -r lambda-layers/DependenciesLayer/requirements.txt
-    - run: pip install -U aws-sam-cli
     - run: sam build  --template sam-template.yaml
     - persist_to_workspace:
         root: ~/repo/
@@ -51,7 +50,7 @@ jobs:
 
   sam_deploy:
     docker:
-    - image: cimg/python:3.8.12
+    - image: cimg/python:3.10
     working_directory: ~/repo/
     parameters:
       dc-environment:

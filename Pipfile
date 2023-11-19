@@ -5,33 +5,28 @@ name = "pypi"
 
 [packages]
 requests = "==2.31.0"
-ipdb = "0.13.13"
 requests-cache = "*"
 "beautifulsoup4" = "*"
 "html5lib" = "*"
-pytest = "==7.4.3"
-pytest-flakes = "*"
-pytest-blockage = "*"
-pytest-codestyle = "*"
-pytest-pylint = "*"
 lxml = "*"
 python-slugify = "*"
-pyopenssl = "23.3.0"
 python-dateutil = "*"
 retry2 = "*"
-black = "*"
 rich = "*"
 boto3 = "*"
 pre-commit = "*"
-ipython = "==8.12.3"
-werkzeug = "==3.0.1"
 
 [dev-packages]
 pytest-mypy-plugins = "1.9.3"
 pystache = "==0.6.5"
+ruff = "0.1.5"
+pytest = "==7.4.3"
+pytest-ruff = "*"
+pytest-blockage = "*"
+ipdb = "0.13.13"
 
 [requires]
-python_version = "3.8"
+python_version = "3.10"
 
 [pipenv]
 allow_prereleases = true

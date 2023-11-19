@@ -13,7 +13,9 @@ class Scraper(HTMLCouncillorScraper):
     def get_single_councillor(self, councillor_html):
         url = f"https://www.castlepoint.gov.uk{councillor_html['href']}"
         soup = self.get_page(url)
-        name = soup.find(text=re.compile("Councillor:")).next.get_text(strip=True)
+        name = soup.find(text=re.compile("Councillor:")).next.get_text(
+            strip=True
+        )
         name = " ".join(name.split(" ")[1::-1]).replace(",", "")
         party = soup.find(text=re.compile("Party:")).next.get_text(strip=True)
         division = soup.find(text=re.compile("Ward:")).next.get_text(strip=True)
@@ -24,7 +26,7 @@ class Scraper(HTMLCouncillorScraper):
             e.get_text(strip=True)
             for e in soup.select("a[href^=mailto]")
             if "@" in e.get_text(strip=True)
-            and "info@castlepoint.gov.uk" != e.get_text(strip=True)
+            and e.get_text(strip=True) != "info@castlepoint.gov.uk"
         ]
         if len(emails) == 1:
             councillor.email = emails[0]

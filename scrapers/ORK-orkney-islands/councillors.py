@@ -5,7 +5,9 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.orkney.gov.uk/Council/Councillors/councillor-profiles.htm"
+    base_url = (
+        "https://www.orkney.gov.uk/Council/Councillors/councillor-profiles.htm"
+    )
 
     list_page = {
         "container_css_selector": "ul.SKNavLevel5",
@@ -16,7 +18,11 @@ class Scraper(HTMLCouncillorScraper):
         url = urljoin(self.base_url, councillor_html.a["href"])
         soup = self.get_page(url)
 
-        name = soup.select_one("h1").get_text(strip=True).replace("Councillor ", "")
+        name = (
+            soup.select_one("h1")
+            .get_text(strip=True)
+            .replace("Councillor ", "")
+        )
 
         ward = (
             soup.find("li", text=re.compile("Ward:.*"))

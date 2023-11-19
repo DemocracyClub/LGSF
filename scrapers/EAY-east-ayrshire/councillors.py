@@ -1,8 +1,6 @@
 import re
 from urllib.parse import urljoin
 
-from bs4 import BeautifulSoup
-
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
@@ -37,7 +35,8 @@ class Scraper(HTMLCouncillorScraper):
         )
         councillor.email = soup.select_one("a[href^=mailto]")["href"]
         councillor.photo_url = urljoin(
-            self.base_url, soup.find("img", src=re.compile("Councillors"))["src"]
+            self.base_url,
+            soup.find("img", src=re.compile("Councillors"))["src"],
         )
 
         return councillor

@@ -18,8 +18,7 @@ class Scraper(HTMLCouncillorScraper):
             .find_previous("h2")
             .get_text(strip=True)
         )
-        ward = re.sub(r"Ward [0-9]+ - (.*)", r"\1", ward)
-        return ward
+        return re.sub(r"Ward [0-9]+ - (.*)", r"\1", ward)
 
     def get_single_councillor(self, councillor_html):
         url = urljoin(self.base_url, councillor_html["href"])
@@ -34,11 +33,7 @@ class Scraper(HTMLCouncillorScraper):
         party = soup.find("h2", text=re.compile("Party"))
         if not party:
             party = soup.find(text=re.compile("Party")).parent
-        party = (
-            party
-            .find_next("p")
-            .get_text(strip=True)
-        )
+        party = party.find_next("p").get_text(strip=True)
 
         councillor = self.add_councillor(
             url,

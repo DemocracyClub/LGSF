@@ -6,9 +6,7 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    base_url = (
-        "https://www.cannockchasedc.gov.uk/council/about-council/your-councillors"
-    )
+    base_url = "https://www.cannockchasedc.gov.uk/council/about-council/your-councillors"
 
     list_page = {
         "container_css_selector": "article.node-councillor-landing-page",
@@ -41,5 +39,7 @@ class Scraper(HTMLCouncillorScraper):
             division=division,
         )
         councillor.email = soup.select_one("div.email").getText(strip=True)
-        councillor.photo_url = soup.select_one("div.councillor_image img")["src"]
+        councillor.photo_url = soup.select_one("div.councillor_image img")[
+            "src"
+        ]
         return councillor

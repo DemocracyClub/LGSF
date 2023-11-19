@@ -1,21 +1,20 @@
 import abc
+import datetime
 import json
 import os
+import traceback
 
 import boto3
 from botocore.exceptions import ClientError
 from dateutil import parser
-import datetime
-import traceback
-
-import requests
 
 # import requests_cache
-
 # requests_cache.install_cache("scraper_cache", expire_after=60 * 60 * 24)
 from requests import Session
 
 from lgsf.path_utils import data_abs_path
+
+from ..aws_lambda.run_log import RunLog
 from .checks import ScraperChecker
 
 
@@ -45,7 +44,9 @@ class ScraperBase(metaclass=abc.ABCMeta):
         if extra_headers:
             headers.update(extra_headers)
 
-        response = self.requests_session.get(url, headers=headers, verify=verify)
+        response = self.requests_session.get(
+            url, headers=headers, verify=verify
+        )
         response.raise_for_status()
         return response
 
@@ -59,6 +60,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
         last = self._get_last_run()
         if last and last > now - delta:
             return True
+        return None
 
     def _file_name(self, name):
         dir_name = data_abs_path(self.options["council"])
@@ -83,7 +85,9 @@ class ScraperBase(metaclass=abc.ABCMeta):
     def _get_last_run(self):
         file_name = self._last_run_file_name()
         if os.path.exists(self._last_run_file_name()):
-            return parser.parse(open(file_name, "r").read())
+            with open(file_name, "r") as f:
+                return parser.parse(f.read())
+        return None
 
     def __enter__(self):
         return self
@@ -93,7 +97,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
             self._set_last_run()
         else:
             # We don't want to log KeyboardInterrupts
-            if not exc_type == KeyboardInterrupt:
+            if exc_type != KeyboardInterrupt:
                 self._set_error(tb)
 
     def _save_file(self, dir_name, file_name, content):
@@ -119,7 +123,9 @@ class CodeCommitMixin:
             self.repository = self.options["council"]
             self.codecommit_client = boto3.client("codecommit")
             try:
-                self.codecommit_client.get_repository(repositoryName=self.repository)
+                self.codecommit_client.get_repository(
+                    repositoryName=self.repository
+                )
             except ClientError as error:
                 error_code = error.response["Error"]["Code"]
                 if error_code == "RepositoryDoesNotExistException":
@@ -141,7 +147,9 @@ class CodeCommitMixin:
                     repositoryName=self.repository, branchName=self.branch
                 )
                 self._branch_head = branch_info["branch"]["commitId"]
-            except self.codecommit_client.exceptions.BranchDoesNotExistException:
+            except (
+                self.codecommit_client.exceptions.BranchDoesNotExistException
+            ):
                 self._branch_head = self.create_branch(self.branch)
 
         return self._branch_head
@@ -172,7 +180,9 @@ class CodeCommitMixin:
         commit_id = main_info["branch"]["commitId"]
 
         self.codecommit_client.create_branch(
-            repositoryName=self.repository, branchName=branch_name, commitId=commit_id
+            repositoryName=self.repository,
+            branchName=branch_name,
+            commitId=commit_id,
         )
 
         return commit_id
@@ -182,7 +192,9 @@ class CodeCommitMixin:
             repositoryName=self.repository, branchName=self.branch
         )
         if delete_info["deletedBranch"]:
-            self.console.log(f'deleted {delete_info["deletedBranch"]["branchName"]}')
+            self.console.log(
+                f'deleted {delete_info["deletedBranch"]["branchName"]}'
+            )
 
     def get_files(self, folder_path):
         subfolder_paths = []
@@ -204,7 +216,9 @@ class CodeCommitMixin:
                 subfolder_paths.extend(sf_paths)
                 file_paths.extend(f_paths)
 
-            self.console.log(f"...found {len(file_paths)} files in {folder_path}")
+            self.console.log(
+                f"...found {len(file_paths)} files in {folder_path}"
+            )
             return subfolder_paths, file_paths
 
         except self.codecommit_client.exceptions.FolderDoesNotExistException:
@@ -215,8 +229,7 @@ class CodeCommitMixin:
         message = f"Deleting batch no. {batch} consisting of {len(delete_files)} files"
         self.console.log(message)
 
-        delete_commit = self.commit(message=message, delete_files=delete_files)
-        return delete_commit
+        return self.commit(message=message, delete_files=delete_files)
 
     def delete_existing(self, commit_id):
         _, file_paths = self.get_files(f"{self.scraper_object_type}")
@@ -232,8 +245,7 @@ class CodeCommitMixin:
             delete_files = [{"filePath": fp} for fp in file_paths]
             delete_commit = self.delete_files(delete_files, batch)
             return delete_commit["commitId"]
-        else:
-            return commit_id
+        return commit_id
 
     def delete_data_if_exists(self):
         self.console.log("Deleting existing data...")
@@ -246,7 +258,10 @@ class CodeCommitMixin:
             self.console.log("...data deleted.")
 
     def commit(
-        self, message: str = "", put_files: list = None, delete_files: list = None
+        self,
+        message: str = "",
+        put_files: list = None,
+        delete_files: list = None,
     ):
         try:
             commit_info = self.codecommit_client.create_commit(
@@ -257,7 +272,9 @@ class CodeCommitMixin:
                 putFiles=put_files if put_files else [],
                 deleteFiles=delete_files if delete_files else [],
             )
-        except self.codecommit_client.exceptions.ParentCommitIdOutdatedException:
+        except (
+            self.codecommit_client.exceptions.ParentCommitIdOutdatedException
+        ):
             del self.branch_head
             commit_info = self.codecommit_client.create_commit(
                 repositoryName=self.repository,
@@ -274,9 +291,7 @@ class CodeCommitMixin:
         self.console.log(
             f"Committing batch {self.batch} consisting of {len(self.put_files)} files"
         )
-        message = (
-            f"{self.scraper_object_type} - batch {self.batch} - scraped on {self.today}"
-        )
+        message = f"{self.scraper_object_type} - batch {self.batch} - scraped on {self.today}"
         commit_info = self.commit(put_files=self.put_files, message=message)
         self.branch_head = commit_info["commitId"]
         self.batch += 1
@@ -294,7 +309,7 @@ class CodeCommitMixin:
             f"{self.branch} squashed and merged into main at {merge_info['commitId']}"
         )
 
-    def aws_tidy_up(self, run_log: "lgsf.aws_lambda.run_log.RunLog"):
+    def aws_tidy_up(self, run_log: RunLog):
         if self.options.get("aws_lambda"):
             # Check if there's anything left to commit...
             if self.put_files:
@@ -359,7 +374,7 @@ class CodeCommitMixin:
             "fileContent": bare_log,
         }
 
-    def commit_run_log(self, run_log: "lgsf.aws_lambda.RunLog"):
+    def commit_run_log(self, run_log: RunLog):
         run_log.log = (
             self.console.export_text()
         )  # maybe this wants to be export_html()?
@@ -383,10 +398,11 @@ class CodeCommitMixin:
 
     def create_repo(self):
         try:
-            self.codecommit_client.create_repository(repositoryName=self.repository)
+            self.codecommit_client.create_repository(
+                repositoryName=self.repository
+            )
         except ClientError as error:
             error_code = error.response["Error"]["Code"]
             if error_code == "RepositoryNameExistsException":
                 return
-            else:
-                raise
+            raise

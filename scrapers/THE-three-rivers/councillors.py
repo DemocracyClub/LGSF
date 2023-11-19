@@ -1,3 +1,5 @@
+import contextlib
+
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
@@ -27,12 +29,13 @@ class Scraper(HTMLCouncillorScraper):
             url, identifier=url, name=name, party=party, division=division
         )
 
-        councillor.email = soup.select("a[href^=mailto]")[0].get_text(strip=True)
-        try:
+        councillor.email = soup.select("a[href^=mailto]")[0].get_text(
+            strip=True
+        )
+        with contextlib.suppress(AttributeError):
             councillor.photo_url = (
                 "https://www.threerivers.gov.uk"
                 + soup.find("p", {"class": "image"}).img["src"]
             )
-        except AttributeError:
-            pass
+
         return councillor

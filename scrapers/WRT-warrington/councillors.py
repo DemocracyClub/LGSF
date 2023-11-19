@@ -1,3 +1,4 @@
+import contextlib
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
@@ -17,16 +18,23 @@ class Scraper(HTMLCouncillorScraper):
         req = self.get(url)
         soup = BeautifulSoup(req.text, "lxml")
         name = soup.h1.get_text(strip=True)
-        division = soup.select_one(".field--name-field-ward").get_text(strip=True)
-        party = soup.select_one(".field--name-field-party-new").get_text(strip=True)
+        division = soup.select_one(".field--name-field-ward").get_text(
+            strip=True
+        )
+        party = soup.select_one(".field--name-field-party-new").get_text(
+            strip=True
+        )
 
         # Find a way to call this and return the councillor object
         councillor = self.add_councillor(
             url, identifier=url, name=name, party=party, division=division
         )
-        try:
-            councillor.email = soup.select_one(".field--type-email").find("a").get_text(strip=True)
-        except AttributeError:
-            pass
+        with contextlib.suppress(AttributeError):
+            councillor.email = (
+                soup.select_one(".field--type-email")
+                .find("a")
+                .get_text(strip=True)
+            )
+
         councillor.photo_url = "https:" + soup.img["src"]
         return councillor

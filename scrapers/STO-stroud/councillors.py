@@ -1,7 +1,3 @@
-import re
-
-from bs4 import BeautifulSoup
-
 from lgsf.councillors.scrapers import ModGovCouncillorScraper
 
 

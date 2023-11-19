@@ -1,8 +1,4 @@
-import re
-from urllib.parse import urljoin
-
-from lgsf.councillors.exceptions import SkipCouncillorException
-from lgsf.councillors.scrapers import HTMLCouncillorScraper, CMISCouncillorScraper
+from lgsf.councillors.scrapers import CMISCouncillorScraper
 
 
 class Scraper(CMISCouncillorScraper):

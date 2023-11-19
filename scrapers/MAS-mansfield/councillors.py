@@ -13,7 +13,6 @@ class Scraper(HTMLCouncillorScraper):
     }
 
     def get_single_councillor(self, councillor_html):
-
         url = urljoin(self.base_url, councillor_html.a["href"])
         soup = self.get_page(url)
 
@@ -37,7 +36,6 @@ class Scraper(HTMLCouncillorScraper):
             .replace("Ward:", "")
             .strip()
         )
-
 
         councillor = self.add_councillor(
             url,

@@ -51,6 +51,10 @@ class Scraper(HTMLCouncillorScraper):
             division=division,
         )
 
-        councillor.email = councillor_html.select_one("a[href^=mailto]")["href"][6:]
-        councillor.photo_url = urljoin(self.base_url, councillor_html.img["src"])
+        councillor.email = councillor_html.select_one("a[href^=mailto]")[
+            "href"
+        ][6:]
+        councillor.photo_url = urljoin(
+            self.base_url, councillor_html.img["src"]
+        )
         return councillor

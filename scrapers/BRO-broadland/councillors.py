@@ -16,7 +16,11 @@ class Scraper(HTMLCouncillorScraper):
         url = urljoin(self.base_url, councillor_html["href"])
         soup = self.get_page(url)
 
-        name = soup.select_one("h1").get_text(strip=True).replace("Councillor ", "")
+        name = (
+            soup.select_one("h1")
+            .get_text(strip=True)
+            .replace("Councillor ", "")
+        )
         name = " ".join(name.split(" ")[1::-1]).replace(",", "")
         party = (
             soup.find("dt", text=re.compile("Party"))
