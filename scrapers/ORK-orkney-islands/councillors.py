@@ -6,7 +6,7 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 class Scraper(HTMLCouncillorScraper):
     base_url = (
-        "https://www.orkney.gov.uk/Council/Councillors/councillor-profiles.htm"
+        "https://www.orkney.gov.uk/Council/Councillors/councillors.htm"
     )
 
     list_page = {

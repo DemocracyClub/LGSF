@@ -6,34 +6,31 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.cne-siar.gov.uk/your-council/wards-and-councillors/council-members/"
+    verify_requests = False
+    base_url = "https://cne-siar.gov.uk/home/your-council/council-members/"
 
     list_page = {
-        "container_css_selector": "article .row-fluid",
-        "councillor_css_selector": ".cnes_listitem",
+        "container_css_selector": "main",
+        "councillor_css_selector": "h3",
     }
 
     def get_single_councillor(self, councillor_html):
         url = urljoin(self.base_url, councillor_html.a["href"])
         soup = self.get_page(url)
 
-        name = (
-            soup.select_one("h1.cnes_pagetitle")
-            .get_text(strip=True)
-            .replace("Councillor ", "")
-        )
+        name = councillor_html.get_text(strip=True).replace("Councillor ", "")
 
         ward = (
-            soup.find("p", text=re.compile("Ward:"))
-            .find_next("p")
+            soup.find("h5", text=re.compile("WARD [0-9]+"))
             .get_text(strip=True)
+            .split(":")[-1]
+            .strip()
         )
 
-        party_row = soup.find("p", text=re.compile("Party:"))
-        if party_row:
-            party = party_row.find_next("p").get_text(strip=True)
-        else:
-            party = "Independent"
+        # The website doesn't list party at all. This
+        # is because most (maybe all but a couple) are
+        # independent. This value is wrong, but more often right
+        party = "Independent"
 
         councillor = self.add_councillor(
             url,
@@ -42,13 +39,14 @@ class Scraper(HTMLCouncillorScraper):
             party=party,
             division=ward,
         )
-        councillor.email = soup.select_one("article a[href^=mailto]").getText(
-            strip=True
-        )
+        with contextlib.suppress(AttributeError):
+            councillor.email = soup.select_one("h5 a[href^=mailto]").getText(
+                strip=True
+            )
         with contextlib.suppress(TypeError):
             councillor.photo_url = urljoin(
                 self.base_url,
-                soup.select_one("article img")["src"],
+                soup.select_one("figure img")["src"],
             )
 
         return councillor
