@@ -9,7 +9,7 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 class Scraper(HTMLCouncillorScraper):
     base_url = "https://www.warrington.gov.uk/councillors"
     list_page = {
-        "container_css_selector": "div.view-content",
+        "container_css_selector": ".col-lg-9 > div.view-content",
         "councillor_css_selector": "div.views-row",
     }
 
