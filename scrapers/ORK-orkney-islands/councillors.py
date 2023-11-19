@@ -5,13 +5,11 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    base_url = (
-        "https://www.orkney.gov.uk/Council/Councillors/councillors.htm"
-    )
+    base_url = "https://www.orkney.gov.uk/Council/Councillors/councillors.htm"
 
     list_page = {
-        "container_css_selector": "ul.SKNavLevel5",
-        "councillor_css_selector": "li",
+        "container_css_selector": ".contentWrapper",
+        "councillor_css_selector": "td:first-child",
     }
 
     def get_single_councillor(self, councillor_html):
@@ -25,7 +23,7 @@ class Scraper(HTMLCouncillorScraper):
         )
 
         ward = (
-            soup.find("li", text=re.compile("Ward:.*"))
+            soup.find(text=re.compile("Ward:"))
             .get_text(strip=True)
             .replace("Ward:", "")
             .strip()
@@ -47,9 +45,17 @@ class Scraper(HTMLCouncillorScraper):
             party=party,
             division=ward,
         )
-        councillor.email = soup.select_one("a[href^=mailto]")["href"].replace(
-            "mailto:", ""
-        )
+        try:
+            councillor.email = soup.select_one("a[href^=mailto]")[
+                "href"
+            ].replace("mailto:", "")
+        except TypeError:
+            councillor.email = (
+                soup.find(text=re.compile("Email:"))
+                .get_text(strip=True)
+                .replace("Email:", "")
+                .strip()
+            )
         image = soup.select_one("img#pic1")
         if image:
             councillor.photo_url = urljoin(
