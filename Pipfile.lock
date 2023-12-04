@@ -35,20 +35,20 @@
         },
         "boto3": {
             "hashes": [
-                "sha256:85123ba6ccef12f8230bcd85bf730d3c4218e08e3cc4baaa0b3eae094703e77d",
-                "sha256:d038b19cbe29d488133351ee6eb36ee11a0934df8bcbc0892bbeb2c544a327a4"
+                "sha256:4f62fc1c7f3ea2d22917aa0aa07b86f119abd90bed3d815e4b52fb3d84773e15",
+                "sha256:b88f0f305186c5fd41f168e006baa45b7002a33029aec8e5bef373237a172fca"
             ],
             "index": "pypi",
             "markers": "python_version >= '3.7'",
-            "version": "==1.29.3"
+            "version": "==1.33.6"
         },
         "botocore": {
             "hashes": [
-                "sha256:115adb7edf61ad7083fd582ac749b761fa707758bbca94d42e4e6e92940b5d38",
-                "sha256:be622915db1dbf1d6d5ed907633471f9ed8f5399dd3cf333f9dc2b955cd3e80d"
+                "sha256:14282cd432c0683770eee932c43c12bb9ad5730e23755204ad102897c996693a",
+                "sha256:938056bab831829f90e09ecd70dd6b295afd52b1482f5582ee7a11d8243d9661"
             ],
             "markers": "python_version >= '3.7'",
-            "version": "==1.32.3"
+            "version": "==1.33.6"
         },
         "cattrs": {
             "hashes": [
@@ -493,11 +493,11 @@
         },
         "s3transfer": {
             "hashes": [
-                "sha256:10d6923c6359175f264811ef4bf6161a3156ce8e350e705396a7557d6293c33a",
-                "sha256:fd3889a66f5fe17299fe75b82eae6cf722554edca744ca5d5fe308b104883d2e"
+                "sha256:368ac6876a9e9ed91f6bc86581e319be08188dc60d50e0d56308ed5765446283",
+                "sha256:c9e56cbe88b28d8e197cf841f1f0c130f246595e77ae5b5a05b69fe7cb83de76"
             ],
             "markers": "python_version >= '3.7'",
-            "version": "==0.7.0"
+            "version": "==0.8.2"
         },
         "setuptools": {
             "hashes": [
