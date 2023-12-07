@@ -19,7 +19,7 @@ pre-commit = "*"
 [dev-packages]
 pytest-mypy-plugins = "3.0.0"
 pystache = "==0.6.5"
-ruff = "0.1.6"
+ruff = "0.1.7"
 pytest = "==7.4.3"
 pytest-ruff = "*"
 pytest-blockage = "*"
