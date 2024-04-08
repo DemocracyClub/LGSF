@@ -17,10 +17,10 @@ boto3 = "*"
 pre-commit = "*"
 
 [dev-packages]
-pytest-mypy-plugins = "3.0.0"
+pytest-mypy-plugins = "3.1.2"
 pystache = "==0.6.5"
-ruff = "0.1.6"
-pytest = "==7.4.3"
+ruff = "0.3.5"
+pytest = "==8.1.1"
 pytest-ruff = "*"
 pytest-blockage = "*"
 ipdb = "0.13.13"
