@@ -1,0 +1,14 @@
+{
+    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/BUC/2020-04-01/",
+    "official_identifier": "BUC",
+    "organisation_type": "local-authority",
+    "organisation_subtype": "UA",
+    "official_name": "Buckinghamshire Council",
+    "common_name": "Buckinghamshire",
+    "slug": "buckinghamshire",
+    "territory_code": "ENG",
+    "election_name": "Buckinghamshire local election",
+    "start_date": "2020-04-01",
+    "end_date": null,
+    "created": "2020-04-01T00:00:00Z"
+}
