@@ -16,7 +16,6 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
     tags = []
     class_tags = []
     ext = "html"
-    verify_requests = True
     scraper_object_type = "Councillors"
 
     def __init__(self, options, console):
@@ -216,9 +215,7 @@ class ModGovCouncillorScraper(BaseCouncillorScraper):
         return "{}/mgWebService.asmx/GetCouncillorsByWard".format(self.base_url)
 
     def get_councillors(self):
-        req = self.get(
-            self.format_councillor_api_url(), verify=self.verify_requests
-        )
+        req = self.get(self.format_councillor_api_url())
         soup = BeautifulSoup(req.text, "lxml")
         return soup.findAll("ward")
 

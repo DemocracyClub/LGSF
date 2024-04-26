@@ -5,13 +5,13 @@ import os
 import traceback
 
 import boto3
+import httpx
+import requests
 from botocore.exceptions import ClientError
 from dateutil import parser
 
 # import requests_cache
 # requests_cache.install_cache("scraper_cache", expire_after=60 * 60 * 24)
-from requests import Session
-
 from lgsf.path_utils import data_abs_path
 
 from ..aws_lambda.run_log import RunLog
@@ -25,14 +25,22 @@ class ScraperBase(metaclass=abc.ABCMeta):
 
     disabled = False
     extra_headers = {}
+    http_lib = "httpx"
+    verify_requests = True
 
     def __init__(self, options, console):
         self.options = options
         self.console = console
         self.check()
-        self.requests_session = Session()
+        if self.http_lib == "requests":
+            self.http_client = requests.Session()
+            self.http_client.verify = self.verify_requests
+        else:
+            self.http_client = httpx.Client(
+                verify=self.verify_requests, follow_redirects=True
+            )
 
-    def get(self, url, verify=True, extra_headers=None):
+    def get(self, url, extra_headers=None):
         """
         Wraps `requests.get`
         """
@@ -44,9 +52,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
         if extra_headers:
             headers.update(extra_headers)
 
-        response = self.requests_session.get(
-            url, headers=headers, verify=verify
-        )
+        response = self.http_client.get(url, headers=headers)
         response.raise_for_status()
         return response
 
