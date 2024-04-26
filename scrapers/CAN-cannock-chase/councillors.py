@@ -9,8 +9,8 @@ class Scraper(HTMLCouncillorScraper):
     base_url = "https://www.cannockchasedc.gov.uk/council/about-council/your-councillors"
 
     list_page = {
-        "container_css_selector": "article.node-councillor-landing-page",
-        "councillor_css_selector": ".councillor_more_med",
+        "container_css_selector": "#block-views-block-councillors-block-1",
+        "councillor_css_selector": ".all-container",
     }
 
     def get_single_councillor(self, councillor_html):
@@ -19,17 +19,13 @@ class Scraper(HTMLCouncillorScraper):
             vacant = councillor_html.find("a", href=re.compile("/vacant-seat"))
             if vacant:
                 raise SkipCouncillorException("Vacancy")
-        url = urljoin(self.base_url, link["href"])
+        url = urljoin(self.base_url, link["href"].strip())
 
         soup = self.get_page(url)
 
         name = soup.h1.get_text(strip=True).replace("Councillor ", "")
-        party = soup.select_one(".councillor_party").get_text(strip=True)
-        division = (
-            soup.find("div", text=re.compile("Ward:"))
-            .find_next("div", {"class": "desc"})
-            .get_text(strip=True)
-        )
+        party = soup.find(text="Party:").find_next("p").get_text(strip=True)
+        division = soup.find(text="Ward:").find_next("p").get_text(strip=True)
 
         councillor = self.add_councillor(
             url,
@@ -38,8 +34,12 @@ class Scraper(HTMLCouncillorScraper):
             party=party,
             division=division,
         )
-        councillor.email = soup.select_one("div.email").getText(strip=True)
-        councillor.photo_url = soup.select_one("div.councillor_image img")[
-            "src"
-        ]
+        try:
+            councillor.email = soup.select("a[href^=mailto]")[0]["href"].split(
+                ":"
+            )[1]
+
+        except IndexError:
+            pass
+        councillor.photo_url = soup.select_one("div.council-img img")["src"]
         return councillor
