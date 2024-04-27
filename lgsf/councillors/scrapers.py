@@ -294,7 +294,7 @@ class CMISCouncillorScraper(BaseCouncillorScraper):
         name = list_page_html.find("div", {"class": "NameLink"}).getText(
             strip=True
         )
-        if "Vacancy " in name:
+        if "Vacancy" in name:
             raise SkipCouncillorException("Vacancy")
         division = list_page_html.find(text=self.division_text).next.strip()
         party = self.get_party_name(list_page_html)
