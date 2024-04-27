@@ -138,9 +138,7 @@ class HTMLCouncillorScraper(BaseCouncillorScraper):
     class_tags = ["html"]
 
     def get_page(self, url):
-        page = self.get(
-            url, verify=self.verify_requests, extra_headers=self.extra_headers
-        ).text
+        page = self.get(url, extra_headers=self.extra_headers).text
         return BeautifulSoup(page, "html5lib")
 
     def get_list_container(self):
@@ -273,7 +271,6 @@ class CMISCouncillorScraper(BaseCouncillorScraper):
     def get_councillors(self):
         req = self.get(
             self.base_url,
-            verify=self.verify_requests,
             extra_headers=self.extra_headers,
         )
         soup = BeautifulSoup(req.text, "lxml")
