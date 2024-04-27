@@ -52,7 +52,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
         if extra_headers:
             headers.update(extra_headers)
 
-        response = self.http_client.get(url, headers=headers)
+        response = self.http_client.get(url, headers=headers, timeout=30)
         response.raise_for_status()
         return response
 
