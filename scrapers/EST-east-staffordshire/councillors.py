@@ -13,16 +13,16 @@ class Scraper(HTMLCouncillorScraper):
 
     def get_single_councillor(self, councillor_html):
         url = urljoin(self.base_url, councillor_html.a["href"])
-        soup = self.get_page(url).select_one("#content")
+        soup = self.get_page(url).select_one("main")
 
         name = soup.h1.get_text(strip=True)
         division = (
-            soup.find("h3", text=re.compile("Ward representation"))
+            soup.find("div", text=re.compile("Ward representation"))
             .find_next("li")
             .get_text(strip=True)
         )
         party = (
-            soup.find("h3", text=re.compile("Party"))
+            soup.find("div", text=re.compile("Party"))
             .find_next("li")
             .get_text(strip=True)
         )

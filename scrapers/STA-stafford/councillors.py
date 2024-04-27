@@ -8,7 +8,7 @@ class Scraper(HTMLCouncillorScraper):
     base_url = "https://www.staffordbc.gov.uk/DemServCouncillors"
 
     list_page = {
-        "container_css_selector": ".demserv-councillor-list",
+        "container_css_selector": ".table-responsive",
         "councillor_css_selector": "tbody tr",
     }
 
@@ -27,7 +27,7 @@ class Scraper(HTMLCouncillorScraper):
             .get_text(strip=True)
         )
 
-        party = soup.select_one("table#single-councillor-party td").get_text(
+        party = councillor_html.select("td")[4].get_text(
             strip=True
         )
 

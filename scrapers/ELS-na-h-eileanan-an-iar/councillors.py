@@ -2,6 +2,7 @@ import contextlib
 import re
 from urllib.parse import urljoin
 
+from lgsf.councillors import SkipCouncillorException
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
@@ -15,13 +16,14 @@ class Scraper(HTMLCouncillorScraper):
     }
 
     def get_single_councillor(self, councillor_html):
+        if "Related Documents" in councillor_html.get_text(strip=True):
+            raise SkipCouncillorException()
         url = urljoin(self.base_url, councillor_html.a["href"])
         soup = self.get_page(url)
 
         name = councillor_html.get_text(strip=True).replace("Councillor ", "")
-
         ward = (
-            soup.find("h5", text=re.compile("WARD [0-9]+"))
+            soup.find("h5", text=re.compile("Ward [0-9]+", re.I))
             .get_text(strip=True)
             .split(":")[-1]
             .strip()

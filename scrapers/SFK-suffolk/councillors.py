@@ -1,3 +1,5 @@
+from urllib.parse import urljoin
+
 from bs4 import BeautifulSoup
 
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
@@ -8,22 +10,18 @@ class Scraper(HTMLCouncillorScraper):
 
     list_page = {
         "container_css_selector": ".results",
-        "councillor_css_selector": ".councillor-row",
+        "councillor_css_selector": ".result",
     }
 
     def get_single_councillor(self, councillor_html):
-        url = "https://www.suffolk.gov.uk{}".format(
-            councillor_html.find_all("a")[1]["href"]
-        )
+        url = urljoin(self.base_url, councillor_html.select_one("a")["href"])
 
         identifier = url.rstrip("/").split("/")[-1]
         name = councillor_html.find_all("a")[0].text.strip()
-        division = (
-            councillor_html.find_all("p")[0].text.strip().split(":")[1].strip()
+        division = councillor_html.select_one(".division .value").get_text(
+            strip=True
         )
-        party = (
-            councillor_html.find_all("p")[1].text.strip().split(":")[1].strip()
-        )
+        party = councillor_html.select_one(".party .value").get_text(strip=True)
 
         councillor = self.add_councillor(
             url,
@@ -34,10 +32,11 @@ class Scraper(HTMLCouncillorScraper):
         )
         req = self.get(url)
         soup = BeautifulSoup(req.text, "lxml")
-        councillor.email = (
-            soup.find(text="Email").findNext("p").getText(strip=True)
+        councillor.email = soup.select_one("a[href^=mailto]")["href"].replace(
+            "mailto:", ""
         )
-        councillor.photo_url = soup.find("img", {"class": "img-responsive"})[
+
+        councillor.photo_url = soup.select_one(".councillor__profile img")[
             "src"
         ]
         return councillor

@@ -17,7 +17,7 @@ class Scraper(HTMLCouncillorScraper):
         tgt = soup.find("input", {"name": "tgt"})["value"]
         next_page = 1
         while next_page:
-            results = self.requests_session.post(
+            results = self.http_client.post(
                 "https://www.chelmsford.gov.uk/api/directories/search",
                 data={"drc": drc, "tgt": tgt, "page": next_page},
             )

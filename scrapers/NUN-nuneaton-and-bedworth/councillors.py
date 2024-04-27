@@ -5,11 +5,11 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.nuneatonandbedworth.gov.uk/councillors/name"
+    base_url = "https://www.nuneatonandbedworth.gov.uk/councillors"
 
     list_page = {
-        "container_css_selector": "ul.item-list--councillors",
-        "councillor_css_selector": "li.councillor",
+        "container_css_selector": "ul.list--listing",
+        "councillor_css_selector": "article.listing",
     }
 
     def get_single_councillor(self, councillor_html):
@@ -17,14 +17,14 @@ class Scraper(HTMLCouncillorScraper):
         soup = self.get_page(url)
 
         name = (
-            soup.select_one("article h2")
+            soup.select_one(".page__heading-container h1")
             .get_text(strip=True)
             .replace("Councillor ", "")
         )
 
         ward = (
             soup.find("strong", text=re.compile("Ward:"))
-            .find_parent("li")
+            .find_parent("p")
             .get_text(strip=True)
             .replace("Ward:", "")
             .strip()
@@ -32,7 +32,7 @@ class Scraper(HTMLCouncillorScraper):
 
         party = (
             soup.find("strong", text=re.compile("Party:"))
-            .find_parent("li")
+            .find_parent("p")
             .get_text(strip=True)
             .replace("Party:", "")
             .strip()
@@ -46,9 +46,9 @@ class Scraper(HTMLCouncillorScraper):
             division=ward,
         )
         councillor.email = soup.select_one(
-            ".callout--councillor a[href^=mailto]"
+            "a[href^=mailto]"
         )["href"].replace("mailto:", "")
-        image = soup.select_one(".councillor__image img")
+        image = soup.select_one(".image--feature")
         if image:
             councillor.photo_url = urljoin(
                 self.base_url,

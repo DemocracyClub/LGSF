@@ -6,10 +6,10 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.lisburncastlereagh.gov.uk/council/elected-members"
+    base_url = "https://www.lisburncastlereagh.gov.uk/en/council-and-performance/councillors-and-committees"
     list_page = {
-        "container_css_selector": ".page-content-section",
-        "councillor_css_selector": ".member-search",
+        "container_css_selector": "#main-content",
+        "councillor_css_selector": ".councillor-card",
     }
 
     def get_single_councillor(self, councillor_html):
@@ -17,24 +17,24 @@ class Scraper(HTMLCouncillorScraper):
         url = urljoin(self.base_url, councillor_url)
         soup = self.get_page(url)
         name = soup.h1.get_text(strip=True)
-
-        party = (
-            soup.find("strong", text=re.compile("Party:"))
-            .find_parent("p")
-            .get_text(strip=True)
-            .replace("Party:", "")
-        )
+        try:
+            party = (
+                soup.find("dt", text=re.compile("Political Party"))
+                .find_next("dd")
+                .get_text(strip=True)
+            )
+        except AttributeError:
+            party = "Independent"
         division = (
-            soup.find("strong", text=re.compile("District Electoral Area:"))
-            .find_parent("p")
+            soup.find("dt", text=re.compile("District Electoral Area"))
+            .find_next("dd")
             .get_text(strip=True)
-            .replace("District Electoral Area:", "")
         )
 
         councillor = self.add_councillor(
             url, identifier=url, name=name, party=party, division=division
         )
-        container = soup.select_one(".page-content-section")
+        container = soup.select_one(".journal-content-article ")
 
         councillor.email = container.select_one("a[href^=mailto]")[
             "href"

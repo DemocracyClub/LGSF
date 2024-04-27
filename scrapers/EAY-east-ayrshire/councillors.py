@@ -19,7 +19,7 @@ class Scraper(HTMLCouncillorScraper):
 
         content_box = (
             soup.find("span", text=re.compile("Contact Information"))
-            .find_parent()
+            .find_parent("div")
             .get_text(strip=True, separator="\n")
             .splitlines()
         )

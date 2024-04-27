@@ -1,34 +1,32 @@
 import re
 from urllib.parse import urljoin
 
+from lgsf.councillors import SkipCouncillorException
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.molevalley.gov.uk/home/council/councillors/who-are-your-councillors"
+    base_url = "https://www.molevalley.gov.uk/councillors-decision-making/who-are-your-councillors/"
     verify_requests = False
 
     list_page = {
-        "container_css_selector": "table.w3-table-all",
-        "councillor_css_selector": "tr",
+        "container_css_selector": ".contentcontainer",
+        "councillor_css_selector": ".pt-cv-content-item",
     }
 
     def get_single_councillor(self, councillor_html):
         url = urljoin(self.base_url, councillor_html.a["href"])
         soup = self.get_page(url)
 
-        name = soup.select_one("h1").get_text(strip=True).replace("Cllr ", "")
+        name = soup.select_one(".contentcontainer h2").get_text(strip=True).replace("Cllr ", "")
 
-        ward = (
-            soup.find("label", text=re.compile("Ward"))
-            .find_next("div")
-            .get_text(strip=True)
-            .strip()
-            .title()
-        )
+        if "Vacant" in name:
+            raise SkipCouncillorException("Vacant")
+
+        ward = councillor_html.select_one(".pt-cv-ctf-ward").get_text(strip=True)
 
         party = (
-            soup.select_one(".field--name-field-political-party")
+            soup.select(".contentcontainer p")[1]
             .get_text(strip=True)
             .replace(" Member", "")
             .strip()
@@ -42,7 +40,7 @@ class Scraper(HTMLCouncillorScraper):
             division=ward,
         )
         councillor.email = soup.select_one(
-            ".field--name-field-contact-email a[href^=mailto]"
+            ".bgcontainer a[href^=mailto]"
         ).get_text(strip=True)
         image = soup.select_one("article img")
         if image:

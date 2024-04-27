@@ -1,6 +1,7 @@
 import re
 from urllib.parse import urljoin
 
+from lgsf.councillors import SkipCouncillorException
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
@@ -21,6 +22,9 @@ class Scraper(HTMLCouncillorScraper):
             .get_text(strip=True)
             .replace("Councillor ", "")
         )
+
+        if name == "Vacant Vacant":
+            raise SkipCouncillorException("Vacant")
 
         ward = (
             soup.find("strong", text=re.compile("Ward:"))
