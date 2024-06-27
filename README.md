@@ -8,7 +8,7 @@ wanted to turn government websites in to open data would look like.
 
 Ideas:
 
-1. Each council has a folder/package that contains contains scrapers.
+1. Each council has a folder/package that contains scrapers.
 
 2. There are scraper classes for _types_ of thing that might want scraping,
 like councillors
@@ -18,11 +18,11 @@ like councillors
 `Councillor` objects. The `Councillor` objects know how to be saved, cleaned,
 etc.
 
-4. Raw data is scraped and normalised in to a simple structure with little
-processing of the values. The data is processes later, for example to match
+4. Raw data is scraped and normalised into a simple structure with little
+processing of the values. The data may be processed later, for example to match
 party names to identifiers.
 
-5. Scrapers for common CMSs exist, making sub-classing on of them easy. All
+5. Scrapers for common CMSs exist, making sub-classing of them easy. All
 that should be needed is the base URL, if a CMS is known and a scraper class
 exists for it.
 
@@ -149,7 +149,7 @@ All that should be required is a `base_url`. This normally ends in
 #### ModGovCouncillorScraper
 
 Similar to the CMIS class, this scrapes ModernGov URLs. ModernGov sites have
-URLs that contain something like `mgMemberIndex.aspx `. If `mg` is in the URL,
+URLs that contain something like `mgMemberIndex.aspx`. If `mg` is in the URL,
 it’s likely it’s a ModGov site. You can test this by looking for the WDSL page.
 
 If the URL with councillors on is
@@ -182,9 +182,9 @@ the next councillor.
 
 ### Councillor objects
 
-All scrapers in some way need to make a set councillor objects.
-`CMISCouncillorScraper` and `ModGovCouncillorScraper ` handle this
-automatically, but the `HTMLCouncillorScraper` and `BaseCouncillorScraper `
+All scrapers in some way need to make a set of councillor objects.
+`CMISCouncillorScraper` and `ModGovCouncillorScraper` handle this
+automatically, but the `HTMLCouncillorScraper` and `BaseCouncillorScraper`
 don’t.
 
 Councillor objects require a `url`, `identifier`, `name`, `party` and
