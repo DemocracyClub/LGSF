@@ -14,15 +14,15 @@ retry2 = "*"
 rich = "*"
 boto3 = "*"
 pre-commit = "*"
-certifi = "==2024.2.2"
+certifi = "==2024.6.2"
 requests = {extras = ["security"], version = "*"}
 httpx = "*"
 
 [dev-packages]
 pytest-mypy-plugins = "3.1.2"
 pystache = "==0.6.5"
-ruff = "0.4.2"
-pytest = "==8.1.1"
+ruff = "0.5.0"
+pytest = "==8.2.2"
 pytest-ruff = "*"
 pytest-blockage = "*"
 ipdb = "0.13.13"
