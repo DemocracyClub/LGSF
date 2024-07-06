@@ -14,7 +14,7 @@ retry2 = "*"
 rich = "*"
 boto3 = "*"
 pre-commit = "*"
-certifi = "==2024.2.2"
+certifi = "==2024.7.4"
 requests = {extras = ["security"], version = "*"}
 httpx = "*"
 
