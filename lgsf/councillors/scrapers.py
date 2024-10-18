@@ -55,6 +55,8 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
     def run(self, run_log: RunLog):
         if self.options.get("aws_lambda"):
             self.delete_data_if_exists()
+        else:
+            self.clean_data_dir()
 
         for councillor_html in self.get_councillors():
             try:
@@ -198,6 +200,8 @@ class ModGovCouncillorScraper(BaseCouncillorScraper):
     def run(self, run_log: RunLog):
         if self.options.get("aws_lambda"):
             self.delete_data_if_exists()
+        else:
+            self.clean_data_dir()
         wards = self.get_councillors()
         for ward in wards:
             for councillor_xml in ward.find_all("councillor"):

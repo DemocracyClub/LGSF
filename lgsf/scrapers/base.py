@@ -2,6 +2,7 @@ import abc
 import datetime
 import json
 import os
+import shutil
 import traceback
 
 import boto3
@@ -32,6 +33,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
         self.options = options
         self.console = console
         self.check()
+        self.root_dir_name = data_abs_path(self.options["council"])
         if self.http_lib == "requests":
             self.http_client = requests.Session()
             self.http_client.verify = self.verify_requests
@@ -107,9 +109,9 @@ class ScraperBase(metaclass=abc.ABCMeta):
                 self._set_error(tb)
 
     def _save_file(self, dir_name, file_name, content):
-        dir_name = data_abs_path(self.options["council"], dir_name)
-        os.makedirs(dir_name, exist_ok=True)
-        file_name = os.path.join(dir_name, file_name)
+        full_path = os.path.join(self.root_dir_name, dir_name)
+        os.makedirs(full_path, exist_ok=True)
+        file_name = os.path.join(full_path, file_name)
         with open(file_name, "w") as f:
             f.write(content)
 
@@ -119,6 +121,10 @@ class ScraperBase(metaclass=abc.ABCMeta):
     def save_json(self, obj):
         file_name = "{}.json".format(obj.as_file_name())
         self._save_file("json", file_name, obj.as_json())
+
+    def clean_data_dir(self):
+        shutil.rmtree(self.root_dir_name)
+
 
 
 class CodeCommitMixin:
