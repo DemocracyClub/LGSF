@@ -2,6 +2,7 @@ import json
 import re
 from urllib.parse import urljoin
 
+from lgsf.councillors import SkipCouncillorException
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
@@ -21,6 +22,8 @@ class Scraper(HTMLCouncillorScraper):
 
 
         name = schema_json["name"]
+        if name == "Vacant":
+            raise SkipCouncillorException
 
         party = schema_json["memberOf"]
         ward = (

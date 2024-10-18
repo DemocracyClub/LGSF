@@ -1,3 +1,4 @@
+from lgsf.councillors import SkipCouncillorException
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
@@ -24,6 +25,8 @@ class Scraper(HTMLCouncillorScraper):
         url = councillor_html.select_one(".item__link")["href"]
         soup = self.get_page(url)
         name = soup.h1.get_text(strip=True).replace("Councillor ", "")
+        if name == "Vacant":
+            raise SkipCouncillorException
         intro = soup.select_one(".a-intro").get_text(strip=True)
 
         division = intro.split("is a representative of ")[-1].replace(

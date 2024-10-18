@@ -18,7 +18,7 @@ class Scraper(HTMLCouncillorScraper):
         name = councillor_html.select_one("a").get_text(strip=True)
 
         content_box = (
-            soup.find("span", text=re.compile("Contact Information"))
+            soup.select_one("article.councillor-profile")
             .find_parent("div")
             .get_text(strip=True, separator="\n")
             .splitlines()

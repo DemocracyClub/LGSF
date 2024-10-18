@@ -6,7 +6,7 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.glasgow.gov.uk/councillorsandcommittees/allMembers.asp?sort=0&page=0&rec=100"
+    base_url = "https://onlineservices.glasgow.gov.uk/councillorsandcommittees/allMembers.asp?sort=0&page=0&rec=100"
     list_page = {
         "container_css_selector": ".resultsNew",
         "councillor_css_selector": "tr",

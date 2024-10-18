@@ -30,8 +30,11 @@ class Scraper(HTMLCouncillorScraper):
         )
         email = soup.select_one(".views-field-field-email-link")
         if email:
-            email = email.a["href"]
-            email = email.split("=")[-1].replace("%40", "@")
+            if email.a:
+                email = email.a["href"]
+                email = email.split("=")[-1].replace("%40", "@")
+            else:
+                email = email.get_text(strip=True).replace("Email:", "")
             councillor.email = email
         photo_element = soup.select_one(".views-field-field-image img")
         if photo_element:

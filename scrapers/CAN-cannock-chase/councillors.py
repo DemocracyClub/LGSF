@@ -9,12 +9,12 @@ class Scraper(HTMLCouncillorScraper):
     base_url = "https://www.cannockchasedc.gov.uk/council/about-council/your-councillors"
 
     list_page = {
-        "container_css_selector": "#block-views-block-councillors-block-1",
+        "container_css_selector": ".all-councillors",
         "councillor_css_selector": ".all-container",
     }
 
     def get_single_councillor(self, councillor_html):
-        link = councillor_html.find("a", href=re.compile("/council/"))
+        link = councillor_html.find("a")
         if not link:
             vacant = councillor_html.find("a", href=re.compile("/vacant-seat"))
             if vacant:

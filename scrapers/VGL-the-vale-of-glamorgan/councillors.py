@@ -28,14 +28,10 @@ class Scraper(HTMLCouncillorScraper):
         councillor = self.add_councillor(
             url, identifier=url, name=name, party=party, division=division
         )
-        print(soup.select_one("a[href^=mailto]"))
         email_link = soup.select_one("a[href^=mailto]")
+        if not email_link:
+            email_link = soup.select_one("#S4_EmailPlaceholder")
         if email_link:
             councillor.email = email_link.get_text(strip=True)
-        else:
-            email_text = soup.select_one("#S4_EmailPlaceholder").get_text(
-                strip=True
-            )
-            councillor.email = email_text
         councillor.photo_url = councillor_html.select_one("img")["src"]
         return councillor
