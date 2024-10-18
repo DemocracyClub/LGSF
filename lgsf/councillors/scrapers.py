@@ -34,6 +34,10 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
     def add_councillor(
         self, url, identifier: str, name: str, division: str, party: str
     ):
+        assert division, f"No Division for {url}"
+        assert name, f"No Name for {url}"
+        assert party, f"No Party for {url}"
+        assert identifier, f"No Identifier for {url}"
         councillor = CouncillorBase(
             url,
             identifier=identifier,
