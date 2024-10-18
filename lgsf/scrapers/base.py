@@ -28,6 +28,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
     extra_headers = {}
     http_lib = "httpx"
     verify_requests = True
+    timeout = 10
 
     def __init__(self, options, console):
         self.options = options
@@ -53,8 +54,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
 
         if extra_headers:
             headers.update(extra_headers)
-
-        response = self.http_client.get(url, headers=headers, timeout=30)
+        response = self.http_client.get(url, headers=headers, timeout=self.timeout)
         response.raise_for_status()
         return response
 
