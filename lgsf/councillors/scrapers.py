@@ -221,7 +221,8 @@ class ModGovCouncillorScraper(BaseCouncillorScraper):
         return "{}/mgWebService.asmx/GetCouncillorsByWard".format(self.base_url)
 
     def get_councillors(self):
-        req = self.get(self.format_councillor_api_url())
+        req = self.get(self.format_councillor_api_url(), extra_headers=self.extra_headers)
+        req.raise_for_status()
         soup = BeautifulSoup(req.text, "lxml")
         return soup.findAll("ward")
 
