@@ -31,6 +31,23 @@ class CouncillorBase:
     def as_file_name(self):
         return "{}-{}".format(slugify(self.identifier), slugify(self.name))
 
+    @classmethod
+    def from_file_name(cls, filename: Path):
+        data = json.load(filename.open())
+        email = data.pop("email", None)
+        photo_url = data.pop("photo_url", None)
+        standing_down = data.pop("standing_down", None)
+        for k in list(data.keys()):
+            if k.startswith("raw_"):
+                data[k[4:]] = data.pop(k)
+
+        klass = cls(**data)
+        if photo_url:
+            klass.photo_url = photo_url
+        if email:
+            klass.email = email
+        return klass
+
     def as_csv(self):
         out = csv.StringIO()
         out_csv = csv.writer(out)

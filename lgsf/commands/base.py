@@ -280,7 +280,6 @@ class PerCouncilCommandBase(CommandBase):
             for council in self.options["council"].split(","):
                 council = Council(council.strip().split("-")[0].upper())
                 councils.append(council)
-
         if self.options["exclude_missing"]:
             missing_councils = {c["code"] for c in self.missing()}
             councils = list(set(councils) - missing_councils)
