@@ -16,7 +16,12 @@ def _abs_path(base_dir, code):
     abs_path_root = os.path.join(abs_path, code.upper())
     if os.path.exists(abs_path_root):
         return (abs_path_root, code)
-    for file_path in glob.glob("{}/*".format(base_dir)):
+    for file_path in glob.glob(f"{base_dir}/{code.upper()}-*"):
+        file_name = os.path.split(file_path)[-1]
+        parts = file_name.split("-")
+        if parts[0] == code:
+            return (file_path, parts[0])
+    for file_path in glob.glob(f"{base_dir}/*"):
         file_name = os.path.split(file_path)[-1]
         if re.match("{}-[a-z\-]+".format(code.upper()), file_name):
             return (file_path, code)
