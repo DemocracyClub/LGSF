@@ -10,6 +10,7 @@ from lgsf.aws_lambda.run_log import RunLog
 from lgsf.councillors import CouncillorBase
 from lgsf.councillors.exceptions import SkipCouncillorException
 from lgsf.scrapers import CodeCommitMixin, ScraperBase
+from lgsf.storage import CouncillorStorage, CouncillorData
 
 
 class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
@@ -22,6 +23,9 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
         super().__init__(options, console)
         self.councillors = set()
         self.new_data = True
+        self.councillor_storage = CouncillorStorage(
+            self.file_storage.config
+        )
 
     @abc.abstractmethod
     def get_councillors(self):
@@ -39,7 +43,7 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
         assert party, f"No Party for {url}"
         assert identifier, f"No Identifier for {url}"
         councillor = CouncillorBase(
-            url,
+            url=url,
             identifier=identifier,
             name=name,
             division=division,
@@ -66,7 +70,6 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
                 continue
 
         self.aws_tidy_up(run_log)
-
         self.report()
 
     def prettify_councillor_str(self, councillor_raw_str):
@@ -92,7 +95,6 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
             self.save_councillor(formatted_councillor_raw_str, councillor)
 
     def stage_councillor(self, councillor_data_string, councillor):
-        self.options["council"]
         json_file_path = (
             f"{self.scraper_object_type}/json/{councillor.as_file_name()}.json"
         )
@@ -115,10 +117,10 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
         )
 
     def save_councillor(self, raw_content, councillor_obj):
-        assert (
-            type(councillor_obj) == CouncillorBase
+        assert isinstance(
+            councillor_obj, (CouncillorBase, CouncillorData)
         ), "Scrapers must return a councillor object"
-        file_name = "{}.{}".format(councillor_obj.as_file_name(), self.ext)
+        file_name = f"{councillor_obj.as_file_name()}.{self.ext}"
         self.save_raw(file_name, raw_content)
         self.save_json(councillor_obj)
 

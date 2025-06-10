@@ -14,6 +14,7 @@ from dateutil import parser
 # import requests_cache
 # requests_cache.install_cache("scraper_cache", expire_after=60 * 60 * 24)
 from lgsf.path_utils import data_abs_path
+from lgsf.storage import FileSystemStorage, CodeCommitStorage, StorageConfig
 
 from ..aws_lambda.run_log import RunLog
 from .checks import ScraperChecker
@@ -35,6 +36,17 @@ class ScraperBase(metaclass=abc.ABCMeta):
         self.console = console
         self.check()
         self.root_dir_name = data_abs_path(self.options["council"])
+        
+        # Initialize storage backends
+        storage_config = StorageConfig(
+            base_path=self.root_dir_name,
+            council_id=self.options["council"],
+            verbose=self.options.get("verbose", False)
+        )
+        self.file_storage = FileSystemStorage(storage_config)
+        if self.options.get("aws_lambda"):
+            self.codecommit_storage = CodeCommitStorage(storage_config)
+        
         if self.http_lib == "requests":
             self.http_client = requests.Session()
             self.http_client.verify = self.verify_requests
@@ -47,7 +59,6 @@ class ScraperBase(metaclass=abc.ABCMeta):
         """
         Wraps `requests.get`
         """
-
         if self.options.get("verbose"):
             self.console.log(f"Scraping from {url}")
         headers = {"User-Agent": "Scraper/DemocracyClub", "Accept": "*/*"}
@@ -76,25 +87,24 @@ class ScraperBase(metaclass=abc.ABCMeta):
         return os.path.join(dir_name, name)
 
     def _last_run_file_name(self):
-        return self._file_name("_last-run")
+        return "_last-run"
 
     def _error_file_name(self):
-        return self._file_name("error")
+        return "error"
 
     def _set_error(self, tb):
-        with open(self._error_file_name(), "w") as f:
-            traceback.print_tb(tb, file=f)
+        self.file_storage.save(self._error_file_name(), traceback.format_tb(tb))
 
     def _set_last_run(self):
-        file_name = self._last_run_file_name()
-        with open(file_name, "w") as f:
-            f.write(datetime.datetime.now().isoformat())
+        self.file_storage.save(
+            self._last_run_file_name(),
+            datetime.datetime.now().isoformat()
+        )
 
     def _get_last_run(self):
-        file_name = self._last_run_file_name()
-        if os.path.exists(self._last_run_file_name()):
-            with open(file_name, "r") as f:
-                return parser.parse(f.read())
+        content = self.file_storage.load(self._last_run_file_name())
+        if content:
+            return parser.parse(content)
         return None
 
     def __enter__(self):
@@ -116,14 +126,26 @@ class ScraperBase(metaclass=abc.ABCMeta):
             f.write(content)
 
     def save_raw(self, filename, content):
-        self._save_file("raw", filename, content)
+        """Save raw content to storage"""
+        if self.options.get("aws_lambda"):
+            self.codecommit_storage.save(f"raw/{filename}", content)
+        else:
+            self.file_storage.save(f"raw/{filename}", content)
 
     def save_json(self, obj):
-        file_name = "{}.json".format(obj.as_file_name())
-        self._save_file("json", file_name, obj.as_json())
+        """Save JSON content to storage"""
+        file_name = f"{obj.as_file_name()}.json"
+        if self.options.get("aws_lambda"):
+            self.codecommit_storage.save(f"json/{file_name}", obj.as_dict())
+        else:
+            self.file_storage.save(f"json/{file_name}", obj.as_dict())
 
     def clean_data_dir(self):
-        shutil.rmtree(self.root_dir_name)
+        """Clean the data directory"""
+        if self.options.get("aws_lambda"):
+            self.codecommit_storage.delete_existing("")
+        else:
+            self.file_storage.clean_directory("")
 
 
 
