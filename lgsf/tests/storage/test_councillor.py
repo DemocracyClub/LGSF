@@ -4,7 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from lgsf.storage import CouncillorStorage, CouncillorData, StorageConfig
+from lgsf.councillors import CouncillorBase
+from lgsf.storage import CouncillorStorage, StorageConfig
 
 @pytest.fixture
 def temp_dir():
@@ -21,15 +22,16 @@ def storage(temp_dir):
 @pytest.fixture
 def sample_councillor():
     """Create a sample councillor for testing"""
-    return CouncillorData(
+    c = CouncillorBase(
         url="http://example.com/councillor",
         identifier="COUN123",
         name="John Smith",
         party="Labour",
         division="Ward 1",
-        email="john.smith@example.com",
-        photo_url="http://example.com/photo.jpg"
     )
+    c.email = "john.smith@example.com"
+    c.photo_url = "http://example.com/photo.jpg"
+    return c
 
 def test_save_councillor(storage, sample_councillor):
     """Test saving a councillor"""
@@ -77,7 +79,7 @@ def test_get_all_councillors(storage, sample_councillor):
     storage.save("test2.json", sample_councillor)
     councillors = storage.get_all_councillors()
     assert len(councillors) == 2
-    assert all(isinstance(c, CouncillorData) for c in councillors)
+    assert all(isinstance(c, CouncillorBase) for c in councillors)
 
 def test_export_to_csv(storage, sample_councillor, temp_dir):
     """Test exporting councillors to CSV"""
@@ -92,7 +94,7 @@ def test_export_to_csv(storage, sample_councillor, temp_dir):
         assert "COUN123,John Smith,Labour,Ward 1" in content
 
 def test_councillor_data_methods(sample_councillor):
-    """Test CouncillorData methods"""
+    """Test CouncillorBase methods"""
     # Test as_file_name
     assert sample_councillor.as_file_name() == "coun123-john-smith"
     
@@ -114,11 +116,10 @@ def test_councillor_data_methods(sample_councillor):
     
     # Test as_csv
     csv_str = sample_councillor.as_csv()
-    assert "identifier,name,party,division" in csv_str
     assert "COUN123,John Smith,Labour,Ward 1" in csv_str
 
-def test_councillor_data_from_dict():
-    """Test creating CouncillorData from dictionary"""
+def test_councillor_data_from_file_name(tmp_path):
+    """Test creating CouncillorBase from file name"""
     data = {
         "url": "http://example.com/councillor",
         "raw_identifier": "COUN123",
@@ -128,7 +129,10 @@ def test_councillor_data_from_dict():
         "email": "john.smith@example.com",
         "photo_url": "http://example.com/photo.jpg"
     }
-    councillor = CouncillorData.from_dict(data)
+    file_path = tmp_path / "coun123-john-smith.json"
+    with open(file_path, "w") as f:
+        json.dump(data, f)
+    councillor = CouncillorBase.from_file_name(file_path)
     assert councillor.url == data["url"]
     assert councillor.identifier == data["raw_identifier"]
     assert councillor.name == data["raw_name"]

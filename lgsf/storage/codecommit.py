@@ -4,9 +4,9 @@ from typing import Any, Dict, List, Optional
 import boto3
 from botocore.exceptions import ClientError
 
-from .base import CodeCommitStorage, StorageConfig
+from .base import StorageBackend, StorageConfig
 
-class CodeCommitStorage(CodeCommitStorage):
+class CodeCommitStorage(StorageBackend):
     """Storage backend for AWS CodeCommit operations"""
 
     def __init__(self, config: StorageConfig):

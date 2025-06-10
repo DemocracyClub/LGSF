@@ -10,7 +10,8 @@ from lgsf.aws_lambda.run_log import RunLog
 from lgsf.councillors import CouncillorBase
 from lgsf.councillors.exceptions import SkipCouncillorException
 from lgsf.scrapers import CodeCommitMixin, ScraperBase
-from lgsf.storage import CouncillorStorage, CouncillorData
+from lgsf.storage import CouncillorStorage
+from lgsf.storage.factory import get_storage_backend
 
 
 class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
@@ -19,13 +20,16 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
     ext = "html"
     scraper_object_type = "Councillors"
 
-    def __init__(self, options, console):
+    def __init__(self, options, console, storage_backend=None):
         super().__init__(options, console)
         self.councillors = set()
         self.new_data = True
-        self.councillor_storage = CouncillorStorage(
-            self.file_storage.config
-        )
+        config = getattr(self, 'file_storage', None)
+        if config is not None:
+            config = self.file_storage.config
+        else:
+            config = options.get('storage_config')
+        self.storage_backend = storage_backend or get_storage_backend(config)
 
     @abc.abstractmethod
     def get_councillors(self):
@@ -57,18 +61,13 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
         return self.tags + self.class_tags
 
     def run(self, run_log: RunLog):
-        if self.options.get("aws_lambda"):
-            self.delete_data_if_exists()
-        else:
-            self.clean_data_dir()
-
+        self.storage_backend.clean_data_dir()
         for councillor_html in self.get_councillors():
             try:
                 councillor = self.get_single_councillor(councillor_html)
                 self.process_councillor(councillor, councillor_html)
             except SkipCouncillorException:
                 continue
-
         self.aws_tidy_up(run_log)
         self.report()
 
@@ -83,46 +82,7 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
         formatted_councillor_raw_str = self.prettify_councillor_str(
             councillor_raw_str
         )
-
-        if self.options.get("aws_lambda"):
-            # stage...
-            self.stage_councillor(formatted_councillor_raw_str, councillor)
-
-            # Do a batch commit if needed...
-            if len(self.put_files) > 90:
-                self.process_batch()
-        else:
-            self.save_councillor(formatted_councillor_raw_str, councillor)
-
-    def stage_councillor(self, councillor_data_string, councillor):
-        json_file_path = (
-            f"{self.scraper_object_type}/json/{councillor.as_file_name()}.json"
-        )
-        raw_file_path = (
-            f"{self.scraper_object_type}/raw/{councillor.as_file_name()}.html"
-        )
-        self.put_files.extend(
-            [
-                {
-                    "filePath": json_file_path,
-                    "fileContent": bytes(
-                        json.dumps(councillor.as_dict(), indent=4), "utf-8"
-                    ),
-                },
-                {
-                    "filePath": raw_file_path,
-                    "fileContent": bytes(councillor_data_string, "utf-8"),
-                },
-            ]
-        )
-
-    def save_councillor(self, raw_content, councillor_obj):
-        assert isinstance(
-            councillor_obj, (CouncillorBase, CouncillorData)
-        ), "Scrapers must return a councillor object"
-        file_name = f"{councillor_obj.as_file_name()}.{self.ext}"
-        self.save_raw(file_name, raw_content)
-        self.save_json(councillor_obj)
+        self.storage_backend.save_councillor(formatted_councillor_raw_str, councillor)
 
     def report(self):
         if self.options.get("verbose"):
@@ -200,10 +160,7 @@ class ModGovCouncillorScraper(BaseCouncillorScraper):
     ext = "xml"
 
     def run(self, run_log: RunLog):
-        if self.options.get("aws_lambda"):
-            self.delete_data_if_exists()
-        else:
-            self.clean_data_dir()
+        self.storage_backend.clean_data_dir()
         wards = self.get_councillors()
         for ward in wards:
             for councillor_xml in ward.find_all("councillor"):

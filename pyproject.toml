@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lgsf"
+version = "0.1.0"
+authors = [
+    { name = "Democracy Club", email = "symroe@users.noreply.github.com" },
+]
+description = "Local Government Scraper Framework"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "PyGithub", "boto3", "slugify"]
+
+[tool.setuptools]
+packages = ["lgsf"]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::pytest.PytestCollectionWarning:lgsf.tests.councillors.test_scrapers"
+] 

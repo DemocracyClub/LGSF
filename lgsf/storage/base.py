@@ -34,6 +34,7 @@ class StorageBackend(metaclass=abc.ABCMeta):
     def exists(self, path: str) -> bool:
         """Check if content exists at the given path"""
         pass
+<<<<<<< HEAD
 
 class FileSystemStorage(StorageBackend):
     """Storage backend for local file system"""
@@ -46,3 +47,5 @@ class CodeCommitStorage(StorageBackend):
 class CouncillorStorage(StorageBackend):
     """Storage backend for councillor data"""
     pass 
+=======
+>>>>>>> be66fd3 (Add GitHubStorage backend with full test suite and dev dependencies (PyGithub, boto3, slugify))

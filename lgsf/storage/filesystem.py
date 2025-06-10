@@ -2,9 +2,9 @@ import json
 import os
 from typing import Any, Optional
 
-from .base import FileSystemStorage, StorageConfig
+from .base import StorageBackend, StorageConfig
 
-class FileSystemStorage(FileSystemStorage):
+class FileSystemStorage(StorageBackend):
     """Storage backend for local file system operations"""
 
     def __init__(self, config: StorageConfig):
