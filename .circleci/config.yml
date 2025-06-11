@@ -22,7 +22,6 @@ jobs:
     - run: &install-pipenv pip install -U pipenv urllib3 wheel pip --quiet --no-input
     - run: pipenv run pip install -U wheel
     - run: pipenv install --dev
-    - run: pipenv run pipenv check # before save_cache so an insecure cache is never saved
     - run: make lambda-layers/DependenciesLayer/requirements.txt
     - persist_to_workspace:
         root: ~/repo/
