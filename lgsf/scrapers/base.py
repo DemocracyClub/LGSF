@@ -24,13 +24,17 @@ class ScraperBase(metaclass=abc.ABCMeta):
     Base class for a scraper. All scrapers should inherit from this.
     """
 
+    verify_requests = True
+    ext = "html"
+    class_tags = []
+    tags = []
     disabled = False
     extra_headers = {}
+    scraper_object_type = None
     http_lib = "httpx"
-    verify_requests = True
     timeout = 10
 
-    def __init__(self, options, console):
+    def __init__(self, options, console, storage: "lgsf.scrapers.storage.BaseStorage"):
         self.options = options
         self.console = console
         self.check()
@@ -42,6 +46,26 @@ class ScraperBase(metaclass=abc.ABCMeta):
             self.http_client = httpx.Client(
                 verify=self.verify_requests, follow_redirects=True
             )
+        self.storage = storage
+        self.storage.scraper = self
+        if self.options.get("aws_lambda"):
+            self.repository = self.options["council"]
+            self.codecommit_client = boto3.client("codecommit")
+            try:
+                self.codecommit_client.get_repository(
+                    repositoryName=self.repository
+                )
+            except ClientError as error:
+                error_code = error.response["Error"]["Code"]
+                if error_code == "RepositoryDoesNotExistException":
+                    self.create_repo()
+                else:
+                    raise
+            self.put_files = []
+            self.today = datetime.datetime.now().strftime("%Y-%m-%d")
+            self._branch_head = ""
+            self.batch = 1
+            self.log_file_path = f"{self.scraper_object_type}/logbook.json"
 
     def get(self, url, extra_headers=None):
         """
@@ -124,31 +148,6 @@ class ScraperBase(metaclass=abc.ABCMeta):
 
     def clean_data_dir(self):
         shutil.rmtree(self.root_dir_name)
-
-
-
-class CodeCommitMixin:
-    def __init__(self, options, console):
-        super().__init__(options, console)
-
-        if self.options.get("aws_lambda"):
-            self.repository = self.options["council"]
-            self.codecommit_client = boto3.client("codecommit")
-            try:
-                self.codecommit_client.get_repository(
-                    repositoryName=self.repository
-                )
-            except ClientError as error:
-                error_code = error.response["Error"]["Code"]
-                if error_code == "RepositoryDoesNotExistException":
-                    self.create_repo()
-                else:
-                    raise
-            self.put_files = []
-            self.today = datetime.datetime.now().strftime("%Y-%m-%d")
-            self._branch_head = ""
-            self.batch = 1
-            self.log_file_path = f"{self.scraper_object_type}/logbook.json"
 
     @property
     def branch_head(self):
