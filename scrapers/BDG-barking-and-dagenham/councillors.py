@@ -2,6 +2,5 @@ from lgsf.councillors.scrapers import ModGovCouncillorScraper
 
 
 class Scraper(ModGovCouncillorScraper):
-    base_url = "https://modgov.lbbd.gov.uk/internet"
+    base_url = "https://lbbd.moderngov.co.uk/"
     verify_requests = False
-    disabled = True
