@@ -10,8 +10,7 @@ class Scraper(ModGovCouncillorScraper):
         if councillor.identifier == "349":
             raise SkipCouncillorException()
 
-        email = getattr(councillor, "email", None)
+        email = getattr(councillor, "email", "")
         if "eastbourne.gov.uk" in email:
             return councillor
-        else:
-            raise SkipCouncillorException()
+        raise SkipCouncillorException()

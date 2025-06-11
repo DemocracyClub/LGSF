@@ -2,4 +2,4 @@ from lgsf.councillors.scrapers import ModGovCouncillorScraper
 
 
 class Scraper(ModGovCouncillorScraper):
-    base_url = "http://applications.huntingdonshire.gov.uk/moderngov/"
+    base_url = "https://democracy.huntingdonshire.gov.uk/moderngov/"

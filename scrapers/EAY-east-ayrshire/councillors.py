@@ -1,8 +1,6 @@
 import re
 from urllib.parse import urljoin
 
-from bs4 import BeautifulSoup
-
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
@@ -20,8 +18,8 @@ class Scraper(HTMLCouncillorScraper):
         name = councillor_html.select_one("a").get_text(strip=True)
 
         content_box = (
-            soup.find("span", text=re.compile("Contact Information"))
-            .find_parent()
+            soup.select_one("article.councillor-profile")
+            .find_parent("div")
             .get_text(strip=True, separator="\n")
             .splitlines()
         )
@@ -37,7 +35,8 @@ class Scraper(HTMLCouncillorScraper):
         )
         councillor.email = soup.select_one("a[href^=mailto]")["href"]
         councillor.photo_url = urljoin(
-            self.base_url, soup.find("img", src=re.compile("Councillors"))["src"]
+            self.base_url,
+            soup.find("img", src=re.compile("Councillors"))["src"],
         )
 
         return councillor

@@ -1,6 +1,6 @@
 {
-    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/west-northamptonshire/2020-05-07/",
-    "official_identifier": "west-northamptonshire",
+    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WNT/2020-05-07/",
+    "official_identifier": "WNT",
     "organisation_type": "local-authority",
     "organisation_subtype": "UA",
     "official_name": "West Northamptonshire Council",

@@ -1,7 +1,6 @@
-import os
+import csv
 import glob
 import json
-import csv
 import sys
 
 field_names = [

@@ -1,15 +1,21 @@
 import abc
+import contextlib
 import json
+from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup, Tag
 from dateutil.parser import parse
 
+from lgsf.aws_lambda.run_log import RunLog
+from lgsf.councillors import CouncillorBase
 from lgsf.councillors.exceptions import SkipCouncillorException
 from lgsf.scrapers import ScraperBase
-from lgsf.councillors import CouncillorBase
 
 
 class BaseCouncillorScraper(ScraperBase):
+    tags = []
+    class_tags = []
+    ext = "html"
     scraper_object_type = "Councillors"
 
     def __init__(self, *args, **kwargs):
@@ -25,8 +31,20 @@ class BaseCouncillorScraper(ScraperBase):
     def get_single_councillor(self, councillor_html):
         pass
 
-    def add_councillor(self, url, **kwargs):
-        councillor = CouncillorBase(url, **kwargs)
+    def add_councillor(
+        self, url, identifier: str, name: str, division: str, party: str
+    ):
+        assert division, f"No Division for {url}"
+        assert name, f"No Name for {url}"
+        assert party, f"No Party for {url}"
+        assert identifier, f"No Identifier for {url}"
+        councillor = CouncillorBase(
+            url,
+            identifier=identifier,
+            name=name,
+            division=division,
+            party=party,
+        )
         self.councillors.add(councillor)
         return councillor
 
@@ -34,7 +52,7 @@ class BaseCouncillorScraper(ScraperBase):
     def get_tags(self):
         return self.tags + self.class_tags
 
-    def run(self, run_log: "lgsf.aws_lambda.RunLog"):
+    def run(self, run_log: RunLog):
         self.storage.pre_run()
 
         for councillor_html in self.get_councillors():
@@ -53,11 +71,13 @@ class BaseCouncillorScraper(ScraperBase):
             return json.dumps(councillor_raw_str, indent=4)
         if isinstance(councillor_raw_str, Tag):
             return councillor_raw_str.prettify()
+        return None
 
     def process_councillor(
         self, councillor_obj: CouncillorBase, councillor_raw_str: str
     ):
         formatted_councillor_raw_str = self.prettify_councillor_str(councillor_raw_str)
+
         assert (
             type(councillor_obj) == CouncillorBase
         ), "Scrapers must return a councillor object"
@@ -68,7 +88,9 @@ class BaseCouncillorScraper(ScraperBase):
         if self.options.get("verbose"):
             if len(self.councillors) < 10:
                 raise ValueError(
-                    "Not many councillors found ({})".format(len(self.councillors))
+                    "Not many councillors found ({})".format(
+                        len(self.councillors)
+                    )
                 )
             if self.new_data:
                 self.console.log(
@@ -84,7 +106,7 @@ class HTMLCouncillorScraper(BaseCouncillorScraper):
     class_tags = ["html"]
 
     def get_page(self, url):
-        page = self.get(url).text
+        page = self.get(url, extra_headers=self.extra_headers).text
         return BeautifulSoup(page, "html5lib")
 
     def get_list_container(self):
@@ -109,8 +131,13 @@ class HTMLCouncillorScraper(BaseCouncillorScraper):
 class PagedHTMLCouncillorScraper(HTMLCouncillorScraper):
     def get_next_link(self, soup):
         try:
-            return soup.select(self.list_page["next_page_css_selector"])[0].a["href"]
-        except:
+            return urljoin(
+                self.base_url,
+                soup.select_one(self.list_page["next_page_css_selector"]).a[
+                    "href"
+                ],
+            )
+        except Exception:
             return None
 
     def get_councillors(self):
@@ -130,15 +157,18 @@ class ModGovCouncillorScraper(BaseCouncillorScraper):
     class_tags = ["modgov"]
     ext = "xml"
 
-    def run(self, run_log: "lgsf.aws_lambda.run_log.RunLog"):
-
+    def run(self, run_log: RunLog):
         if self.options.get("aws_lambda"):
             self.delete_data_if_exists()
+        else:
+            self.clean_data_dir()
         wards = self.get_councillors()
         for ward in wards:
             for councillor_xml in ward.find_all("councillor"):
                 try:
-                    councillor = self.get_single_councillor(ward, councillor_xml)
+                    councillor = self.get_single_councillor(
+                        ward, councillor_xml
+                    )
                     self.process_councillor(councillor, councillor_xml)
                 except SkipCouncillorException:
                     continue
@@ -151,7 +181,8 @@ class ModGovCouncillorScraper(BaseCouncillorScraper):
         return "{}/mgWebService.asmx/GetCouncillorsByWard".format(self.base_url)
 
     def get_councillors(self):
-        req = self.get(self.format_councillor_api_url(), verify=self.verify_requests)
+        req = self.get(self.format_councillor_api_url(), extra_headers=self.extra_headers)
+        req.raise_for_status()
         soup = BeautifulSoup(req.text, "lxml")
         return soup.findAll("ward")
 
@@ -171,22 +202,20 @@ class ModGovCouncillorScraper(BaseCouncillorScraper):
         )
 
         # Emails
-        try:
+        with contextlib.suppress(AttributeError):
             councillor.email = councillor_xml.find("email").text
-        except AttributeError:
-            pass
 
         # Photos
-        try:
+        with contextlib.suppress(AttributeError):
             councillor.photo_url = councillor_xml.photobigurl.text
-        except AttributeError:
-            pass
 
         # Standing down
         IGNORED_ENDDATES = ["unspecified"]
 
         try:
-            enddate = councillor_xml.find("termsofoffice").findAll("enddate")[-1].text
+            enddate = (
+                councillor_xml.find("termsofoffice").findAll("enddate")[-1].text
+            )
             if enddate not in IGNORED_ENDDATES:
                 # councillor.standing_down = enddate
                 standing_down = parse(enddate, dayfirst=True)
@@ -194,7 +223,13 @@ class ModGovCouncillorScraper(BaseCouncillorScraper):
         except AttributeError:
             pass
 
+        if self.exclude_councillor_hook(councillor):
+            raise SkipCouncillorException
+
         return councillor
+
+    def exclude_councillor_hook(self, councillor: CouncillorBase):
+        return False
 
 
 class CMISCouncillorScraper(BaseCouncillorScraper):
@@ -203,12 +238,19 @@ class CMISCouncillorScraper(BaseCouncillorScraper):
     class_tags = ["cmis"]
 
     def get_councillors(self):
-        req = self.get(self.base_url, extra_headers=self.extra_headers)
+        req = self.get(
+            self.base_url,
+            extra_headers=self.extra_headers,
+        )
         soup = BeautifulSoup(req.text, "lxml")
         return soup.findAll("div", {"class": self.person_block_class_name})
 
     def get_party_name(self, list_page_html):
-        return list_page_html.find_all("img")[-1]["title"].replace("(logo)", "").strip()
+        return (
+            list_page_html.find_all("img")[-1]["title"]
+            .replace("(logo)", "")
+            .strip()
+        )
 
     def get_single_councillor(self, list_page_html):
         """
@@ -218,7 +260,11 @@ class CMISCouncillorScraper(BaseCouncillorScraper):
         """
         url = list_page_html.a["href"]
         identifier = url.split("/id/")[1].split("/")[0]
-        name = list_page_html.find("div", {"class": "NameLink"}).getText(strip=True)
+        name = list_page_html.find("div", {"class": "NameLink"}).getText(
+            strip=True
+        )
+        if "Vacancy" in name:
+            raise SkipCouncillorException("Vacancy")
         division = list_page_html.find(text=self.division_text).next.strip()
         party = self.get_party_name(list_page_html)
 
@@ -232,11 +278,8 @@ class CMISCouncillorScraper(BaseCouncillorScraper):
 
         req = self.get(url)
         soup = BeautifulSoup(req.text, "lxml")
-        try:
+        with contextlib.suppress(IndexError):
             councillor.email = soup.select(".Email")[0].getText(strip=True)
-        except IndexError:
-            # Can't find an email, just ignore it
-            pass
         return councillor
 
 

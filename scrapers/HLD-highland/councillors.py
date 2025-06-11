@@ -1,3 +1,4 @@
+import contextlib
 import re
 from urllib.parse import urljoin
 
@@ -17,7 +18,9 @@ class Scraper(HTMLCouncillorScraper):
         soup = self.get_page(url)
 
         name = (
-            soup.select_one(".title h1").get_text(strip=True).replace("Councillor ", "")
+            soup.select_one(".title h1")
+            .get_text(strip=True)
+            .replace("Councillor ", "")
         )
 
         ward = (
@@ -44,7 +47,10 @@ class Scraper(HTMLCouncillorScraper):
             party=party,
             division=ward,
         )
-        councillor.email = soup.select_one("li a[href^=mailto]").get_text(strip=True)
+        with contextlib.suppress(AttributeError):
+            councillor.email = soup.select_one("li a[href^=mailto]").get_text(
+                strip=True
+            )
         image = soup.select_one("article img")
         if image:
             councillor.photo_url = urljoin(

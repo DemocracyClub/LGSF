@@ -1,8 +1,8 @@
 import sys
 
-from lgsf.path_utils import load_command
-from lgsf.conf import settings
 from lgsf import LOGO
+from lgsf.conf import settings
+from lgsf.path_utils import load_command
 
 
 class CommandRunner:

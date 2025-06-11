@@ -14,7 +14,9 @@ class Scraper(CMISCouncillorScraper):
         soup = BeautifulSoup(req.text, "lxml")
 
         identifier = profile_url.split("/councillors/")[1].split("/")[0]
-        name = soup.find("h2", {"class": "listing__heading"}).getText(strip=True)
+        name = soup.find("h2", {"class": "listing__heading"}).getText(
+            strip=True
+        )
         division = soup.find(text="Ward:").next.strip()
         party = soup.find(text="Party:").next.strip()
 
@@ -25,7 +27,9 @@ class Scraper(CMISCouncillorScraper):
             party=party,
             division=division,
         )
-        councillor.email = soup.find(text=re.compile("Email:")).next.getText(strip=True)
+        councillor.email = soup.find(text=re.compile("Email:")).next.getText(
+            strip=True
+        )
 
         return councillor
 
@@ -43,7 +47,7 @@ class Scraper(CMISCouncillorScraper):
         try:
             profile_url = soup.select(".Biog")[0].a["href"].strip()
             councillor = self.get_from_profile_page(profile_url)
-        except:
+        except Exception:
             # This person doesn't have a profile page or something else went
             # wrong, do what we can with this page
             councillor = super().get_single_councillor(list_page_html)

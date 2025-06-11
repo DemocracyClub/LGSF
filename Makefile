@@ -8,10 +8,10 @@ clean: ## Delete lambda-layers/DependenciesLayer/requirements.txt
 	rm -rf lambda-layers/DependenciesLayer/requirements.txt
 
 lambda-layers/DependenciesLayer/requirements.txt: Pipfile Pipfile.lock ## Update the requirements.txt file used to build this Lambda function's DependenciesLayer
-	pipenv lock -r > lambda-layers/DependenciesLayer/requirements.txt
+	pipenv requirements > lambda-layers/DependenciesLayer/requirements.txt
 
 requirements.txt: Pipfile Pipfile.lock ## Update the requirements.txt file used to build this Lambda function's DependenciesLayer
-	pipenv lock -r > requirements.txt
+	pipenv requirements > requirements.txt
 
 .PHONY: help
 # gratuitously adapted from https://marmelab.com/blog/2016/02/29/auto-documented-makefile.html

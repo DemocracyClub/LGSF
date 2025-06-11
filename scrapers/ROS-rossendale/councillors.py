@@ -1,15 +1,16 @@
 import re
 from urllib.parse import urljoin
 
+from lgsf.councillors import SkipCouncillorException
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.rossendale.gov.uk/councillors/name"
+    base_url = "https://www.rossendale.gov.uk/councillors"
 
     list_page = {
-        "container_css_selector": "ul.item-list--person",
-        "councillor_css_selector": "li h2",
+        "container_css_selector": ".list--listing",
+        "councillor_css_selector": "article",
     }
 
     def get_single_councillor(self, councillor_html):
@@ -22,9 +23,12 @@ class Scraper(HTMLCouncillorScraper):
             .replace("Councillor ", "")
         )
 
+        if name == "Vacant Vacant":
+            raise SkipCouncillorException("Vacant")
+
         ward = (
             soup.find("strong", text=re.compile("Ward:"))
-            .find_parent("li")
+            .find_parent("p")
             .get_text(strip=True)
             .replace("Ward:", "")
             .strip()
@@ -32,7 +36,7 @@ class Scraper(HTMLCouncillorScraper):
 
         party = (
             soup.find("strong", text=re.compile("Party:"))
-            .find_parent("li")
+            .find_parent("p")
             .get_text(strip=True)
             .replace("Party:", "")
             .strip()
@@ -45,9 +49,9 @@ class Scraper(HTMLCouncillorScraper):
             party=party,
             division=ward,
         )
-        councillor.email = soup.select_one(".callout a[href^=mailto]")["href"].replace(
-            "mailto:", ""
-        )
+        councillor.email = soup.select_one(".page-meta a[href^=mailto]")[
+            "href"
+        ].replace("mailto:", "")
         image = soup.select_one(".callout img")
         if image:
             councillor.photo_url = urljoin(

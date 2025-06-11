@@ -1,1 +1,13 @@
-{"url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/AND/2015-04-01/", "official_identifier": "AND", "organisation_type": "local-authority", "organisation_subtype": "", "official_name": "Ards and North Down Borough Council", "common_name": "Ards and North Down", "slug": "ards-and-north-down", "territory_code": "NIR", "election_name": "Ards and North Down local election", "start_date": "2015-04-01", "end_date": null}
+{
+  "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/AND/2015-04-01/",
+  "official_identifier": "AND",
+  "organisation_type": "local-authority",
+  "organisation_subtype": "",
+  "official_name": "Ards and North Down Borough Council",
+  "common_name": "Ards and North Down",
+  "slug": "ards-and-north-down",
+  "territory_code": "NIR",
+  "election_name": "Ards and North Down local election",
+  "start_date": "2015-04-01",
+  "end_date": null
+}

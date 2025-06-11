@@ -1,40 +1,39 @@
+import json
 import re
 from urllib.parse import urljoin
 
+from lgsf.councillors import SkipCouncillorException
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.stirling.gov.uk/councillors"
+    base_url = "https://www.stirling.gov.uk/council-and-committees/politicians-and-elections/councillors/"
 
     list_page = {
-        "container_css_selector": ".page-content",
-        "councillor_css_selector": ".councillor-card",
+        "container_css_selector": "main",
+        "councillor_css_selector": ".link-row__inner h3",
     }
 
     def get_single_councillor(self, councillor_html):
         url = urljoin(self.base_url, councillor_html.a["href"])
         soup = self.get_page(url)
 
-        name = (
-            soup.select_one(".container h1")
-            .get_text(strip=True)
-            .replace("Councillor ", "")
-        )
+        schema_json = json.loads(soup.find("script", text=re.compile('''"@type": "Person"''')).contents[0])
 
+
+        name = schema_json["name"]
+        if name == "Vacant":
+            raise SkipCouncillorException
+
+        party = schema_json["memberOf"]
         ward = (
-            soup.find("span", text=re.compile("Ward"))
-            .find_parent("div")
+            soup.select_one(".article-header__summary")
             .get_text(strip=True)
+            .replace(party, "")
+            .strip(",")
             .strip()
         )
 
-        party = (
-            soup.find("span", text=re.compile("Party: .*"))
-            .get_text(strip=True)
-            .replace("Party:", "")
-            .strip()
-        )
 
         councillor = self.add_councillor(
             url,
@@ -43,10 +42,10 @@ class Scraper(HTMLCouncillorScraper):
             party=party,
             division=ward,
         )
-        councillor.email = soup.select_one(".email-address a[href^=mailto]")[
+        councillor.email = soup.select_one("a[href^=mailto]")[
             "href"
         ].replace("mailto:", "")
-        image = soup.select_one(".tab-content img")
+        image = soup.select_one(".article-header__image img")
         if image:
             councillor.photo_url = urljoin(
                 self.base_url,

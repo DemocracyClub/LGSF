@@ -1,3 +1,4 @@
+import contextlib
 import re
 
 from lgsf.councillors.exceptions import SkipCouncillorException
@@ -8,7 +9,7 @@ class Scraper(HTMLCouncillorScraper):
     base_url = "https://www.nelincs.gov.uk/your-council/councillors-mps-and-meps/find-your-councillor/councillors-by-party/"
 
     list_page = {
-        "container_css_selector": ".wp-block-column",
+        "container_css_selector": "main .col-12 .page-content:nth-child(1)",
         "councillor_css_selector": "li",
     }
 
@@ -26,10 +27,13 @@ class Scraper(HTMLCouncillorScraper):
         councillor = self.add_councillor(
             url, identifier=url, name=name, party=party, division=ward
         )
-        councillor.email = (
-            page.select(".wp-block-column")[1]
-            .find(lambda t: t.name == "p" and "Email" in t.text)
-            .a["href"]
-        ).replace("mailto:", "")
-        councillor.photo_url = soup.img["src"]
+        with contextlib.suppress(AttributeError):
+            councillor.email = (
+                page.select(".wp-block-column")[1]
+                .find(lambda t: t.name == "p" and "Email" in t.text)
+                .a["href"]
+            ).replace("mailto:", "")
+
+        if soup.img:
+            councillor.photo_url = soup.img["src"]
         return councillor

@@ -1,8 +1,8 @@
 import os
 
 from lgsf.commands.base import CommandBase
-from lgsf.path_utils import _abs_path
 from lgsf.conf import settings
+from lgsf.path_utils import _abs_path
 
 from .helpers import TEMPLATES
 

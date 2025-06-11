@@ -1,14 +1,14 @@
 {
-    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/LND/1994-01-01/",
-    "official_identifier": "LND",
+    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/london/2000-07-03/",
+    "official_identifier": "london",
     "organisation_type": "local-authority",
-    "organisation_subtype": "CC",
-    "official_name": "City of London Corporation",
-    "common_name": "City of London",
-    "slug": "city-of-london",
+    "organisation_subtype": "",
+    "official_name": "Greater London Authority",
+    "common_name": "Greater London Authority",
+    "slug": "london",
     "territory_code": "ENG",
-    "election_name": "City of London local election",
-    "start_date": "1994-01-01",
+    "election_name": "Greater London Authority",
+    "start_date": "2000-07-03",
     "end_date": null,
-    "created": "1994-01-01T00:00:00Z"
+    "created": "2000-07-03T00:00:00Z"
 }

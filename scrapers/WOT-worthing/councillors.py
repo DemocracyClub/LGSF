@@ -21,5 +21,4 @@ class Scraper(ModGovCouncillorScraper):
         email = getattr(councillor, "email", None)
         if email and "worthing.gov.uk" in email:
             return councillor
-        else:
-            raise SkipCouncillorException()
+        raise SkipCouncillorException()

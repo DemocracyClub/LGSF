@@ -2,13 +2,10 @@ from lgsf.councillors.scrapers import JSONCouncillorScraper
 
 
 class Scraper(JSONCouncillorScraper):
-    base_url = (
-        "https://info.ambervalley.gov.uk/WebServices/AVBCFeeds/DemocracyJSON.asmx"
-    )
+    base_url = "https://info.ambervalley.gov.uk/WebServices/AVBCFeeds/DemocracyJSON.asmx"
 
     def get_councillors(self):
-        councillor_list = self.get(f"{self.base_url}/GetAllCouncillors").json()
-        return councillor_list
+        return self.get(f"{self.base_url}/GetAllCouncillors").json()
 
     def get_single_councillor(self, councillor_json):
         memberRef = councillor_json.get("memberRef")

@@ -1,7 +1,7 @@
+import contextlib
 import re
 from urllib.parse import urljoin
 
-from lgsf.councillors import SkipCouncillorException
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
@@ -41,11 +41,12 @@ class Scraper(HTMLCouncillorScraper):
         councillor.email = soup.select_one(
             ".listing__summary a[href^=mailto]"
         ).getText(strip=True)
-        try:
+        with contextlib.suppress(TypeError):
             councillor.photo_url = urljoin(
                 self.base_url,
-                soup.select_one(".listing--with-image img.listing__image")["src"],
+                soup.select_one(".listing--with-image img.listing__image")[
+                    "src"
+                ],
             )
-        except TypeError:
-            pass
+
         return councillor

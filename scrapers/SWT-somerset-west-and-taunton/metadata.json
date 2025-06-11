@@ -1,5 +1,5 @@
 {
-    "url": "https://elections.democracyclub.org.uk/api/organisations/local-authority/SWT/2019-04-01/",
+    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SWT/2019-04-01/",
     "official_identifier": "SWT",
     "organisation_type": "local-authority",
     "organisation_subtype": "NMD",
@@ -9,6 +9,6 @@
     "territory_code": "ENG",
     "election_name": "Somerset West and Taunton local election",
     "start_date": "2019-04-01",
-    "end_date": null,
+    "end_date": "2023-03-31",
     "created": "2019-04-01T00:00:00Z"
 }

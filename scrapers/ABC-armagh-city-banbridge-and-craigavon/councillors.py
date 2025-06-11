@@ -1,9 +1,5 @@
 import codecs
 import re
-from urllib.parse import unquote
-
-from bs4 import BeautifulSoup
-from slugify import slugify
 
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
@@ -16,10 +12,11 @@ class Scraper(HTMLCouncillorScraper):
     }
 
     def decode_email(self, councillor_html):
-        borked_email = councillor_html.select_one("a.mailto-link")['data-enc-email']
+        borked_email = councillor_html.select_one("a.mailto-link")[
+            "data-enc-email"
+        ]
         email = borked_email.replace("[at]", "@")
-        return codecs.encode(email, 'rot_13')
-
+        return codecs.encode(email, "rot_13")
 
     def get_single_councillor(self, councillor_html):
         header = councillor_html.h3
@@ -43,6 +40,8 @@ class Scraper(HTMLCouncillorScraper):
         )
         councillor.email = email
 
-        councillor.photo_url = councillor_html.select_one("img")['src']
-        councillor.photo_url = councillor.photo_url.replace("120x150", "240x300")
+        councillor.photo_url = councillor_html.select_one("img")["src"]
+        councillor.photo_url = councillor.photo_url.replace(
+            "120x150", "240x300"
+        )
         return councillor

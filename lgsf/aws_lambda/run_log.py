@@ -1,6 +1,6 @@
-import json
-from dataclasses import dataclass, asdict
 import datetime
+import json
+from dataclasses import asdict, dataclass
 from enum import Enum
 from typing import Dict
 
@@ -10,6 +10,7 @@ from rich.table import Table
 class RunStatus(Enum):
     OK = 0
     ERROR = 1
+
 
 @dataclass
 class RunLog:

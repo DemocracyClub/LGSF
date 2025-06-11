@@ -18,12 +18,9 @@ class Scraper(HTMLCouncillorScraper):
             .find_previous("h2")
             .get_text(strip=True)
         )
-        ward = re.sub(r"Ward [0-9]+ - (.*)", r"\1", ward)
-        return ward
+        return re.sub(r"Ward [0-9]+ - (.*)", r"\1", ward)
 
     def get_single_councillor(self, councillor_html):
-
-        print(councillor_html)
         url = urljoin(self.base_url, councillor_html["href"])
         soup = self.get_page(url)
 
@@ -33,12 +30,10 @@ class Scraper(HTMLCouncillorScraper):
             .replace("Councillor ", "")
         )
         ward = self.get_ward_from_person_url(url)
-
-        party = (
-            soup.find("h2", text=re.compile("Party"))
-            .find_next("p")
-            .get_text(strip=True)
-        )
+        party = soup.find("h2", text=re.compile("Party"))
+        if not party:
+            party = soup.find(text=re.compile("Party")).parent
+        party = party.find_next("p").get_text(strip=True)
 
         councillor = self.add_councillor(
             url,
@@ -48,11 +43,7 @@ class Scraper(HTMLCouncillorScraper):
             division=ward,
         )
 
-        contact_url = soup.select_one(".panel__list--relarticles a.panel__link")["href"]
-
-        contact_page = self.get_page(urljoin(self.base_url, contact_url))
-
-        councillor.email = contact_page.select_one(".a-body a[href^=mailto]").get_text(
+        councillor.email = soup.select_one("td a[href^=mailto]").get_text(
             strip=True
         )
         councillor.photo_url = urljoin(

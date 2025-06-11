@@ -1,16 +1,17 @@
 import abc
 import argparse
 import datetime
-import os
 import json
+import os
 import traceback
 from dataclasses import dataclass, field
+from functools import cached_property
 
 import requests
 from dateutil.parser import parse
 from dateutil.utils import today
 from rich.console import Console
-from rich.progress import Progress, BarColumn, TimeElapsedColumn
+from rich.progress import BarColumn, Progress, TimeElapsedColumn
 from rich.table import Table
 
 from lgsf.conf import settings
@@ -79,15 +80,18 @@ class Council:
                 _abs_path(settings.SCRAPER_DIR_NAME, self.council_id)[0],
                 "metadata.json",
             )
-            self._metadata_cache = json.load(open(metadata_path))
+            with open(metadata_path) as f:
+                self._metadata_cache = json.load(f)
         return self._metadata_cache
 
     @property
     def current(self):
-        if self.metadata["end_date"]:
-            # This council has a known end data, check if it's in the past
-            if parse(self.metadata["end_date"]) < today():
-                return False
+        if (
+            self.metadata["end_date"]
+            and parse(self.metadata["end_date"]) < today()
+        ):
+            # This council has a known end data, and that date is in the past
+            return False
         if parse(self.metadata["start_date"]) > today():
             return False
         return True
@@ -158,7 +162,9 @@ class PerCouncilCommandBase(CommandBase):
         if args.list_missing or args.list_disabled or args.list_failing:
             return args
         if not any((args.council, args.all_councils, args.tags)):
-            self.parser.error("one of --council or --all-councils or --tags required")
+            self.parser.error(
+                "one of --council or --all-councils or --tags required"
+            )
         if args.council and args.tags:
             self.parser.error("Can't use --tags and --council together")
         return args
@@ -177,8 +183,11 @@ class PerCouncilCommandBase(CommandBase):
         return [Council(council_id) for council_id in self._all_council_dirs]
 
     def missing(self):
+        always_excluded = ["GLA", "london"]
         missing_councils = []
         for council in self.current_councils:
+            if council.council_id in always_excluded:
+                continue
             scraper = load_scraper(council.council_id, self.command_name)
             if not scraper:
                 council_info = {
@@ -214,8 +223,14 @@ class PerCouncilCommandBase(CommandBase):
     def current_councils(self):
         return [council for council in self.all_councils if council.current]
 
+    @cached_property
+    def current_council_ids(self):
+        return {c.council_id for c in self.current_councils}
+
     def output_disabled(self):
-        table = Table(title=f"Councils with '{self.command_name}' disabled scraper")
+        table = Table(
+            title=f"Councils with '{self.command_name}' disabled scraper"
+        )
 
         table.add_column("Code", style="magenta")
         table.add_column("Name", style="green")
@@ -235,7 +250,10 @@ class PerCouncilCommandBase(CommandBase):
         table.add_column("Code", style="magenta")
         table.add_column("Error", style="red")
         for council in self.failing():
-            table.add_row(council["council_id"], council["latest_run"]["log_text"])
+            if council["council_id"] in self.current_council_ids:
+                table.add_row(
+                    council["council_id"], council["latest_run"]["log_text"]
+                )
         self.console.print(table)
 
     def output_status(self):
@@ -246,7 +264,10 @@ class PerCouncilCommandBase(CommandBase):
         disabled = str(len(self.disabled()))
         self.console.print(
             Columns(
-                [Panel(disabled, title="Disabled"), Panel(missing, title="Missing")]
+                [
+                    Panel(disabled, title="Disabled"),
+                    Panel(missing, title="Missing"),
+                ]
             )
         )
 
@@ -260,9 +281,8 @@ class PerCouncilCommandBase(CommandBase):
             for council in self.options["council"].split(","):
                 council = Council(council.strip().split("-")[0].upper())
                 councils.append(council)
-
         if self.options["exclude_missing"]:
-            missing_councils = set(c["code"] for c in self.missing())
+            missing_councils = {c["code"] for c in self.missing()}
             councils = list(set(councils) - missing_councils)
         return councils
 
@@ -280,7 +300,7 @@ class PerCouncilCommandBase(CommandBase):
             console=self.console,
             auto_refresh=False,
         ) as progress:
-            total = progress.add_task(description=f"Total", total=len(to_run))
+            total = progress.add_task(description="Total", total=len(to_run))
             while not progress.finished:
                 for council in to_run:
                     self.run_council(council.council_id)
@@ -293,7 +313,7 @@ class PerCouncilCommandBase(CommandBase):
             scraper.run(run_log)
         except KeyboardInterrupt:
             raise
-        except Exception as e:
+        except Exception:
             run_log.error = traceback.format_exc()
             if self.options.get("verbose"):
                 raise
@@ -312,9 +332,8 @@ class PerCouncilCommandBase(CommandBase):
             should_run = True
             if scraper.disabled:
                 should_run = False
-            if should_run and self.options["refresh"]:
-                if scraper.run_since():
-                    should_run = False
+            if should_run and self.options["refresh"] and scraper.run_since():
+                should_run = False
             if should_run and self.options["tags"]:
                 required_tags = set(self.options["tags"].split(","))
                 scraper_tags = set(scraper.get_tags)
@@ -349,5 +368,6 @@ class PerCouncilCommandBase(CommandBase):
         self.normalise_codes()
         if self.pretty:
             self.run_councils_with_progress()
-        else:
-            self.run_councils()
+            return None
+        self.run_councils()
+        return None

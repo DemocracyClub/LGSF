@@ -10,7 +10,7 @@ class BaseTemplate:
 
     def validate_context(self):
         for key in self.required_fields:
-            assert key in self.context.keys(), "{} required in context".format(key)
+            assert key in self.context, "{} required in context".format(key)
 
     def format_template(self):
         teml = Template(self.template)

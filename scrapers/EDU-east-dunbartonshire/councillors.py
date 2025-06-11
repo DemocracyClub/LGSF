@@ -22,20 +22,19 @@ class Scraper(HTMLCouncillorScraper):
             .get_text(strip=True)
             .replace("Councillor ", "")
         )
-        intro = soup.find("p", text=re.compile("is one of East Dunbartonshire Council"))
+        intro = soup.find(
+            "p", text=re.compile("is one of East Dunbartonshire Council")
+        )
         if not intro:
             raise SkipCouncillorException()
         ward = (
-            intro
-            .get_text(strip=True)
+            intro.get_text(strip=True)
             .split("Elected Members for Ward ")[1]
             .split(" and ")[0]
             .strip()
         )
         ward = re.sub(r"[0-9]+ - (.*)(\.)?", r"\1", ward)
-        party = (
-            councillor_html.get_text(strip=True)
-        )
+        party = councillor_html.get_text(strip=True)
 
         councillor = self.add_councillor(
             url,
@@ -44,8 +43,13 @@ class Scraper(HTMLCouncillorScraper):
             party=party,
             division=ward,
         )
-        councillor.email = soup.select_one(".field-name-field-email-contact a[href^=mailto]").getText(strip=True)
+        councillor.email = soup.select_one(
+            ".field-name-field-email-contact a[href^=mailto]"
+        ).getText(strip=True)
         councillor.photo_url = urljoin(
-            self.base_url, soup.select_one(".field-name-field-picture img.img-responsive")["src"]
+            self.base_url,
+            soup.select_one(".field-name-field-picture img.img-responsive")[
+                "src"
+            ],
         )
         return councillor
