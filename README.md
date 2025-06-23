@@ -39,12 +39,12 @@ supported.
 
 ### Requirements
 
-* Python 3.10
-* `pipenv`
+* Python 3.12
+* `uv`
 
 ### Installation
 
-Check out the code and run `pipenv install` in the directory
+Check out the code and run `uv sync` in the directory
 
 ### Running
 

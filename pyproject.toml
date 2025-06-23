@@ -1,0 +1,28 @@
+[project]
+name = "lgsf"
+version = "0.0.0"
+description = "The Local Government Scraper Framework is a set of tools for scraping UK local government websites"
+readme = "README.md"
+requires-python = "==3.12"
+dependencies = [
+    "beautifulsoup4==4.13.4",
+    "boto3==1.38.42",
+    "httpx==0.28.1",
+    "python-dateutil==2.9.0.post0",
+    "python-slugify==8.0.4",
+    "requests[security]==2.32.4",
+    "retry2==0.9.5",
+    "rich==14.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "ipdb==0.13.13",
+    "pre-commit==4.2.0",
+    "pystache==0.6.8",
+    "pytest==8.4.1",
+    "pytest-blockage==0.2.4",
+    "pytest-mypy-plugins==3.2.0",
+    "pytest-ruff==0.5",
+    "ruff==0.12.0",
+]

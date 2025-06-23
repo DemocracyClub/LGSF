@@ -18,11 +18,10 @@ jobs:
     - checkout
     - restore_cache:
         keys:
-        - v2-dependencies-{{ checksum "Pipfile.lock" }}
-    - run: &install-pipenv pip install -U pipenv urllib3 wheel pip --quiet --no-input
-    - run: pipenv run pip install -U wheel
-    - run: pipenv install --dev
-    - run: pipenv run pipenv check # before save_cache so an insecure cache is never saved
+        - v2-dependencies-{{ checksum "uv.lock" }}
+    - run:
+        name: Install UV
+        command: .circleci/install-uv.sh
     - run: make lambda-layers/DependenciesLayer/requirements.txt
     - persist_to_workspace:
         root: ~/repo/
@@ -31,7 +30,7 @@ jobs:
         when: on_success
         paths:
         - ~/.local/share/virtualenvs/
-        key: v2-dependencies-{{ checksum "Pipfile.lock" }}
+        key: v2-dependencies-{{ checksum "uv.lock" }}
 
   sam_build:
     docker:
@@ -65,18 +64,18 @@ jobs:
         at: ~/repo/
     - restore_cache:
         keys:
-        - v2-dependencies-{{ checksum "Pipfile.lock" }}
-
-    - run: *install-pipenv
-    - run: pipenv install --dev
-    - run: printenv SAM_CONFIG_FILE SAM_LAMBDA_CONFIG_ENV
-    - run: printenv AWS_ACCESS_KEY_ID | md5sum
-    - run: pip install -U aws-sam-cli
+        - v2-dependencies-{{ checksum "uv.lock" }}
 
     - run:
-        name: "pipenv run sam deploy"
+        name: Install UV
+        command: .circleci/install-uv.sh
+    - run: uv sync
+    - run: printenv SAM_CONFIG_FILE SAM_LAMBDA_CONFIG_ENV
+    - run: printenv AWS_ACCESS_KEY_ID | md5sum
+    - run:
+        name: "sam deploy"
         command: |
-          pipenv run sam deploy \
+          uv run --with aws-sam-cli sam deploy \
           --debug \
           --config-env $SAM_LAMBDA_CONFIG_ENV \
           --config-file ~/repo/${SAM_CONFIG_FILE} \
