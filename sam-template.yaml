@@ -28,7 +28,7 @@ Resources:
     Properties:
       CodeUri: .
       Handler: lgsf.aws_lambda.handlers.queue_builder_handler
-      Runtime: python3.10
+      Runtime: python3.12
       Layers:
         - !Ref DependenciesLayer
       Events:
@@ -57,7 +57,7 @@ Resources:
     Properties:
       CodeUri: .
       Handler: lgsf.aws_lambda.handlers.scraper_worker_handler
-      Runtime: python3.10
+      Runtime: python3.12
       Layers:
         - !Ref DependenciesLayer
       Events:
