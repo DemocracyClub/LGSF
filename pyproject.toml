@@ -26,3 +26,7 @@ dev = [
     "pytest-ruff==0.5",
     "ruff==0.12.0",
 ]
+
+[tool.uv]
+package = false
+required-version = "==0.8.*"
