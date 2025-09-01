@@ -3,7 +3,7 @@ name = "lgsf"
 version = "0.0.0"
 description = "The Local Government Scraper Framework is a set of tools for scraping UK local government websites"
 readme = "README.md"
-requires-python = "==3.12"
+requires-python = "==3.12.*"
 dependencies = [
     "beautifulsoup4==4.13.4",
     "boto3==1.38.42",
