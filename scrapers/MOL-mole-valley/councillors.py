@@ -1,4 +1,3 @@
-import re
 from urllib.parse import urljoin
 
 from lgsf.councillors import SkipCouncillorException
@@ -18,7 +17,11 @@ class Scraper(HTMLCouncillorScraper):
         url = urljoin(self.base_url, councillor_html.a["href"])
         soup = self.get_page(url)
 
-        name = soup.select_one(".contentcontainer h2").get_text(strip=True).replace("Cllr ", "")
+        name = (
+            soup.select_one(".contentcontainer h2")
+            .get_text(strip=True)
+            .replace("Cllr ", "")
+        )
 
         if "Vacant" in name:
             raise SkipCouncillorException("Vacant")
@@ -39,9 +42,9 @@ class Scraper(HTMLCouncillorScraper):
             party=party,
             division=ward,
         )
-        councillor.email = soup.select_one(
-            ".bgcontainer a[href^=mailto]"
-        ).get_text(strip=True)
+        councillor.email = soup.select_one(".bgcontainer a[href^=mailto]").get_text(
+            strip=True
+        )
         image = soup.select_one("article img")
         if image:
             councillor.photo_url = urljoin(

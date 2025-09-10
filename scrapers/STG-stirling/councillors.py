@@ -18,8 +18,9 @@ class Scraper(HTMLCouncillorScraper):
         url = urljoin(self.base_url, councillor_html.a["href"])
         soup = self.get_page(url)
 
-        schema_json = json.loads(soup.find("script", text=re.compile('''"@type": "Person"''')).contents[0])
-
+        schema_json = json.loads(
+            soup.find("script", text=re.compile('''"@type": "Person"''')).contents[0]
+        )
 
         name = schema_json["name"]
         if name == "Vacant":
@@ -34,7 +35,6 @@ class Scraper(HTMLCouncillorScraper):
             .strip()
         )
 
-
         councillor = self.add_councillor(
             url,
             identifier=url,
@@ -42,9 +42,9 @@ class Scraper(HTMLCouncillorScraper):
             party=party,
             division=ward,
         )
-        councillor.email = soup.select_one("a[href^=mailto]")[
-            "href"
-        ].replace("mailto:", "")
+        councillor.email = soup.select_one("a[href^=mailto]")["href"].replace(
+            "mailto:", ""
+        )
         image = soup.select_one(".article-header__image img")
         if image:
             councillor.photo_url = urljoin(

@@ -26,8 +26,8 @@ class Scraper(HTMLCouncillorScraper):
             url, identifier=url, name=name, party=party, division=ward
         )
 
-        councillor.email = soup.select(".callout ul li a[href^=mailto]")[
-            0
-        ].get_text(strip=True)
+        councillor.email = soup.select(".callout ul li a[href^=mailto]")[0].get_text(
+            strip=True
+        )
         councillor.photo_url = f"https:{soup.img['src']}"
         return councillor

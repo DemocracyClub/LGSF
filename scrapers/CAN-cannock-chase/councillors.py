@@ -6,7 +6,9 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.cannockchasedc.gov.uk/council/about-council/your-councillors"
+    base_url = (
+        "https://www.cannockchasedc.gov.uk/council/about-council/your-councillors"
+    )
 
     list_page = {
         "container_css_selector": ".all-councillors",
@@ -35,9 +37,7 @@ class Scraper(HTMLCouncillorScraper):
             division=division,
         )
         try:
-            councillor.email = soup.select("a[href^=mailto]")[0]["href"].split(
-                ":"
-            )[1]
+            councillor.email = soup.select("a[href^=mailto]")[0]["href"].split(":")[1]
 
         except IndexError:
             pass

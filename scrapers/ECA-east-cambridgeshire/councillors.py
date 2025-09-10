@@ -4,7 +4,9 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.eastcambs.gov.uk/council-and-democracy/search-for-councillors"
+    base_url = (
+        "https://www.eastcambs.gov.uk/council-and-democracy/search-for-councillors"
+    )
 
     list_page = {
         "container_css_selector": ".views-fluid-grid",
