@@ -36,7 +36,7 @@ class CouncillorBase:
         data = json.load(filename.open())
         email = data.pop("email", None)
         photo_url = data.pop("photo_url", None)
-        standing_down = data.pop("standing_down", None)
+        data.pop("standing_down", None)
         for k in list(data.keys()):
             if k.startswith("raw_"):
                 data[k[4:]] = data.pop(k)
@@ -51,9 +51,7 @@ class CouncillorBase:
     def as_csv(self):
         out = csv.StringIO()
         out_csv = csv.writer(out)
-        out_csv.writerow(
-            [self.identifier, self.name, self.party, self.division]
-        )
+        out_csv.writerow([self.identifier, self.name, self.party, self.division])
         return out.getvalue()
 
     def as_dict(self):

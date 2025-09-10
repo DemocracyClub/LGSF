@@ -1,4 +1,3 @@
-
 from lgsf.commands.base import CommandBase
 from lgsf.path_utils import scraper_abs_path
 

@@ -1,7 +1,6 @@
 import abc
 import datetime
 import json
-import os
 import shutil
 import traceback
 from pathlib import Path
@@ -127,7 +126,6 @@ class ScraperBase(metaclass=abc.ABCMeta):
         shutil.rmtree(self.root_dir_name)
 
 
-
 class CodeCommitMixin:
     def __init__(self, options, console):
         super().__init__(options, console)
@@ -136,9 +134,7 @@ class CodeCommitMixin:
             self.repository = self.options["council"]
             self.codecommit_client = boto3.client("codecommit")
             try:
-                self.codecommit_client.get_repository(
-                    repositoryName=self.repository
-                )
+                self.codecommit_client.get_repository(repositoryName=self.repository)
             except ClientError as error:
                 error_code = error.response["Error"]["Code"]
                 if error_code == "RepositoryDoesNotExistException":
@@ -160,9 +156,7 @@ class CodeCommitMixin:
                     repositoryName=self.repository, branchName=self.branch
                 )
                 self._branch_head = branch_info["branch"]["commitId"]
-            except (
-                self.codecommit_client.exceptions.BranchDoesNotExistException
-            ):
+            except self.codecommit_client.exceptions.BranchDoesNotExistException:
                 self._branch_head = self.create_branch(self.branch)
 
         return self._branch_head
@@ -205,9 +199,7 @@ class CodeCommitMixin:
             repositoryName=self.repository, branchName=self.branch
         )
         if delete_info["deletedBranch"]:
-            self.console.log(
-                f'deleted {delete_info["deletedBranch"]["branchName"]}'
-            )
+            self.console.log(f"deleted {delete_info['deletedBranch']['branchName']}")
 
     def get_files(self, folder_path):
         subfolder_paths = []
@@ -229,9 +221,7 @@ class CodeCommitMixin:
                 subfolder_paths.extend(sf_paths)
                 file_paths.extend(f_paths)
 
-            self.console.log(
-                f"...found {len(file_paths)} files in {folder_path}"
-            )
+            self.console.log(f"...found {len(file_paths)} files in {folder_path}")
             return subfolder_paths, file_paths
 
         except self.codecommit_client.exceptions.FolderDoesNotExistException:
@@ -285,9 +275,7 @@ class CodeCommitMixin:
                 putFiles=put_files if put_files else [],
                 deleteFiles=delete_files if delete_files else [],
             )
-        except (
-            self.codecommit_client.exceptions.ParentCommitIdOutdatedException
-        ):
+        except self.codecommit_client.exceptions.ParentCommitIdOutdatedException:
             del self.branch_head
             commit_info = self.codecommit_client.create_commit(
                 repositoryName=self.repository,
@@ -304,7 +292,9 @@ class CodeCommitMixin:
         self.console.log(
             f"Committing batch {self.batch} consisting of {len(self.put_files)} files"
         )
-        message = f"{self.scraper_object_type} - batch {self.batch} - scraped on {self.today}"
+        message = (
+            f"{self.scraper_object_type} - batch {self.batch} - scraped on {self.today}"
+        )
         commit_info = self.commit(put_files=self.put_files, message=message)
         self.branch_head = commit_info["commitId"]
         self.batch += 1
@@ -411,9 +401,7 @@ class CodeCommitMixin:
 
     def create_repo(self):
         try:
-            self.codecommit_client.create_repository(
-                repositoryName=self.repository
-            )
+            self.codecommit_client.create_repository(repositoryName=self.repository)
         except ClientError as error:
             error_code = error.response["Error"]["Code"]
             if error_code == "RepositoryNameExistsException":

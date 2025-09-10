@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import pkgutil
 import re
 from importlib import import_module
 from importlib.machinery import SourceFileLoader
@@ -70,7 +69,6 @@ def create_org_package(name) -> Path:
     path = settings.BASE_PATH / settings.SCRAPER_DIR_NAME / name
     path.mkdir(exist_ok=True)
     return path
-
 
 
 def load_scraper(code, command):

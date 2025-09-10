@@ -43,9 +43,7 @@ def scraper_worker_handler(event, context):
 
 
 def queue_builder_handler(event, context):
-    councillors_command = Command(
-        argv=["", "--all-councils"], stdout=sys.stdout
-    )
+    councillors_command = Command(argv=["", "--all-councils"], stdout=sys.stdout)
     councillors_command.options = {
         "all_councils": True,
         "exclude_missing": True,
@@ -62,6 +60,4 @@ def queue_builder_handler(event, context):
             "council": council.council_id,
         }  # TODO Define this somewhere else so scraper_worker_handler can share it.
         start_jitter = random.randrange(0, 900)
-        queue.send_message(
-            MessageBody=json.dumps(message), DelaySeconds=start_jitter
-        )
+        queue.send_message(MessageBody=json.dumps(message), DelaySeconds=start_jitter)

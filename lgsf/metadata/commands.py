@@ -37,7 +37,7 @@ class Command(CommandBase):
                         path = create_org_package(name)
 
                     storage.write(
-                        path  / "metadata.json",
+                        path / "metadata.json",
                         json.dumps(org, indent=4),
                     )
 

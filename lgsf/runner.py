@@ -29,7 +29,7 @@ class CommandRunner:
             LOGO,
             "Local Government Scraper Framework",
             "Usage: manage.py [subcommand]",
-            "\n" "Available subcommands:",
+            "\nAvailable subcommands:",
         ]
         for command in self.get_command_list():
             help_text.append("\t * {}".format(command))
