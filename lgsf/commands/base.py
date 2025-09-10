@@ -1,12 +1,9 @@
 import abc
 import argparse
 import datetime
-import json
-import os
 import traceback
 from dataclasses import dataclass, field
 from functools import cached_property
-from pathlib import Path
 from typing import List
 
 import requests
@@ -17,7 +14,7 @@ from rich.progress import BarColumn, Progress, TimeElapsedColumn
 from rich.table import Table
 
 from lgsf.conf import settings
-from lgsf.path_utils import _abs_path, load_council_info, load_scraper
+from lgsf.path_utils import load_council_info, load_scraper, scraper_abs_path
 
 
 class CommandBase(metaclass=abc.ABCMeta):
@@ -77,20 +74,12 @@ class Council:
     @property
     def metadata(self):
         if not self._metadata_cache:
-            metadata_path = os.path.join(
-                _abs_path(settings.SCRAPER_DIR_NAME, self.council_id)[0],
-                "metadata.json",
-            )
-            with open(metadata_path) as f:
-                self._metadata_cache = json.load(f)
+            self._metadata_cache = load_council_info(self.council_id)
         return self._metadata_cache
 
     @property
     def current(self):
-        if (
-            self.metadata["end_date"]
-            and parse(self.metadata["end_date"]) < today()
-        ):
+        if self.metadata["end_date"] and parse(self.metadata["end_date"]) < today():
             # This council has a known end data, and that date is in the past
             return False
         if parse(self.metadata["start_date"]) > today():
@@ -344,7 +333,7 @@ class PerCouncilCommandBase(CommandBase):
             old_codes = self.options["council"].split(",")
 
             for code in old_codes:
-                new_codes.append(_abs_path(settings.SCRAPER_DIR_NAME, code)[1])
+                new_codes.append(scraper_abs_path(code)[1])
         self.options["council"] = ",".join(new_codes)
         return self.options
 

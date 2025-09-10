@@ -1,5 +1,4 @@
 import json
-import os
 from pathlib import Path
 
 import requests
@@ -33,13 +32,13 @@ class Command(CommandBase):
                     try:
                         path = scraper_abs_path(org["official_identifier"])
                     except IOError:
-                        # This org does't exist yet
+                        # This org doesn't exist yet
                         name = "{}-{}".format(org["official_identifier"], org["slug"])
                         path = create_org_package(name)
 
                     storage.write(
-                        Path(os.path.join(path, "metadata.json")),
+                        path  / "metadata.json",
                         json.dumps(org, indent=4),
                     )
 
-                    storage.touch(Path(os.path.join(path, "__init__.py")))
+                    storage.touch(Path(path / "__init__.py"))

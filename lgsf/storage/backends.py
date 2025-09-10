@@ -18,7 +18,7 @@ class BaseStorage(abc.ABC):
 
 class LocalFileStorage(BaseStorage):
     def _touch(self, file: Path):
-        raise NotImplementedError
+        return file.touch()
 
     def _write(self, file: Path, content: str):
         return file.write_text(content)

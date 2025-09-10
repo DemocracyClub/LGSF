@@ -42,32 +42,3 @@ class CommandRunner:
         """
         # TODO This should know if an app has valid comand(s)
         return settings.APPS
-
-    # parser = argparse.ArgumentParser(argv)
-    #
-    # parser.add_argument('--run', nargs='+')
-    # parser.add_argument('--check', nargs='+')
-    # parser.add_argument('--offline', default=False, action='store_true')
-    # options = parser.parse_args()
-    #
-    # if options.run:
-    #     self.do_run(options, 'run')
-    #
-    # if options.check:
-    #     self.do_run(options, 'check')
-
-    # def do_run(self, options, op):
-    #
-    #     for code in getattr(options, op):
-    #         code = code.upper()
-    #         scraper_path = scraper_abs_path(code)
-    #         if scraper_path_exists(scraper_path):
-    #             # Run a scraper somehow!
-    #             scraper_class = load_scraper(code)
-    #             scraper_class
-    #             scraper_instance = scraper_class(options)
-    #             getattr(scraper_instance, op)()
-    #         else:
-    #             raise ValueError("Path {} does not exist".format(
-    #                 scraper_path
-    #             ))

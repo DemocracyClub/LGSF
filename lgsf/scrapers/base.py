@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 import traceback
+from pathlib import Path
 
 import boto3
 import httpx
@@ -34,7 +35,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
         self.options = options
         self.console = console
         self.check()
-        self.root_dir_name = data_abs_path(self.options["council"])
+        self.root_dir_name: Path = data_abs_path(self.options["council"])
         if self.http_lib == "requests":
             self.http_client = requests.Session()
             self.http_client.verify = self.verify_requests
@@ -70,30 +71,30 @@ class ScraperBase(metaclass=abc.ABCMeta):
             return True
         return None
 
-    def _file_name(self, name):
+    def _file_name(self, name) -> Path:
         dir_name = data_abs_path(self.options["council"])
-        os.makedirs(dir_name, exist_ok=True)
-        return os.path.join(dir_name, name)
+        dir_name.mkdir(exist_ok=True)
+        return dir_name / name
 
-    def _last_run_file_name(self):
+    def _last_run_file_name(self) -> Path:
         return self._file_name("_last-run")
 
     def _error_file_name(self):
         return self._file_name("error")
 
     def _set_error(self, tb):
-        with open(self._error_file_name(), "w") as f:
+        with self._error_file_name().open("w") as f:
             traceback.print_tb(tb, file=f)
 
     def _set_last_run(self):
         file_name = self._last_run_file_name()
-        with open(file_name, "w") as f:
+        with file_name.open("w") as f:
             f.write(datetime.datetime.now().isoformat())
 
     def _get_last_run(self):
         file_name = self._last_run_file_name()
-        if os.path.exists(self._last_run_file_name()):
-            with open(file_name, "r") as f:
+        if file_name.exists():
+            with file_name.open("r") as f:
                 return parser.parse(f.read())
         return None
 
@@ -105,14 +106,14 @@ class ScraperBase(metaclass=abc.ABCMeta):
             self._set_last_run()
         else:
             # We don't want to log KeyboardInterrupts
-            if exc_type != KeyboardInterrupt:
+            if exc_type is not KeyboardInterrupt:
                 self._set_error(tb)
 
     def _save_file(self, dir_name, file_name, content):
-        full_path = os.path.join(self.root_dir_name, dir_name)
-        os.makedirs(full_path, exist_ok=True)
-        file_name = os.path.join(full_path, file_name)
-        with open(file_name, "w") as f:
+        full_path = self.root_dir_name / dir_name
+        full_path.mkdir(exist_ok=True)
+        file_name = full_path / file_name
+        with file_name.open("w") as f:
             f.write(content)
 
     def save_raw(self, filename, content):
