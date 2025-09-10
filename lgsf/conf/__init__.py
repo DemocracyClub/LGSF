@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import Type
 
 
@@ -14,8 +15,8 @@ class BaseSettings(object):
     def __init__(self):
         "Default settings"
 
-        dir_name = os.path.dirname(__file__)
-        self.BASE_PATH = os.path.abspath(os.path.join(dir_name, "..", ".."))
+        dir_path = Path(__file__).parent
+        self.BASE_PATH = dir_path.parent.parent.resolve()
         self.SCRAPER_DIR_NAME = "scrapers"
         self.DATA_DIR_NAME = "data"
         self.COMMAND_FILE_NAME = "commands"

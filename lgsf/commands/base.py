@@ -6,6 +6,8 @@ import os
 import traceback
 from dataclasses import dataclass, field
 from functools import cached_property
+from pathlib import Path
+from typing import List
 
 import requests
 from dateutil.parser import parse
@@ -161,24 +163,24 @@ class PerCouncilCommandBase(CommandBase):
         if args.list_missing or args.list_disabled or args.list_failing:
             return args
         if not any((args.council, args.all_councils, args.tags)):
-            self.parser.error(
-                "one of --council or --all-councils or --tags required"
-            )
+            self.parser.error("one of --council or --all-councils or --tags required")
         if args.council and args.tags:
             self.parser.error("Can't use --tags and --council together")
         return args
 
     @property
-    def _all_council_dirs(self):
+    def _all_council_dirs(self) -> List[str]:
+        """
+        Return a list of paths for each directory in the scraper directory
+        """
         return [
-            d.split("-")[0]
-            for d in os.listdir(settings.SCRAPER_DIR_NAME)
-            if os.path.isdir(os.path.join(settings.SCRAPER_DIR_NAME, d))
-            and not d.startswith("__")
+            d.name.split("-")[0]
+            for d in (settings.BASE_PATH / settings.SCRAPER_DIR_NAME).iterdir()
+            if d.is_dir() and not d.name.startswith("__")
         ]
 
     @property
-    def all_councils(self):
+    def all_councils(self) -> List[Council]:
         return [Council(council_id) for council_id in self._all_council_dirs]
 
     def missing(self):
@@ -227,9 +229,7 @@ class PerCouncilCommandBase(CommandBase):
         return {c.council_id for c in self.current_councils}
 
     def output_disabled(self):
-        table = Table(
-            title=f"Councils with '{self.command_name}' disabled scraper"
-        )
+        table = Table(title=f"Councils with '{self.command_name}' disabled scraper")
 
         table.add_column("Code", style="magenta")
         table.add_column("Name", style="green")
@@ -250,9 +250,7 @@ class PerCouncilCommandBase(CommandBase):
         table.add_column("Error", style="red")
         for council in self.failing():
             if council["council_id"] in self.current_council_ids:
-                table.add_row(
-                    council["council_id"], council["latest_run"]["log_text"]
-                )
+                table.add_row(council["council_id"], council["latest_run"]["log_text"])
         self.console.print(table)
 
     def output_status(self):
