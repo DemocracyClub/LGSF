@@ -1,10 +1,14 @@
 import json
 import os
+from pathlib import Path
 
 import requests
 
 from lgsf.commands.base import CommandBase
 from lgsf.path_utils import create_org_package, scraper_abs_path
+from lgsf.storage.backends import get_storage_backend
+
+storage = get_storage_backend()
 
 
 class Command(CommandBase):
@@ -30,12 +34,12 @@ class Command(CommandBase):
                         path = scraper_abs_path(org["official_identifier"])
                     except IOError:
                         # This org does't exist yet
-                        name = "{}-{}".format(
-                            org["official_identifier"], org["slug"]
-                        )
+                        name = "{}-{}".format(org["official_identifier"], org["slug"])
                         path = create_org_package(name)
-                    with open(os.path.join(path, "metadata.json"), "w") as f:
-                        f.write(json.dumps(org, indent=4))
-                    with open(os.path.join(path, "__init__.py"), "a"):
-                        # Touches file, no other action needed
-                        ...
+
+                    storage.write(
+                        Path(os.path.join(path, "metadata.json")),
+                        json.dumps(org, indent=4),
+                    )
+
+                    storage.touch(Path(os.path.join(path, "__init__.py")))

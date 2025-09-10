@@ -1,5 +1,7 @@
 import sys
 
+from lgsf.storage.backends import get_storage_backend
+
 sys.path.append("lgsf")
 sys.path.append("scrapers")
 
