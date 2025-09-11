@@ -14,7 +14,7 @@ from rich.progress import BarColumn, Progress, TimeElapsedColumn
 from rich.table import Table
 
 from lgsf.conf import settings
-from lgsf.path_utils import load_council_info, load_scraper, scraper_abs_path
+from lgsf.path_utils import load_council_info, load_scraper, _abs_path
 
 
 class CommandBase(metaclass=abc.ABCMeta):
@@ -333,7 +333,7 @@ class PerCouncilCommandBase(CommandBase):
             old_codes = self.options["council"].split(",")
 
             for code in old_codes:
-                new_codes.append(scraper_abs_path(code)[1])
+                new_codes.append(_abs_path(settings.SCRAPER_DIR_NAME, code)[1])
         self.options["council"] = ",".join(new_codes)
         return self.options
 

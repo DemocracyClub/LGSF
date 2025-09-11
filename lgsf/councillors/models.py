@@ -5,6 +5,10 @@ from pathlib import Path
 
 from slugify import slugify
 
+from lgsf.storage.backends import get_storage_backend
+
+storage = get_storage_backend()
+
 
 @dataclass
 class CouncillorBase:
@@ -29,11 +33,11 @@ class CouncillorBase:
         )
 
     def as_file_name(self):
-        return "{}-{}".format(slugify(self.identifier), slugify(self.name))
+        return f"{slugify(self.identifier)}-{slugify(self.name)}"
 
     @classmethod
     def from_file_name(cls, filename: Path):
-        data = json.load(filename.open())
+        data = json.load(storage.open(filename))
         email = data.pop("email", None)
         photo_url = data.pop("photo_url", None)
         data.pop("standing_down", None)

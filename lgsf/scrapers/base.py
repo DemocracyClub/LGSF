@@ -34,7 +34,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
         self.options = options
         self.console = console
         self.check()
-        self.root_dir_name: Path = data_abs_path(self.options["council"])
+        self.root_dir_name: Path = data_abs_path(self.options["council"], mkdir=True)
         if self.http_lib == "requests":
             self.http_client = requests.Session()
             self.http_client.verify = self.verify_requests
@@ -110,7 +110,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
 
     def _save_file(self, dir_name, file_name, content):
         full_path = self.root_dir_name / dir_name
-        full_path.mkdir(exist_ok=True)
+        full_path.mkdir(exist_ok=True, parents=True)
         file_name = full_path / file_name
         with file_name.open("w") as f:
             f.write(content)

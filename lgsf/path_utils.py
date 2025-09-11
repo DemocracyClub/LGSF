@@ -10,7 +10,7 @@ from typing import Tuple
 from lgsf.conf import settings
 
 
-def _abs_path(base_dir, code) -> Tuple[Path, str]:
+def _abs_path(base_dir, code, mkdir=False) -> Tuple[Path, str]:
     """
     Find the path to a directory based on the code.
 
@@ -54,15 +54,19 @@ def _abs_path(base_dir, code) -> Tuple[Path, str]:
         if code.lower() in parts:
             return file_path, parts[0]  # returns lowercased first token
 
-    raise FileNotFoundError("No scraper file at path")
+    if mkdir:
+        new_dir = abs_path / code
+        new_dir.mkdir(exist_ok=True)
+        return new_dir, code
+    raise FileNotFoundError(f"No file for code {code} at path {abs_path}")
 
 
 def scraper_abs_path(code=None) -> Path:
     return _abs_path(settings.SCRAPER_DIR_NAME, code)[0]
 
 
-def data_abs_path(code: str):
-    return _abs_path(settings.DATA_DIR_NAME, code)[0]
+def data_abs_path(code: str, mkdir=False):
+    return _abs_path(settings.DATA_DIR_NAME, code, mkdir=mkdir)[0]
 
 
 def create_org_package(name) -> Path:
