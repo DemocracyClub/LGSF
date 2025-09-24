@@ -11,8 +11,6 @@ import requests
 from botocore.exceptions import ClientError
 from dateutil import parser
 
-# import requests_cache
-# requests_cache.install_cache("scraper_cache", expire_after=60 * 60 * 24)
 from lgsf.path_utils import data_abs_path
 
 from ..aws_lambda.run_log import RunLog
