@@ -153,30 +153,31 @@ class BaseStorage(abc.ABC):
     Abstract base class for pluggable storage backends with session-based operations.
 
     BaseStorage defines the interface for storage systems that require explicit
-    sessions for all file operations. This design provides:
+    sessions for all file operations. Each storage instance is tied to a specific
+    council for data isolation and security. This design provides:
 
     - **Transaction-like behavior**: All operations are batched and atomic
-    - **Multi-council support**: Data is organized by council codes
+    - **Council isolation**: Each instance is bound to one specific council
     - **Backend flexibility**: Implementations can use local filesystem, git, cloud storage, etc.
     - **Consistency guarantees**: Sessions ensure data integrity
 
     Architecture:
     - All file operations must occur within a StorageSession
-    - Sessions are council-scoped (each council gets isolated storage)
+    - Each storage instance serves exactly one council
     - Sessions provide atomic commit/rollback semantics
     - Backends can implement different storage mechanisms (filesystem, git, S3, etc.)
 
     Usage Pattern:
-        storage = get_storage_backend()
+        storage = get_storage_backend(council_code="ABC123")
 
         # Option 1: Using context manager (recommended)
-        with storage.session("Update config", council_code="ABC123") as session:
+        with storage.session("Update config") as session:
             session.write(Path("config.yml"), yaml_content)
             session.write(Path("readme.txt"), "Updated docs")
             # Automatically commits on successful exit
 
         # Option 2: Manual session management
-        session = storage.start_session(council_code="ABC123")
+        session = storage.start_session()
         try:
             session.write(Path("data.txt"), content)
             storage.end_session(session, "Manual commit")
@@ -185,8 +186,8 @@ class BaseStorage(abc.ABC):
             raise
 
     Implementation Requirements:
+    - Subclasses must implement __init__() to accept and store council_code
     - Subclasses must implement _start_session() and _end_session()
-    - Sessions must be isolated per council_code
     - File operations within a session must be atomic
     - Optionally implement _reset_session_state() for cleanup on errors
 
@@ -196,26 +197,39 @@ class BaseStorage(abc.ABC):
     - Session objects should not be shared across threads
     """
 
-    # ---- Session lifecycle ----
-    def start_session(self, council_code: str, **kwargs) -> StorageSession:
+    def __init__(self, council_code: str):
         """
-        Start a new storage session for the specified council.
+        Initialize storage backend for a specific council.
+
+        Args:
+            council_code: Identifier for the council/organization this storage
+                         instance will serve. Must be non-empty and contain only
+                         safe characters.
+
+        Raises:
+            ValueError: If council_code is invalid (empty, unsafe characters)
+        """
+        if not council_code or not council_code.strip():
+            raise ValueError("council_code cannot be empty")
+
+        self.council_code = council_code.strip()
+
+    # ---- Session lifecycle ----
+    def start_session(self, **kwargs) -> StorageSession:
+        """
+        Start a new storage session for this storage instance's council.
 
         Creates and returns a new StorageSession that can be used to perform
         file operations. All operations within the session are isolated and
         will only be committed when end_session() is called successfully.
 
         Args:
-            council_code: Identifier for the council/organization. Used to scope
-                         storage operations to prevent data mixing between councils.
-                         Must be non-empty and contain only safe characters.
             **kwargs: Additional backend-specific parameters.
 
         Returns:
             StorageSession: A new session object for performing file operations.
 
         Raises:
-            ValueError: If council_code is invalid (empty, unsafe characters)
             RuntimeError: If a session is already active for this storage instance
                          (for backends that don't support concurrent sessions)
 
@@ -223,10 +237,10 @@ class BaseStorage(abc.ABC):
             It's recommended to use the session() context manager instead of
             manually managing start_session/end_session calls.
         """
-        return self._start_session(council_code, **kwargs)
+        return self._start_session(**kwargs)
 
     @abc.abstractmethod
-    def _start_session(self, council_code, **kwargs) -> StorageSession: ...
+    def _start_session(self, **kwargs) -> StorageSession: ...
 
     def end_session(self, session: StorageSession, commit_message: str, **kwargs):
         """
@@ -297,8 +311,7 @@ class BaseStorage(abc.ABC):
         Args:
             commit_message: Descriptive message for the changes. Will be used when
                           the session is committed on successful exit.
-            **kwargs: Additional parameters passed to start_session(), including
-                     council_code and any backend-specific options.
+            **kwargs: Additional backend-specific parameters passed to start_session().
 
         Yields:
             StorageSession: The active session for performing file operations.
@@ -310,13 +323,14 @@ class BaseStorage(abc.ABC):
 
         Examples:
             # Basic usage
-            with storage.session("Update config", council_code="ABC123") as session:
+            storage = get_storage_backend(council_code="ABC123")
+            with storage.session("Update config") as session:
                 session.write(Path("config.yml"), config_data)
                 session.touch(Path("updated.flag"))
 
             # Exception handling (cleanup happens automatically)
             try:
-                with storage.session("Risky operation", council_code="ABC123") as session:
+                with storage.session("Risky operation") as session:
                     session.write(Path("data.txt"), risky_operation())
             except Exception as e:
                 print(f"Operation failed, changes rolled back: {e}")

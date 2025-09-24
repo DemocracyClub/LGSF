@@ -136,39 +136,45 @@ class LocalFilesystemStorage(BaseStorage):
 
     Examples:
         # Basic usage
-        storage = LocalFilesystemStorage()
-        with storage.session("Update config", council_code="ABC123") as session:
+        storage = LocalFilesystemStorage(council_code="ABC123")
+        with storage.session("Update config") as session:
             session.write(Path("config.yml"), yaml_data)
 
         # Reading and modifying
-        with storage.session("Process data", council_code="XYZ789") as session:
+        storage = LocalFilesystemStorage(council_code="XYZ789")
+        with storage.session("Process data") as session:
             data = session.open(Path("input.csv"))
             processed = process_csv(data)
             session.write(Path("output.csv"), processed)
     """
 
-    def __init__(self):
+    def __init__(self, council_code: str):
+        super().__init__(council_code)
         self.root = Path(settings.DATA_DIR_NAME)
         self.encoding = "utf8"
         self._active: Optional[_LocalPathlibSession] = None
 
-    def _start_session(self, council_code: str, **kwargs) -> StorageSession:
-        """
-        Create a new local filesystem session for the specified council.
+        # Sanitize council_code to prevent path issues
+        safe_council_code = "".join(c for c in council_code if c.isalnum() or c in "_-")
+        if not safe_council_code:
+            raise ValueError(f"Invalid council_code: {council_code}")
 
-        Creates a council-specific subdirectory if it doesn't exist and returns
-        a session scoped to that directory. The council_code is sanitized to
-        ensure filesystem safety.
+        self.safe_council_code = safe_council_code
+
+    def _start_session(self, **kwargs) -> StorageSession:
+        """
+        Create a new local filesystem session for this instance's council.
+
+        Creates the council-specific subdirectory if it doesn't exist and returns
+        a session scoped to that directory.
 
         Args:
-            council_code: Council identifier, will be sanitized for filesystem use
             **kwargs: Additional parameters (currently unused)
 
         Returns:
             _LocalPathlibSession: A new session for the council's directory
 
         Raises:
-            ValueError: If council_code is empty or contains only unsafe characters
             RuntimeError: If a session is already active on this storage instance
             OSError: If the council directory cannot be created
         """
@@ -177,16 +183,8 @@ class LocalFilesystemStorage(BaseStorage):
                 "A session is already active on this LocalFilesystemStorage instance."
             )
 
-        if not council_code or not council_code.strip():
-            raise ValueError("council_code cannot be empty")
-
-        # Sanitize council_code to prevent path issues
-        safe_council_code = "".join(c for c in council_code if c.isalnum() or c in "_-")
-        if not safe_council_code:
-            raise ValueError(f"Invalid council_code: {council_code}")
-
         # Create council-specific subdirectory
-        council_root = self.root / safe_council_code
+        council_root = self.root / self.safe_council_code
         try:
             council_root.mkdir(parents=True, exist_ok=True)
         except OSError as e:
