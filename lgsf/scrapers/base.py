@@ -1,16 +1,12 @@
 import abc
 import datetime
-import json
 import traceback
 from pathlib import Path
 
-import boto3
 import httpx
 import requests
-from botocore.exceptions import ClientError
 from dateutil import parser
 
-from ..aws_lambda.run_log import RunLog
 from ..storage.backends import get_storage_backend
 from .checks import ScraperChecker
 
@@ -31,8 +27,12 @@ class ScraperBase(metaclass=abc.ABCMeta):
         self.console = console
         self.check()
 
+        # Get storage backend based on options and environment
+        scraper_object_type = getattr(self, 'scraper_object_type', 'Data')
         self.storage_backend = get_storage_backend(
-            council_code=self.options["council"]
+            council_code=self.options["council"],
+            options=self.options,
+            scraper_object_type=scraper_object_type
         )
         self.storage_session = self.storage_backend.start_session()
         if self.http_lib == "requests":
@@ -173,285 +173,36 @@ class ScraperBase(metaclass=abc.ABCMeta):
         # depending on the specific storage backend implementation
         pass
 
-
-class CodeCommitMixin:
-    def __init__(self, options, console):
-        super().__init__(options, console)
-
-        if self.options.get("aws_lambda"):
-            self.repository = self.options["council"]
-            self.codecommit_client = boto3.client("codecommit")
-            try:
-                self.codecommit_client.get_repository(repositoryName=self.repository)
-            except ClientError as error:
-                error_code = error.response["Error"]["Code"]
-                if error_code == "RepositoryDoesNotExistException":
-                    self.create_repo()
-                else:
-                    raise
-            self.put_files = []
-            self.today = datetime.datetime.now().strftime("%Y-%m-%d")
-            self._branch_head = ""
-            self.batch = 1
-            self.log_file_path = f"{self.scraper_object_type}/logbook.json"
-
-    @property
-    def branch_head(self):
-        """returns today's branch's HEAD commit hash"""
-        if not self._branch_head:
-            try:
-                branch_info = self.codecommit_client.get_branch(
-                    repositoryName=self.repository, branchName=self.branch
-                )
-                self._branch_head = branch_info["branch"]["commitId"]
-            except self.codecommit_client.exceptions.BranchDoesNotExistException:
-                self._branch_head = self.create_branch(self.branch)
-
-        return self._branch_head
-
-    @branch_head.setter
-    def branch_head(self, commit_id):
-        self._branch_head = commit_id
-
-    @branch_head.deleter
-    def branch_head(self):
-        self._branch_head = ""
-
-    @property
-    def branch(self):
-        """returns today's branch name"""
-        return f"{self.options['council']}-{self.today}"
-
-    def create_branch(self, branch_name):
+    def prepare_storage(self, run_log=None):
         """
-        `$ git checkout -b branch_name main`
-        ...or create a branch with HEAD pointing at main
+        Prepare the storage backend by starting a new session.
+        Storage backends handle their own preparation during session creation.
 
-        returns commit hash of HEAD
+        Args:
+            run_log: Optional run log for recording operations
         """
-        main_info = self.codecommit_client.get_branch(
-            repositoryName=self.repository, branchName="main"
-        )
-        commit_id = main_info["branch"]["commitId"]
+        # Storage preparation is handled automatically in start_session()
+        # Each backend can do its own cleanup/setup during session creation
+        pass
 
-        self.codecommit_client.create_branch(
-            repositoryName=self.repository,
-            branchName=branch_name,
-            commitId=commit_id,
-        )
+    def finalize_storage(self, run_log=None):
+        """
+        Finalize the storage backend by ending the session with run log data.
 
-        return commit_id
+        Args:
+            run_log: Optional run log for recording operations
+        """
+        if self.storage_session:
+            # Ensure the run log has console output if supported
+            if run_log and hasattr(run_log, 'log') and hasattr(self.console, 'export_text'):
+                if not getattr(run_log, 'log', None):
+                    run_log.log = self.console.export_text()
 
-    def delete_branch(self):
-        delete_info = self.codecommit_client.delete_branch(
-            repositoryName=self.repository, branchName=self.branch
-        )
-        if delete_info["deletedBranch"]:
-            self.console.log(f"deleted {delete_info['deletedBranch']['branchName']}")
-
-    def get_files(self, folder_path):
-        subfolder_paths = []
-        file_paths = []
-        try:
-            self.console.log(f"Getting all files in {folder_path}...")
-            folder = self.codecommit_client.get_folder(
-                repositoryName=self.repository,
-                commitSpecifier=self.branch,
-                folderPath=folder_path,
+            # End session with run log for backend-specific finalization
+            commit_message = "Scraping completed"
+            self.storage_backend.end_session(
+                self.storage_session,
+                commit_message,
+                run_log=run_log
             )
-            for subfolder in folder["subFolders"]:
-                subfolder_paths.append(subfolder["absolutePath"])
-            for file in folder["files"]:
-                file_paths.append(file["absolutePath"])
-
-            for subfolder_path in subfolder_paths:
-                sf_paths, f_paths = self.get_files(subfolder_path)
-                subfolder_paths.extend(sf_paths)
-                file_paths.extend(f_paths)
-
-            self.console.log(f"...found {len(file_paths)} files in {folder_path}")
-            return subfolder_paths, file_paths
-
-        except self.codecommit_client.exceptions.FolderDoesNotExistException:
-            self.console.log(f"{folder_path} Does not exist")
-            return subfolder_paths, file_paths
-
-    def delete_files(self, delete_files, batch):
-        message = f"Deleting batch no. {batch} consisting of {len(delete_files)} files"
-        self.console.log(message)
-
-        return self.commit(message=message, delete_files=delete_files)
-
-    def delete_existing(self, commit_id):
-        _, file_paths = self.get_files(f"{self.scraper_object_type}")
-        batch = 1
-        while len(file_paths) >= 100:
-            delete_files = [{"filePath": fp} for fp in file_paths[:100]]
-            delete_commit = self.delete_files(delete_files, batch)
-            batch += 1
-            file_paths = file_paths[100:]
-            commit_id = delete_commit["commitId"]
-
-        if file_paths:
-            delete_files = [{"filePath": fp} for fp in file_paths]
-            delete_commit = self.delete_files(delete_files, batch)
-            return delete_commit["commitId"]
-        return commit_id
-
-    def delete_data_if_exists(self):
-        self.console.log("Deleting existing data...")
-        head = self.branch_head
-        delete_commit = self.delete_existing(head)
-        if head == delete_commit:
-            self.console.log("...no data to delete.")
-        else:
-            self.branch_head = delete_commit
-            self.console.log("...data deleted.")
-
-    def commit(
-        self,
-        message: str = "",
-        put_files: list = None,
-        delete_files: list = None,
-    ):
-        try:
-            commit_info = self.codecommit_client.create_commit(
-                repositoryName=self.repository,
-                branchName=self.branch,
-                parentCommitId=self.branch_head,
-                commitMessage=message,
-                putFiles=put_files if put_files else [],
-                deleteFiles=delete_files if delete_files else [],
-            )
-        except self.codecommit_client.exceptions.ParentCommitIdOutdatedException:
-            del self.branch_head
-            commit_info = self.codecommit_client.create_commit(
-                repositoryName=self.repository,
-                branchName=self.branch,
-                parentCommitId=self.branch_head,
-                commitMessage=message,
-                putFiles=put_files if put_files else [],
-                deleteFiles=delete_files if delete_files else [],
-            )
-        self.branch_head = commit_info["commitId"]
-        return commit_info
-
-    def process_batch(self):
-        self.console.log(
-            f"Committing batch {self.batch} consisting of {len(self.put_files)} files"
-        )
-        message = (
-            f"{self.scraper_object_type} - batch {self.batch} - scraped on {self.today}"
-        )
-        commit_info = self.commit(put_files=self.put_files, message=message)
-        self.branch_head = commit_info["commitId"]
-        self.batch += 1
-        self.put_files = []
-
-    def attempt_merge(self):
-        self.console.log("Attempting to create merge commit...")
-        merge_info = self.codecommit_client.merge_branches_by_squash(
-            repositoryName=self.repository,
-            sourceCommitSpecifier=self.branch,
-            destinationCommitSpecifier="main",
-            commitMessage=f"{self.scraper_object_type} - scraped on {self.today}",
-        )
-        self.console.log(
-            f"{self.branch} squashed and merged into main at {merge_info['commitId']}"
-        )
-
-    def aws_tidy_up(self, run_log: RunLog):
-        if self.options.get("aws_lambda"):
-            # Check if there's anything left to commit...
-            if self.put_files:
-                self.process_batch()
-
-            # check for differences
-            try:
-                differences_response = self.codecommit_client.get_differences(
-                    repositoryName=self.repository,
-                    afterCommitSpecifier=self.branch,
-                    beforeCommitSpecifier="main",
-                    afterPath=self.scraper_object_type,
-                    beforePath=self.scraper_object_type,
-                    MaxResults=400,
-                )
-            except self.codecommit_client.exceptions.PathDoesNotExistException:
-                # The council has never been scraped before - so everything is new,
-                # but we can just treat it as differences, and fake the necessary
-                # bit of a differences response object
-                differences_response = {"differences": True}
-
-            if not differences_response["differences"]:
-                # noinspection PyAttributeOutsideInit
-                self.new_data = False
-                self.console.log("No new councillor data found.")
-
-            self.console.log(
-                f"Finished attempting to scrape: {self.options['council']}"
-            )
-
-            # squash and merge
-            self.commit_run_log(run_log)
-            self.attempt_merge()
-            self.delete_branch()
-
-        run_log.finish()
-
-    def get_logbook(self):
-        try:
-            logbook_response = self.codecommit_client.get_file(
-                repositoryName=self.repository, filePath=self.log_file_path
-            )
-        except self.codecommit_client.exceptions.FileDoesNotExistException:
-            logbook_response = self.create_log_file()
-
-        return json.loads(logbook_response["fileContent"])
-
-    def create_log_file(self):
-        bare_log = json.dumps({"name": self.options["council"], "runs": []})
-        response = self.commit(
-            put_files=[
-                {"filePath": self.log_file_path, "fileContent": bare_log},
-            ],
-            message=f"Creating empty log file for {self.options['council']}",
-        )
-
-        # construct a similar return obj to client.create_commit
-        return {
-            "commitId": response["commitId"],
-            "blobId": response["filesAdded"][0]["blobId"],
-            "filePath": response["filesAdded"][0]["absolutePath"],
-            "fileContent": bare_log,
-        }
-
-    def commit_run_log(self, run_log: RunLog):
-        run_log.log = (
-            self.console.export_text()
-        )  # maybe this wants to be export_html()?
-        run_log.finish()
-
-        log_book = self.get_logbook()
-        if len(log_book["runs"]) > 20:
-            log_book["runs"].pop(0)
-
-        log_book["runs"].append(run_log.as_json)
-        commit_info = self.commit(
-            put_files=[
-                {
-                    "filePath": self.log_file_path,
-                    "fileContent": json.dumps(log_book),
-                }
-            ],
-            message=f"Logging run for {self.options['council']}",
-        )
-        self.console.log(f"Created log commit {commit_info['commitId']}")
-
-    def create_repo(self):
-        try:
-            self.codecommit_client.create_repository(repositoryName=self.repository)
-        except ClientError as error:
-            error_code = error.response["Error"]["Code"]
-            if error_code == "RepositoryNameExistsException":
-                return
-            raise
+            self.storage_session = None

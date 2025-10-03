@@ -1,7 +1,8 @@
 import abc
 import contextlib
 from pathlib import Path
-from typing import Iterator, Literal, Union, Optional
+from typing import Iterator, Literal, Optional, Union
+
 
 class StorageSession(abc.ABC):
     """
@@ -19,20 +20,20 @@ class StorageSession(abc.ABC):
 
     Examples:
         Basic usage:
-            with storage.session("My changes", council_code="ABC123") as session:
+            with storage.session("My changes") as session:
                 session.write(Path("config.txt"), "new config")
                 session.write_bytes(Path("data.bin"), binary_data)
                 session.touch(Path("marker.flag"))
                 # Files are committed when context exits successfully
 
         Reading files (prefers staged content over disk):
-            with storage.session("Read data", council_code="ABC123") as session:
+            with storage.session("Read data") as session:
                 content = session.open(Path("existing.txt"))
                 session.write(Path("updated.txt"), content + " modified")
                 # session.open() would return the modified content
 
     All file paths should be relative to the storage root and will be scoped
-    to the council_code specified when starting the session.
+    to the council_code specified when the storage backend was created.
     """
 
     @abc.abstractmethod
@@ -166,9 +167,10 @@ class BaseStorage(abc.ABC):
     - Each storage instance serves exactly one council
     - Sessions provide atomic commit/rollback semantics
     - Backends can implement different storage mechanisms (filesystem, git, S3, etc.)
+    - Backend-specific operations (like cleanup, merging) are handled within session lifecycle
 
     Usage Pattern:
-        storage = get_storage_backend(council_code="ABC123")
+        storage = get_storage_backend(council_code="ABC123", options=options)
 
         # Option 1: Using context manager (recommended)
         with storage.session("Update config") as session:
@@ -189,6 +191,8 @@ class BaseStorage(abc.ABC):
     - Subclasses must implement __init__() to accept and store council_code
     - Subclasses must implement _start_session() and _end_session()
     - File operations within a session must be atomic
+    - Backend-specific preparation should happen in _start_session()
+    - Backend-specific finalization should happen in _end_session()
     - Optionally implement _reset_session_state() for cleanup on errors
 
     Thread Safety:
@@ -223,6 +227,9 @@ class BaseStorage(abc.ABC):
         file operations. All operations within the session are isolated and
         will only be committed when end_session() is called successfully.
 
+        Backend-specific preparation (like cleaning directories or deleting
+        existing data) should be handled in the _start_session() implementation.
+
         Args:
             **kwargs: Additional backend-specific parameters.
 
@@ -240,7 +247,22 @@ class BaseStorage(abc.ABC):
         return self._start_session(**kwargs)
 
     @abc.abstractmethod
-    def _start_session(self, **kwargs) -> StorageSession: ...
+    def _start_session(self, **kwargs) -> StorageSession:
+        """
+        Backend-specific session creation logic.
+
+        This method should:
+        1. Perform any backend-specific preparation (cleanup, initialization)
+        2. Create and return a new session object
+        3. Handle any setup that needs to happen before file operations
+
+        Args:
+            **kwargs: Backend-specific parameters
+
+        Returns:
+            StorageSession: New session ready for file operations
+        """
+        ...
 
     def end_session(self, session: StorageSession, commit_message: str, **kwargs):
         """
@@ -249,6 +271,9 @@ class BaseStorage(abc.ABC):
         Applies all staged changes from the session to persistent storage atomically.
         If any operation fails, the entire session is rolled back and no changes
         are applied.
+
+        Backend-specific finalization (like merging branches or updating logs)
+        should be handled in the _end_session() implementation.
 
         Args:
             session: The StorageSession to commit. Must be a session created by
@@ -277,7 +302,25 @@ class BaseStorage(abc.ABC):
         return self._end_session(session, commit_message, **kwargs)
 
     @abc.abstractmethod
-    def _end_session(self, session: StorageSession, commit_message: str, **kwargs): ...
+    def _end_session(self, session: StorageSession, commit_message: str, **kwargs):
+        """
+        Backend-specific session commit logic.
+
+        This method should:
+        1. Commit all staged changes atomically
+        2. Perform any backend-specific finalization
+        3. Return information about the commit
+        4. Clean up session state
+
+        Args:
+            session: Session to commit
+            commit_message: Commit message
+            **kwargs: Backend-specific parameters
+
+        Returns:
+            dict: Commit information
+        """
+        ...
 
     def _reset_session_state(self, session: Optional[StorageSession]) -> None:
         """
@@ -304,8 +347,8 @@ class BaseStorage(abc.ABC):
 
         This is the recommended way to work with storage sessions. It automatically
         handles session lifecycle:
-        - Creates a new session on entry
-        - Commits changes on successful exit
+        - Creates a new session on entry (with backend-specific preparation)
+        - Commits changes on successful exit (with backend-specific finalization)
         - Performs cleanup on exceptions
 
         Args:
@@ -323,7 +366,7 @@ class BaseStorage(abc.ABC):
 
         Examples:
             # Basic usage
-            storage = get_storage_backend(council_code="ABC123")
+            storage = get_storage_backend(council_code="ABC123", options=options)
             with storage.session("Update config") as session:
                 session.write(Path("config.yml"), config_data)
                 session.touch(Path("updated.flag"))

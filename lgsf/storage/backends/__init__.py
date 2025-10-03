@@ -1,18 +1,54 @@
+import os
+from typing import Optional
 
-from typing import Optional, Type
 from lgsf.storage.backends.base import BaseStorage
+from lgsf.storage.backends.codecommit import CodeCommitStorage
 from lgsf.storage.backends.local import LocalFilesystemStorage
 
 
-def get_storage_backend(council_code: str, backend_type: Optional[str] = None) -> BaseStorage:
+def detect_storage_backend_from_environment(options: dict) -> str:
+    """
+    Detect the appropriate storage backend based on environment and options.
+
+    Args:
+        options: Scraper options dictionary
+
+    Returns:
+        str: The backend type to use
+    """
+    # Check for explicit backend specification
+    if "storage_backend" in options:
+        return options["storage_backend"]
+
+    # Check environment variables
+    backend_from_env = os.environ.get("LGSF_STORAGE_BACKEND")
+    if backend_from_env:
+        return backend_from_env.lower()
+
+    # Legacy: check for AWS Lambda mode (backward compatibility)
+    if options.get("aws_lambda"):
+        return "codecommit"
+
+    # Check for other environment indicators
+    if os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+        return "codecommit"
+
+    # Default to local storage
+    return "local"
+
+
+def get_storage_backend(council_code: str, backend_type: Optional[str] = None, options: Optional[dict] = None, **kwargs) -> BaseStorage:
     """
     Get a storage backend instance for a specific council.
 
     Args:
         council_code: Council identifier that this storage instance will serve.
                      Must be non-empty and contain only safe characters.
-        backend_type: The type of backend to create. Defaults to 'local'.
-                     Currently supported: 'local'
+        backend_type: The type of backend to create. If None, will be detected
+                     from environment and options.
+        options: Scraper options dictionary for backend detection.
+        **kwargs: Additional backend-specific parameters:
+                 - scraper_object_type: For codecommit backend, the type of scraper data
 
     Returns:
         An instance of the requested storage backend tied to the specified council.
@@ -21,19 +57,25 @@ def get_storage_backend(council_code: str, backend_type: Optional[str] = None) -
         ValueError: If the backend_type is not supported or council_code is invalid.
     """
     if backend_type is None:
-        backend_type = "local"
+        if options:
+            backend_type = detect_storage_backend_from_environment(options)
+        else:
+            backend_type = "local"
 
     backend_type = backend_type.lower()
 
     if backend_type == "local":
         return LocalFilesystemStorage(council_code=council_code)
+    elif backend_type == "codecommit":
+        scraper_object_type = kwargs.get("scraper_object_type", "Data")
+        return CodeCommitStorage(council_code=council_code, scraper_object_type=scraper_object_type)
     else:
         raise ValueError(f"Unsupported storage backend: {backend_type}")
 
 
 def get_available_backends() -> list[str]:
     """Return a list of available storage backend types."""
-    return ["local"]
+    return ["local", "codecommit"]
 
 
 if __name__ == "__main__":

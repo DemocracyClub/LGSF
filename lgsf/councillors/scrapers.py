@@ -9,10 +9,10 @@ from dateutil.parser import parse
 from lgsf.aws_lambda.run_log import RunLog
 from lgsf.councillors import CouncillorBase
 from lgsf.councillors.exceptions import SkipCouncillorException
-from lgsf.scrapers import CodeCommitMixin, ScraperBase
+from lgsf.scrapers import ScraperBase
 
 
-class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
+class BaseCouncillorScraper(ScraperBase):
     tags = []
     class_tags = []
     ext = "html"
@@ -53,11 +53,6 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
         return self.tags + self.class_tags
 
     def run(self, run_log: RunLog):
-        if self.options.get("aws_lambda"):
-            self.delete_data_if_exists()
-        else:
-            self.clean_data_dir()
-
         for councillor_html in self.get_councillors():
             try:
                 councillor = self.get_single_councillor(councillor_html)
@@ -65,7 +60,8 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
             except SkipCouncillorException:
                 continue
 
-        self.aws_tidy_up(run_log)
+        # Finalize storage with run log data
+        self.finalize_storage(run_log)
 
         self.report()
 
@@ -79,38 +75,10 @@ class BaseCouncillorScraper(CodeCommitMixin, ScraperBase):
     def process_councillor(self, councillor, councillor_raw_str):
         formatted_councillor_raw_str = self.prettify_councillor_str(councillor_raw_str)
 
-        if self.options.get("aws_lambda"):
-            # stage...
-            self.stage_councillor(formatted_councillor_raw_str, councillor)
+        # Always use storage session for consistent behavior
+        self.save_councillor(formatted_councillor_raw_str, councillor)
 
-            # Do a batch commit if needed...
-            if len(self.put_files) > 90:
-                self.process_batch()
-        else:
-            self.save_councillor(formatted_councillor_raw_str, councillor)
 
-    def stage_councillor(self, councillor_data_string, councillor):
-        self.options["council"]
-        json_file_path = (
-            f"{self.scraper_object_type}/json/{councillor.as_file_name()}.json"
-        )
-        raw_file_path = (
-            f"{self.scraper_object_type}/raw/{councillor.as_file_name()}.html"
-        )
-        self.put_files.extend(
-            [
-                {
-                    "filePath": json_file_path,
-                    "fileContent": bytes(
-                        json.dumps(councillor.as_dict(), indent=4), "utf-8"
-                    ),
-                },
-                {
-                    "filePath": raw_file_path,
-                    "fileContent": bytes(councillor_data_string, "utf-8"),
-                },
-            ]
-        )
 
     def save_councillor(self, raw_content, councillor_obj):
         assert type(councillor_obj) is CouncillorBase, (
@@ -190,10 +158,6 @@ class ModGovCouncillorScraper(BaseCouncillorScraper):
     ext = "xml"
 
     def run(self, run_log: RunLog):
-        if self.options.get("aws_lambda"):
-            self.delete_data_if_exists()
-        else:
-            self.clean_data_dir()
         wards = self.get_councillors()
         for ward in wards:
             for councillor_xml in ward.find_all("councillor"):
@@ -203,7 +167,8 @@ class ModGovCouncillorScraper(BaseCouncillorScraper):
                 except SkipCouncillorException:
                     continue
 
-        self.aws_tidy_up(run_log)
+        # Finalize storage with run log data
+        self.finalize_storage(run_log)
 
         self.report()
 

@@ -1,11 +1,11 @@
 from __future__ import annotations
-import contextlib
+
 from pathlib import Path
-from typing import Dict, Optional, Union, Literal
+from typing import Dict, Literal, Optional, Union
 from uuid import uuid4
 
 from lgsf.conf import settings
-from lgsf.storage.backends.base import StorageSession, BaseStorage
+from lgsf.storage.backends.base import BaseStorage, StorageSession
 
 
 class _LocalPathlibSession(StorageSession):
@@ -165,8 +165,8 @@ class LocalFilesystemStorage(BaseStorage):
         """
         Create a new local filesystem session for this instance's council.
 
-        Creates the council-specific subdirectory if it doesn't exist and returns
-        a session scoped to that directory.
+        This method handles preparation by cleaning the council directory
+        and creating a fresh session ready for file operations.
 
         Args:
             **kwargs: Additional parameters (currently unused)
@@ -183,12 +183,18 @@ class LocalFilesystemStorage(BaseStorage):
                 "A session is already active on this LocalFilesystemStorage instance."
             )
 
-        # Create council-specific subdirectory
+        # Clean and recreate council-specific subdirectory
         council_root = self.root / self.safe_council_code
         try:
+            # Clean existing directory if it exists
+            if council_root.exists():
+                import shutil
+                shutil.rmtree(council_root)
+
+            # Create fresh directory
             council_root.mkdir(parents=True, exist_ok=True)
         except OSError as e:
-            raise RuntimeError(f"Failed to create council directory {council_root}: {e}")
+            raise RuntimeError(f"Failed to prepare council directory {council_root}: {e}")
 
         sess = _LocalPathlibSession(council_root, encoding=self.encoding)
         self._active = sess
@@ -198,13 +204,14 @@ class LocalFilesystemStorage(BaseStorage):
         """
         Commit all staged changes from the session to the filesystem.
 
-        Writes all staged files atomically using temporary files and Path.replace().
-        If any write fails, attempts to clean up partial changes and raises an error.
+        Writes all staged files atomically and performs local storage finalization
+        like creating summary files.
 
         Args:
             session: The session to commit (must be from this storage instance)
             commit_message: Description of the changes (must be non-empty)
-            **kwargs: Additional parameters (currently unused)
+            **kwargs: Additional parameters:
+                - run_log: Optional run log for creating summary files
 
         Returns:
             dict: Commit information containing:
@@ -212,6 +219,7 @@ class LocalFilesystemStorage(BaseStorage):
                 - root: Path to the council's root directory
                 - files: List of file paths that were written
                 - commit_message: The sanitized commit message
+                - summary: Summary file information if created
 
         Raises:
             ValueError: If commit_message is empty
@@ -255,12 +263,44 @@ class LocalFilesystemStorage(BaseStorage):
                             pass  # Best effort cleanup
                     raise RuntimeError(f"Failed to write {rel_path}: {e}")
 
-            # Optionally: write commit_message to a log file under root if you want history.
+            # Local storage finalization: create summary file if run_log provided
+            summary_info = {}
+            run_log = kwargs.get('run_log')
+            if run_log:
+                try:
+                    summary_path = session._root / "scrape_summary.json"
+
+                    if not hasattr(run_log, 'finished') or not run_log.finished:
+                        run_log.finish()
+
+                    import json
+                    summary_data = {
+                        "council": self.council_code,
+                        "commit_message": commit_message.strip(),
+                        "files_written": len(written_files),
+                        "summary": "Local filesystem scrape completed"
+                    }
+
+                    try:
+                        summary_data.update(run_log.as_json)
+                    except (AttributeError, TypeError):
+                        pass  # run_log might not have as_json method or might not be serializable
+
+                    with summary_path.open('w', encoding='utf-8') as f:
+                        json.dump(summary_data, f, indent=2, default=str)
+
+                    summary_info["summary_file"] = str(summary_path)
+                    written_files.append(str(summary_path))
+
+                except Exception as e:
+                    summary_info["summary_error"] = str(e)
+
             return {
                 "applied": len(staged),
                 "root": str(session._root),
                 "files": written_files,
-                "commit_message": commit_message.strip()
+                "commit_message": commit_message.strip(),
+                **summary_info
             }
         finally:
             self._reset_session_state(session)
