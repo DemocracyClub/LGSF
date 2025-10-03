@@ -18,9 +18,7 @@ class Scraper(HTMLCouncillorScraper):
         soup = self.get_page(url)
 
         name = (
-            soup.select_one(".title h1")
-            .get_text(strip=True)
-            .replace("Councillor ", "")
+            soup.select_one(".title h1").get_text(strip=True).replace("Councillor ", "")
         )
 
         ward = (

@@ -43,9 +43,7 @@ class Scraper(HTMLCouncillorScraper):
             division=ward,
         )
 
-        councillor.email = soup.select_one("td a[href^=mailto]").get_text(
-            strip=True
-        )
+        councillor.email = soup.select_one("td a[href^=mailto]").get_text(strip=True)
         councillor.photo_url = urljoin(
             self.base_url,
             soup.select_one(".a-relimage img")["src"],

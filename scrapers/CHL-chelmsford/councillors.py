@@ -35,9 +35,7 @@ class Scraper(HTMLCouncillorScraper):
         if name == "Vacant councillor post":
             raise SkipCouncillorException("Vacant")
         division = (
-            soup.find("h2", text=re.compile("Ward"))
-            .find_next("p")
-            .get_text(strip=True)
+            soup.find("h2", text=re.compile("Ward")).find_next("p").get_text(strip=True)
         )
         party = (
             soup.find("h2", text=re.compile("Political party"))

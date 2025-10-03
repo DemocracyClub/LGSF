@@ -109,9 +109,7 @@ for file_name in glob.glob("./data/**/face_data/*.json"):
         "email": json_data["councillor_json"]["email"],
         "url": json_data["councillor_json"]["url"],
         "photo_url": json_data["councillor_json"]["photo_url"],
-        "gender_from_name": gender_from_name(
-            json_data["councillor_json"]["raw_name"]
-        ),
+        "gender_from_name": gender_from_name(json_data["councillor_json"]["raw_name"]),
         "gender_from_photo": face["Gender"]["Value"],
         "age_low": face["AgeRange"]["Low"],
         "age_high": face["AgeRange"]["High"],
@@ -119,9 +117,7 @@ for file_name in glob.glob("./data/**/face_data/*.json"):
         "glasses": face["Eyeglasses"]["Value"],
         "beard": face["Beard"]["Value"],
         "happy": any(
-            x
-            for x in face["Emotions"]
-            if x["Type"] == "HAPPY" and x["Confidence"] > 70
+            x for x in face["Emotions"] if x["Type"] == "HAPPY" and x["Confidence"] > 70
         ),
     }
     out_csv.writerow(row)

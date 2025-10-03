@@ -16,11 +16,7 @@ class Scraper(HTMLCouncillorScraper):
         url = urljoin(self.base_url, councillor_html.a["href"])
         soup = self.get_page(url)
 
-        name = (
-            soup.select_one("h1")
-            .get_text(strip=True)
-            .replace("Councillor ", "")
-        )
+        name = soup.select_one("h1").get_text(strip=True).replace("Councillor ", "")
 
         # Seems they handcraft HTML, so we need to try a few things here
         ward = (
@@ -32,8 +28,7 @@ class Scraper(HTMLCouncillorScraper):
         if not ward:
             ward = (
                 soup.find("span", text=re.compile("Ward:"))
-                .parent
-                .get_text(strip=True)
+                .parent.get_text(strip=True)
                 .replace("Ward:", "")
                 .strip()
             )
@@ -55,9 +50,9 @@ class Scraper(HTMLCouncillorScraper):
             division=ward,
         )
         try:
-            councillor.email = soup.select_one("a[href^=mailto]")[
-                "href"
-            ].replace("mailto:", "")
+            councillor.email = soup.select_one("a[href^=mailto]")["href"].replace(
+                "mailto:", ""
+            )
         except TypeError:
             councillor.email = (
                 soup.find(text=re.compile("Email:"))

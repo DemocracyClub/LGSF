@@ -22,9 +22,7 @@ class Scraper(HTMLCouncillorScraper):
             .get_text(strip=True)
             .replace("Councillor ", "")
         )
-        intro = soup.find(
-            "p", text=re.compile("is one of East Dunbartonshire Council")
-        )
+        intro = soup.find("p", text=re.compile("is one of East Dunbartonshire Council"))
         if not intro:
             raise SkipCouncillorException()
         ward = (
@@ -48,8 +46,6 @@ class Scraper(HTMLCouncillorScraper):
         ).getText(strip=True)
         councillor.photo_url = urljoin(
             self.base_url,
-            soup.select_one(".field-name-field-picture img.img-responsive")[
-                "src"
-            ],
+            soup.select_one(".field-name-field-picture img.img-responsive")["src"],
         )
         return councillor

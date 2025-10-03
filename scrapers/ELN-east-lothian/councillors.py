@@ -38,15 +38,13 @@ class Scraper(HTMLCouncillorScraper):
             party=party,
             division=ward,
         )
-        councillor.email = soup.select_one(
-            ".listing__summary a[href^=mailto]"
-        ).getText(strip=True)
+        councillor.email = soup.select_one(".listing__summary a[href^=mailto]").getText(
+            strip=True
+        )
         with contextlib.suppress(TypeError):
             councillor.photo_url = urljoin(
                 self.base_url,
-                soup.select_one(".listing--with-image img.listing__image")[
-                    "src"
-                ],
+                soup.select_one(".listing--with-image img.listing__image")["src"],
             )
 
         return councillor

@@ -36,9 +36,9 @@ class Scraper(HTMLCouncillorScraper):
         )
         container = soup.select_one(".journal-content-article ")
 
-        councillor.email = container.select_one("a[href^=mailto]")[
-            "href"
-        ].replace("mailto:", "")
+        councillor.email = container.select_one("a[href^=mailto]")["href"].replace(
+            "mailto:", ""
+        )
 
         councillor.photo_url = container.select_one("img")["src"]
 

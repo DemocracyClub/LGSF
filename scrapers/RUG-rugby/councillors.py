@@ -28,16 +28,8 @@ class Scraper(HTMLCouncillorScraper):
         if "vacant" in name.lower():
             raise SkipCouncillorException()
 
-        ward = (
-            soup.select_one("div.ward")
-            .get_text(strip=True)
-            .strip()
-        )
-        party = (
-            soup.select_one("div.party")
-            .get_text(strip=True)
-            .strip()
-        )
+        ward = soup.select_one("div.ward").get_text(strip=True).strip()
+        party = soup.select_one("div.party").get_text(strip=True).strip()
 
         councillor = self.add_councillor(
             url,

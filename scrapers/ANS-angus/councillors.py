@@ -18,9 +18,7 @@ class Scraper(HTMLCouncillorScraper):
         identifier = url.split("/")[-1]
         name = councillor_html.find_all("a")[0].text
 
-        division = councillor_html.find(
-            "div", {"class": "councillor-ward"}
-        ).text
+        division = councillor_html.find("div", {"class": "councillor-ward"}).text
         party = councillor_html.find("div", {"class": "councillor-party"}).text
         councillor = self.add_councillor(
             url,
@@ -32,8 +30,8 @@ class Scraper(HTMLCouncillorScraper):
 
         req = self.get(url)
         soup = BeautifulSoup(req.text, "lxml")
-        councillor.email = soup.select(
-            ".field--name-field-email a[href^=mailto]"
-        )[0].get_text(strip=True)
+        councillor.email = soup.select(".field--name-field-email a[href^=mailto]")[
+            0
+        ].get_text(strip=True)
 
         return councillor

@@ -5,9 +5,7 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    base_url = (
-        "https://coins.shetland.gov.uk/allMembers.asp?sort=0&page=0&rec=24"
-    )
+    base_url = "https://coins.shetland.gov.uk/allMembers.asp?sort=0&page=0&rec=24"
     list_page = {
         "container_css_selector": "#content",
         "councillor_css_selector": "tr",
@@ -38,9 +36,7 @@ class Scraper(HTMLCouncillorScraper):
             division=division,
         )
 
-        councillor.email = soup.select("a[href^=mailto]")[0].get_text(
-            strip=True
-        )
+        councillor.email = soup.select("a[href^=mailto]")[0].get_text(strip=True)
         councillor.photo_url = urljoin(
             self.base_url,
             soup.select_one(".memberImage").select_one("img")["src"],

@@ -20,16 +20,12 @@ class Scraper(PagedHTMLCouncillorScraper):
         url = urljoin(self.base_url, councillor_html.findAll("a")[0]["href"])
         req = self.get(url)
         soup = BeautifulSoup(req.text, "lxml")
-        name = soup.select_one("h1.lgd-page-title-block__title").get_text(
-            strip=True
-        )
+        name = soup.select_one("h1.lgd-page-title-block__title").get_text(strip=True)
         if name == "Vacant":
             raise SkipCouncillorException("Vacant")
 
         division = " ".join(
-            councillor_html.select_one(".field--name-field-ward").get_text(
-                strip=True
-            )
+            councillor_html.select_one(".field--name-field-ward").get_text(strip=True)
         )
         party = councillor_html.select_one(
             ".field--name-localgov-directory-facets-select"
@@ -40,10 +36,6 @@ class Scraper(PagedHTMLCouncillorScraper):
             url, identifier=url, name=name, party=party, division=division
         )
 
-        councillor.email = soup.select("a[href^=mailto]")[0].get_text(
-            strip=True
-        )
-        councillor.photo_url = soup.select_one(".field--name-field-photo").img[
-            "src"
-        ]
+        councillor.email = soup.select("a[href^=mailto]")[0].get_text(strip=True)
+        councillor.photo_url = soup.select_one(".field--name-field-photo").img["src"]
         return councillor

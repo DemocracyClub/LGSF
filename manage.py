@@ -1,5 +1,6 @@
 import sys
 
+
 sys.path.append("lgsf")
 sys.path.append("scrapers")
 

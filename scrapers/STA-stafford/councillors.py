@@ -27,16 +27,12 @@ class Scraper(HTMLCouncillorScraper):
             .get_text(strip=True)
         )
 
-        party = councillor_html.select("td")[4].get_text(
-            strip=True
-        )
+        party = councillor_html.select("td")[4].get_text(strip=True)
 
         councillor = self.add_councillor(
             url, name=name, division=ward, party=party, identifier=url
         )
-        councillor.email = soup.select("a[href^=mailto]")[0].get_text(
-            strip=True
-        )
+        councillor.email = soup.select("a[href^=mailto]")[0].get_text(strip=True)
         councillor.photo_url = urljoin(
             self.base_url, soup.select_one("img.img-responsive")["src"]
         )

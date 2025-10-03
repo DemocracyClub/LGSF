@@ -29,31 +29,31 @@ class CouncillorBase:
         )
 
     def as_file_name(self):
-        return "{}-{}".format(slugify(self.identifier), slugify(self.name))
+        return f"{slugify(self.identifier)}-{slugify(self.name)}"
 
     @classmethod
-    def from_file_name(cls, filename: Path):
-        data = json.load(filename.open())
+    def from_storage(cls, filename: Path, session):
+        """Load councillor from storage session"""
+        data = json.loads(session.open(filename))
+
         email = data.pop("email", None)
         photo_url = data.pop("photo_url", None)
-        standing_down = data.pop("standing_down", None)
+        data.pop("standing_down", None)
         for k in list(data.keys()):
             if k.startswith("raw_"):
                 data[k[4:]] = data.pop(k)
 
-        klass = cls(**data)
+        councillor = cls(**data)
         if photo_url:
-            klass.photo_url = photo_url
+            councillor.photo_url = photo_url
         if email:
-            klass.email = email
-        return klass
+            councillor.email = email
+        return councillor
 
     def as_csv(self):
         out = csv.StringIO()
         out_csv = csv.writer(out)
-        out_csv.writerow(
-            [self.identifier, self.name, self.party, self.division]
-        )
+        out_csv.writerow([self.identifier, self.name, self.party, self.division])
         return out.getvalue()
 
     def as_dict(self):

@@ -1,94 +1,105 @@
 from __future__ import annotations
 
-import glob
 import json
-import os
-import pkgutil
 import re
 from importlib import import_module
 from importlib.machinery import SourceFileLoader
+from pathlib import Path
+from typing import Tuple
 
 from lgsf.conf import settings
 
 
-def _abs_path(base_dir, code):
-    abs_path = os.path.abspath(base_dir)
-    abs_path_root = os.path.join(abs_path, code.upper())
-    if os.path.exists(abs_path_root):
-        return (abs_path_root, code)
-    for file_path in glob.glob(f"{base_dir}/{code.upper()}-*"):
-        file_name = os.path.split(file_path)[-1]
-        parts = file_name.split("-")
+def _abs_path(base_dir, code, mkdir=False) -> Tuple[Path, str]:
+    """
+    Find the path to a directory based on the code.
+
+    Directories can be scrapers or data, both are in the same format.
+
+    This isn't as simple as it could be due to the directory being in the format
+    [org code]-[org slug]. This means we need to glob for the directory and
+    return the first match.
+
+    We have support for legacy [code] only directories as a fallback.
+
+    Lastly we scan for any directory with the code in any case. This is to deal
+    with odd cases, e.g the GLA, where we don't have a three letter code.
+
+    Raises:
+        FileNotFoundError: If no matching scraper file is found.
+    """
+    abs_path = Path(base_dir).expanduser().resolve()
+    code = code.upper()
+
+    # 1) Match CODE-* in the same dir
+    for file_path in abs_path.glob(f"{code}-*"):
+        parts = file_path.name.split("-")
         if parts[0] == code:
-            return (file_path, parts[0])
-    for file_path in glob.glob(f"{base_dir}/*"):
-        file_name = os.path.split(file_path)[-1]
-        if re.match("{}-[a-z\-]+".format(code.upper()), file_name):
-            return (file_path, code)
+            return file_path, parts[0]  # returns uppercased token
+
+    # 2) Exact match on a path named CODE
+    abs_path_root = abs_path / code
+    if abs_path_root.exists():
+        return abs_path_root, code
+
+    # 3) Fallback: scan everything in base_dir
+    for file_path in abs_path.iterdir():
+        file_name = file_path.name
+
+        # Equivalent to re.match("{}-[a-z\-]+", file_name) at start of string
+        if re.match(rf"^{re.escape(code)}-[a-z\-]+", file_name):
+            return file_path, code  # keep original casing for this branch
+
         parts = file_name.lower().split("-")
         if code.lower() in parts:
-            return (file_path, parts[0])
-    raise IOError("No scraper file at path")
+            return file_path, parts[0]  # returns lowercased first token
+
+    if mkdir:
+        new_dir = abs_path / code
+        new_dir.mkdir(exist_ok=True)
+        return new_dir, code
+    raise FileNotFoundError(f"No file for code {code} at path {abs_path}")
 
 
-def scraper_abs_path(code=None):
+def scraper_abs_path(code=None) -> Path:
     return _abs_path(settings.SCRAPER_DIR_NAME, code)[0]
 
 
-def create_org_package(name):
-    path = os.path.join(settings.SCRAPER_DIR_NAME, name)
-    os.makedirs(path, exist_ok=True)
+def data_abs_path(code: str, mkdir=False):
+    return _abs_path(settings.DATA_DIR_NAME, code, mkdir=mkdir)[0]
+
+
+def create_org_package(name) -> Path:
+    path = settings.BASE_PATH / settings.SCRAPER_DIR_NAME / name
+    path.mkdir(exist_ok=True)
     return path
-
-
-def data_abs_path(code=None, subdir=None):
-    try:
-        abspath = _abs_path(settings.DATA_DIR_NAME, code)[0]
-    except OSError:
-        path_args = [x for x in [settings.DATA_DIR_NAME, subdir, code] if x]
-        abspath = os.path.abspath(os.path.join(*path_args))
-    if subdir:
-        abspath = os.path.join(abspath, subdir)
-    return abspath
-
-
-def scraper_path_exists(path):
-    return os.path.exists(path)
 
 
 def load_scraper(code, command):
     from lgsf.scrapers import ScraperBase
 
-    path = os.path.join(scraper_abs_path(code), "{}.py".format(command))
-    if not os.path.exists(path):
+    path = scraper_abs_path(code) / f"{command}.py"
+    if not path.exists():
         return False
-    scraper_module = SourceFileLoader("module.name", path).load_module()
+    scraper_module = SourceFileLoader("module.name", str(path)).load_module()
     scraper_class = scraper_module.Scraper
     if not issubclass(scraper_class, ScraperBase):
         raise ValueError(
-            "Scraper at {} must be a subclass "
-            "of lgsf.scrapers.BaseScraper".format(path)
+            f"Scraper at {path} must be a subclass of lgsf.scrapers.BaseScraper"
         )
     return scraper_class
 
 
 def load_council_info(code):
-    path = os.path.join(scraper_abs_path(code), "metadata.json")
-    if os.path.exists(path):
-        with open(path) as f:
+    path = scraper_abs_path(code) / "metadata.json"
+    if path.exists():
+        with path.open() as f:
             return json.loads(f.read())
     return None
 
 
-def get_commands():
-    command_path = os.path.join(settings.BASE_PATH, "lgsf")
-    return [mod.name for mod in pkgutil.iter_modules([command_path])]
-
-
 def load_command_module(module_name):
-    return import_module(
-        "{}.{}".format(module_name, settings.COMMAND_FILE_NAME)
-    )
+    return import_module(f"{module_name}.{settings.COMMAND_FILE_NAME}")
 
 
 def load_command(module_name):

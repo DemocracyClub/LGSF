@@ -42,9 +42,7 @@ class Scraper(HTMLCouncillorScraper):
             division=ward,
         )
         with contextlib.suppress(AttributeError):
-            councillor.email = soup.select_one("h5 a[href^=mailto]").getText(
-                strip=True
-            )
+            councillor.email = soup.select_one("h5 a[href^=mailto]").getText(strip=True)
         with contextlib.suppress(TypeError):
             councillor.photo_url = urljoin(
                 self.base_url,

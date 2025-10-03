@@ -1,6 +1,4 @@
-import re
-
-from lgsf.councillors.scrapers import HTMLCouncillorScraper, CMISCouncillorScraper
+from lgsf.councillors.scrapers import CMISCouncillorScraper
 
 
 class Scraper(CMISCouncillorScraper):
