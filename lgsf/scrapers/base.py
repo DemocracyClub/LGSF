@@ -34,9 +34,10 @@ class ScraperBase(metaclass=abc.ABCMeta):
         self.console = console
         self.check()
         self.root_dir_name: Path = data_abs_path(self.options["council"], mkdir=True)
-        self.storage_session = get_storage_backend().start_session(
+        self.storage_backend = get_storage_backend(
             council_code=self.options["council"]
         )
+        self.active_session = None
         if self.http_lib == "requests":
             self.http_client = requests.Session()
             self.http_client.verify = self.verify_requests
@@ -99,6 +100,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
         return None
 
     def __enter__(self):
+        self.start_storage_session()
         return self
 
     def __exit__(self, exc_type, exc_value, tb):
@@ -106,6 +108,15 @@ class ScraperBase(metaclass=abc.ABCMeta):
         This method will allow us to log uncaught exceptions.
 
         """
+        # Always end the session if one is active
+        if self.active_session:
+            if exc_type is None:
+                self.finalise()
+            else:
+                # On error, reset session without committing
+                self.storage_backend._reset_session_state(self.active_session)
+                self.active_session = None
+
         if not exc_type:
             return
 
@@ -118,11 +129,21 @@ class ScraperBase(metaclass=abc.ABCMeta):
         Call this to wrap up any operations, e.g committing files
         """
         self._set_last_run()
+        # End session if still active
+        if self.active_session:
+            self.storage_backend.end_session(self.active_session, "Scraping completed")
+            self.active_session = None
 
     def _save_file(self, dir_name, file_name, content):
-        full_path = self.root_dir_name / dir_name
-        file_name = full_path / file_name
-        self.storage_session.write(filename=file_name, content=content)
+        if not self.active_session:
+            raise RuntimeError(
+                f"Cannot save file {dir_name}/{file_name}: No active storage session. "
+                f"You must call start_storage_session() before saving files."
+            )
+
+        full_path = Path(dir_name)
+        file_path = full_path / file_name
+        self.active_session.write(filename=file_path, content=content)
 
     def save_raw(self, filename, content):
         self._save_file("raw", filename, content)
@@ -130,6 +151,12 @@ class ScraperBase(metaclass=abc.ABCMeta):
     def save_json(self, obj):
         file_name = "{}.json".format(obj.as_file_name())
         self._save_file("json", file_name, obj.as_json())
+
+    def start_storage_session(self):
+        """Start a storage session for file operations."""
+        if self.active_session:
+            raise RuntimeError("A storage session is already active")
+        self.active_session = self.storage_backend.start_session()
 
     def clean_data_dir(self):
         shutil.rmtree(self.root_dir_name)
