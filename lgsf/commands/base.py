@@ -14,7 +14,7 @@ from rich.progress import BarColumn, Progress, TimeElapsedColumn
 from rich.table import Table
 
 from lgsf.conf import settings
-from lgsf.path_utils import load_council_info, load_scraper, _abs_path
+from lgsf.path_utils import _abs_path, load_council_info, load_scraper
 
 
 class CommandBase(metaclass=abc.ABCMeta):
@@ -325,6 +325,9 @@ class PerCouncilCommandBase(CommandBase):
                 if not required_tags.issubset(scraper_tags):
                     should_run = False
             if should_run:
+                # Clear console recording to exclude bootstrapping output from run log
+                if hasattr(self.console, '_record_buffer'):
+                    self.console._record_buffer.clear()
                 self._run_single(scraper)
 
     def normalise_codes(self):
