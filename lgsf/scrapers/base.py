@@ -1,7 +1,6 @@
 import abc
 import datetime
 import json
-import shutil
 import traceback
 from pathlib import Path
 
@@ -11,11 +10,9 @@ import requests
 from botocore.exceptions import ClientError
 from dateutil import parser
 
-from lgsf.path_utils import data_abs_path
-
 from ..aws_lambda.run_log import RunLog
-from .checks import ScraperChecker
 from ..storage.backends import get_storage_backend
+from .checks import ScraperChecker
 
 
 class ScraperBase(metaclass=abc.ABCMeta):
@@ -33,11 +30,11 @@ class ScraperBase(metaclass=abc.ABCMeta):
         self.options = options
         self.console = console
         self.check()
-        self.root_dir_name: Path = data_abs_path(self.options["council"], mkdir=True)
+
         self.storage_backend = get_storage_backend(
             council_code=self.options["council"]
         )
-        self.active_session = None
+        self.storage_session = self.storage_backend.start_session()
         if self.http_lib == "requests":
             self.http_client = requests.Session()
             self.http_client.verify = self.verify_requests
@@ -74,8 +71,8 @@ class ScraperBase(metaclass=abc.ABCMeta):
         return None
 
     def _file_name(self, name) -> Path:
-        dir_name = data_abs_path(self.options["council"])
-        return dir_name / name
+        # Return just the filename for storage backend usage
+        return Path(name)
 
     def _last_run_file_name(self) -> Path:
         return self._file_name("_last-run")
@@ -84,23 +81,42 @@ class ScraperBase(metaclass=abc.ABCMeta):
         return self._file_name("error")
 
     def _set_error(self, tb):
-        with self._error_file_name().open("w") as f:
-            traceback.print_tb(tb, file=f)
+        import io
+        error_output = io.StringIO()
+        traceback.print_tb(tb, file=error_output)
+        error_content = error_output.getvalue()
+
+        # Use existing session if available, otherwise create a new one
+        if self.storage_session:
+            self.storage_session.write(self._error_file_name(), error_content)
+        else:
+            with self.storage_backend.session("Saving error information") as session:
+                session.write(self._error_file_name(), error_content)
 
     def _set_last_run(self):
-        file_name = self._last_run_file_name()
-        with file_name.open("w") as f:
-            f.write(datetime.datetime.now().isoformat())
+        timestamp = datetime.datetime.now().isoformat()
+
+        # Use existing session if available, otherwise create a new one
+        if self.storage_session:
+            self.storage_session.write(self._last_run_file_name(), timestamp)
+        else:
+            with self.storage_backend.session("Updating last run timestamp") as session:
+                session.write(self._last_run_file_name(), timestamp)
 
     def _get_last_run(self):
-        file_name = self._last_run_file_name()
-        if file_name.exists():
-            with file_name.open("r") as f:
-                return parser.parse(f.read())
-        return None
+        try:
+            # Use existing session if available, otherwise create a new one
+            if self.storage_session:
+                timestamp_str = self.storage_session.open(self._last_run_file_name())
+                return parser.parse(timestamp_str)
+            else:
+                with self.storage_backend.session("Reading last run timestamp") as session:
+                    timestamp_str = session.open(self._last_run_file_name())
+                    return parser.parse(timestamp_str)
+        except FileNotFoundError:
+            return None
 
     def __enter__(self):
-        self.start_storage_session()
         return self
 
     def __exit__(self, exc_type, exc_value, tb):
@@ -108,14 +124,12 @@ class ScraperBase(metaclass=abc.ABCMeta):
         This method will allow us to log uncaught exceptions.
 
         """
-        # Always end the session if one is active
-        if self.active_session:
+        if self.storage_session:
             if exc_type is None:
                 self.finalise()
             else:
                 # On error, reset session without committing
-                self.storage_backend._reset_session_state(self.active_session)
-                self.active_session = None
+                self.storage_backend._reset_session_state(self.storage_session)
 
         if not exc_type:
             return
@@ -130,12 +144,12 @@ class ScraperBase(metaclass=abc.ABCMeta):
         """
         self._set_last_run()
         # End session if still active
-        if self.active_session:
-            self.storage_backend.end_session(self.active_session, "Scraping completed")
-            self.active_session = None
+        if self.storage_session:
+            self.storage_backend.end_session(self.storage_session, "Scraping completed")
+            self.storage_session = None
 
     def _save_file(self, dir_name, file_name, content):
-        if not self.active_session:
+        if not self.storage_session:
             raise RuntimeError(
                 f"Cannot save file {dir_name}/{file_name}: No active storage session. "
                 f"You must call start_storage_session() before saving files."
@@ -143,7 +157,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
 
         full_path = Path(dir_name)
         file_path = full_path / file_name
-        self.active_session.write(filename=file_path, content=content)
+        self.storage_session.write(filename=file_path, content=content)
 
     def save_raw(self, filename, content):
         self._save_file("raw", filename, content)
@@ -152,14 +166,12 @@ class ScraperBase(metaclass=abc.ABCMeta):
         file_name = "{}.json".format(obj.as_file_name())
         self._save_file("json", file_name, obj.as_json())
 
-    def start_storage_session(self):
-        """Start a storage session for file operations."""
-        if self.active_session:
-            raise RuntimeError("A storage session is already active")
-        self.active_session = self.storage_backend.start_session()
 
     def clean_data_dir(self):
-        shutil.rmtree(self.root_dir_name)
+        # Note: Storage backends handle their own cleanup mechanisms
+        # This method is kept for compatibility but may not be needed
+        # depending on the specific storage backend implementation
+        pass
 
 
 class CodeCommitMixin:

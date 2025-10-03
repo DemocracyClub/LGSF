@@ -5,10 +5,6 @@ from pathlib import Path
 
 from slugify import slugify
 
-from lgsf.storage.backends import get_storage_backend
-
-storage = get_storage_backend()
-
 
 @dataclass
 class CouncillorBase:
@@ -36,8 +32,10 @@ class CouncillorBase:
         return f"{slugify(self.identifier)}-{slugify(self.name)}"
 
     @classmethod
-    def from_file_name(cls, filename: Path):
-        data = json.load(storage.open(filename))
+    def from_storage(cls, filename: Path, session):
+        """Load councillor from storage session"""
+        data = json.loads(session.open(filename))
+
         email = data.pop("email", None)
         photo_url = data.pop("photo_url", None)
         data.pop("standing_down", None)
@@ -45,12 +43,12 @@ class CouncillorBase:
             if k.startswith("raw_"):
                 data[k[4:]] = data.pop(k)
 
-        klass = cls(**data)
+        councillor = cls(**data)
         if photo_url:
-            klass.photo_url = photo_url
+            councillor.photo_url = photo_url
         if email:
-            klass.email = email
-        return klass
+            councillor.email = email
+        return councillor
 
     def as_csv(self):
         out = csv.StringIO()
