@@ -189,12 +189,15 @@ class LocalFilesystemStorage(BaseStorage):
             # Clean existing directory if it exists
             if council_root.exists():
                 import shutil
+
                 shutil.rmtree(council_root)
 
             # Create fresh directory
             council_root.mkdir(parents=True, exist_ok=True)
         except OSError as e:
-            raise RuntimeError(f"Failed to prepare council directory {council_root}: {e}")
+            raise RuntimeError(
+                f"Failed to prepare council directory {council_root}: {e}"
+            )
 
         sess = _LocalPathlibSession(council_root, encoding=self.encoding)
         self._active = sess
@@ -265,20 +268,21 @@ class LocalFilesystemStorage(BaseStorage):
 
             # Local storage finalization: create summary file if run_log provided
             summary_info = {}
-            run_log = kwargs.get('run_log')
+            run_log = kwargs.get("run_log")
             if run_log:
                 try:
                     summary_path = session._root / "scrape_summary.json"
 
-                    if not hasattr(run_log, 'finished') or not run_log.finished:
+                    if not hasattr(run_log, "finished") or not run_log.finished:
                         run_log.finish()
 
                     import json
+
                     summary_data = {
                         "council": self.council_code,
                         "commit_message": commit_message.strip(),
                         "files_written": len(written_files),
-                        "summary": "Local filesystem scrape completed"
+                        "summary": "Local filesystem scrape completed",
                     }
 
                     try:
@@ -286,7 +290,7 @@ class LocalFilesystemStorage(BaseStorage):
                     except (AttributeError, TypeError):
                         pass  # run_log might not have as_json method or might not be serializable
 
-                    with summary_path.open('w', encoding='utf-8') as f:
+                    with summary_path.open("w", encoding="utf-8") as f:
                         json.dump(summary_data, f, indent=2, default=str)
 
                     summary_info["summary_file"] = str(summary_path)
@@ -300,7 +304,7 @@ class LocalFilesystemStorage(BaseStorage):
                 "root": str(session._root),
                 "files": written_files,
                 "commit_message": commit_message.strip(),
-                **summary_info
+                **summary_info,
             }
         finally:
             self._reset_session_state(session)

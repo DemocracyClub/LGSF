@@ -78,8 +78,6 @@ class BaseCouncillorScraper(ScraperBase):
         # Always use storage session for consistent behavior
         self.save_councillor(formatted_councillor_raw_str, councillor)
 
-
-
     def save_councillor(self, raw_content, councillor_obj):
         assert type(councillor_obj) is CouncillorBase, (
             "Scrapers must return a councillor object"

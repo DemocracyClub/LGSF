@@ -28,11 +28,11 @@ class ScraperBase(metaclass=abc.ABCMeta):
         self.check()
 
         # Get storage backend based on options and environment
-        scraper_object_type = getattr(self, 'scraper_object_type', 'Data')
+        scraper_object_type = getattr(self, "scraper_object_type", "Data")
         self.storage_backend = get_storage_backend(
             council_code=self.options["council"],
             options=self.options,
-            scraper_object_type=scraper_object_type
+            scraper_object_type=scraper_object_type,
         )
         self.storage_session = self.storage_backend.start_session()
         if self.http_lib == "requests":
@@ -82,6 +82,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
 
     def _set_error(self, tb):
         import io
+
         error_output = io.StringIO()
         traceback.print_tb(tb, file=error_output)
         error_content = error_output.getvalue()
@@ -110,7 +111,9 @@ class ScraperBase(metaclass=abc.ABCMeta):
                 timestamp_str = self.storage_session.open(self._last_run_file_name())
                 return parser.parse(timestamp_str)
             else:
-                with self.storage_backend.session("Reading last run timestamp") as session:
+                with self.storage_backend.session(
+                    "Reading last run timestamp"
+                ) as session:
                     timestamp_str = session.open(self._last_run_file_name())
                     return parser.parse(timestamp_str)
         except FileNotFoundError:
@@ -166,7 +169,6 @@ class ScraperBase(metaclass=abc.ABCMeta):
         file_name = "{}.json".format(obj.as_file_name())
         self._save_file("json", file_name, obj.as_json())
 
-
     def clean_data_dir(self):
         # Note: Storage backends handle their own cleanup mechanisms
         # This method is kept for compatibility but may not be needed
@@ -194,15 +196,17 @@ class ScraperBase(metaclass=abc.ABCMeta):
         """
         if self.storage_session:
             # Ensure the run log has console output if supported
-            if run_log and hasattr(run_log, 'log') and hasattr(self.console, 'export_text'):
-                if not getattr(run_log, 'log', None):
+            if (
+                run_log
+                and hasattr(run_log, "log")
+                and hasattr(self.console, "export_text")
+            ):
+                if not getattr(run_log, "log", None):
                     run_log.log = self.console.export_text()
 
             # End session with run log for backend-specific finalization
             commit_message = "Scraping completed"
             self.storage_backend.end_session(
-                self.storage_session,
-                commit_message,
-                run_log=run_log
+                self.storage_session, commit_message, run_log=run_log
             )
             self.storage_session = None

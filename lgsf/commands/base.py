@@ -326,7 +326,7 @@ class PerCouncilCommandBase(CommandBase):
                     should_run = False
             if should_run:
                 # Clear console recording to exclude bootstrapping output from run log
-                if hasattr(self.console, '_record_buffer'):
+                if hasattr(self.console, "_record_buffer"):
                     self.console._record_buffer.clear()
                 self._run_single(scraper)
 

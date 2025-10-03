@@ -67,8 +67,7 @@ class _CodeCommitSession(StorageSession):
         if not self._branch_head:
             try:
                 branch_info = self.codecommit_client.get_branch(
-                    repositoryName=self.repository_name,
-                    branchName=self.branch_name
+                    repositoryName=self.repository_name, branchName=self.branch_name
                 )
                 self._branch_head = branch_info["branch"]["commitId"]
             except self.codecommit_client.exceptions.BranchDoesNotExistException:
@@ -92,7 +91,9 @@ class _CodeCommitSession(StorageSession):
     def _delete_existing_data_if_needed(self):
         """Delete existing data for this scraper type if any exists"""
         try:
-            _, file_paths = self.storage_backend._get_files(f"{self.scraper_object_type}", self.branch_name)
+            _, file_paths = self.storage_backend._get_files(
+                f"{self.scraper_object_type}", self.branch_name
+            )
 
             if not file_paths:
                 return {"deleted": 0, "message": "No existing data to delete"}
@@ -130,7 +131,9 @@ class _CodeCommitSession(StorageSession):
     def _create_repository(self):
         """Create a new CodeCommit repository"""
         try:
-            self.codecommit_client.create_repository(repositoryName=self.repository_name)
+            self.codecommit_client.create_repository(
+                repositoryName=self.repository_name
+            )
         except ClientError as error:
             if error.response["Error"]["Code"] != "RepositoryNameExistsException":
                 raise
@@ -143,8 +146,7 @@ class _CodeCommitSession(StorageSession):
         try:
             # Get main branch info
             main_info = self.codecommit_client.get_branch(
-                repositoryName=self.repository_name,
-                branchName="main"
+                repositoryName=self.repository_name, branchName="main"
             )
             commit_id = main_info["branch"]["commitId"]
         except self.codecommit_client.exceptions.BranchDoesNotExistException:
@@ -190,7 +192,7 @@ class _CodeCommitSession(StorageSession):
             file_response = self.codecommit_client.get_file(
                 repositoryName=self.repository_name,
                 commitSpecifier=self.branch_name,
-                filePath=key
+                filePath=key,
             )
             data = file_response["fileContent"]
             return data if mode == "rb" else data.decode("utf-8")
@@ -246,17 +248,16 @@ class _CodeCommitSession(StorageSession):
 
         # Process files in batches
         for i in range(0, total_files, max_files_per_commit):
-            batch = staged_items[i:i + max_files_per_commit]
+            batch = staged_items[i : i + max_files_per_commit]
             batch_num = (i // max_files_per_commit) + 1
-            total_batches = (total_files + max_files_per_commit - 1) // max_files_per_commit
+            total_batches = (
+                total_files + max_files_per_commit - 1
+            ) // max_files_per_commit
 
             # Prepare put_files for this batch
             put_files = []
             for file_path, content in batch:
-                put_files.append({
-                    "filePath": file_path,
-                    "fileContent": content
-                })
+                put_files.append({"filePath": file_path, "fileContent": content})
 
             # Create batch-specific commit message
             if total_batches > 1:
@@ -294,11 +295,13 @@ class _CodeCommitSession(StorageSession):
 
             # Update branch head for next batch
             self.branch_head = commit_info["commitId"]
-            commits.append({
-                "commit_id": commit_info["commitId"],
-                "files_count": len(put_files),
-                "batch": batch_num
-            })
+            commits.append(
+                {
+                    "commit_id": commit_info["commitId"],
+                    "files_count": len(put_files),
+                    "batch": batch_num,
+                }
+            )
 
         # Close the session now that commits are complete
         self._closed = True
@@ -315,7 +318,7 @@ class _CodeCommitSession(StorageSession):
             "branch": self.branch_name,
             "files": list(staged.keys()),
             "batches": commits,
-            "total_batches": len(commits)
+            "total_batches": len(commits),
         }
 
         return result
@@ -417,7 +420,7 @@ class CodeCommitStorage(BaseStorage):
             codecommit_client=self.codecommit_client,
             council_code=self.council_code,
             scraper_object_type=scraper_type,
-            storage_backend=self
+            storage_backend=self,
         )
 
         # Ensure repository exists
@@ -480,39 +483,39 @@ class CodeCommitStorage(BaseStorage):
                     return commit_result
 
             # Perform CodeCommit-specific finalization
-            run_log = kwargs.get('run_log')
+            run_log = kwargs.get("run_log")
             finalization_result = {}
 
             if run_log:
                 # Update logbook
                 try:
-                    if hasattr(run_log, 'log') and not getattr(run_log, 'log', None):
+                    if hasattr(run_log, "log") and not getattr(run_log, "log", None):
                         # Console log will be set by the caller
                         pass
 
-                    if not hasattr(run_log, 'finished') or not run_log.finished:
+                    if not hasattr(run_log, "finished") or not run_log.finished:
                         run_log.finish()
 
                     logbook_result = self.create_or_update_logbook(run_log.as_json)
-                    finalization_result['logbook'] = logbook_result
+                    finalization_result["logbook"] = logbook_result
                 except Exception as e:
-                    finalization_result['logbook_error'] = str(e)
+                    finalization_result["logbook_error"] = str(e)
 
             # Merge to main branch
             try:
                 merge_result = self.merge_to_main("Daily scrape completed")
-                finalization_result['merge'] = merge_result
+                finalization_result["merge"] = merge_result
 
                 # Delete daily branch
                 delete_result = self.delete_daily_branch()
-                finalization_result['branch_cleanup'] = delete_result
+                finalization_result["branch_cleanup"] = delete_result
 
             except Exception as e:
-                finalization_result['finalization_error'] = str(e)
+                finalization_result["finalization_error"] = str(e)
 
             # Combine results
             result = commit_result.copy()
-            result['finalization'] = finalization_result
+            result["finalization"] = finalization_result
 
             return result
 
@@ -531,7 +534,9 @@ class CodeCommitStorage(BaseStorage):
         """
         self._active = None
 
-    def delete_existing_data(self, scraper_object_type: Optional[str] = None) -> Dict[str, Any]:
+    def delete_existing_data(
+        self, scraper_object_type: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Delete all existing data for this council's scraper type.
 
@@ -559,7 +564,7 @@ class CodeCommitStorage(BaseStorage):
                 repository_name=self.repository_name,
                 codecommit_client=self.codecommit_client,
                 council_code=self.council_code,
-                scraper_object_type=scraper_type
+                scraper_object_type=scraper_type,
             )
 
             # Get all files in the scraper directory
@@ -578,7 +583,9 @@ class CodeCommitStorage(BaseStorage):
                 file_paths = file_paths[batch_size:]
 
                 delete_files = [{"filePath": fp} for fp in batch_files]
-                message = f"Deleting batch of {len(delete_files)} files from {scraper_type}"
+                message = (
+                    f"Deleting batch of {len(delete_files)} files from {scraper_type}"
+                )
 
                 commit_info = self.codecommit_client.create_commit(
                     repositoryName=self.repository_name,
@@ -595,7 +602,7 @@ class CodeCommitStorage(BaseStorage):
                 "deleted": total_deleted,
                 "commit_id": commit_id,
                 "repository": self.repository_name,
-                "branch": temp_session.branch_name
+                "branch": temp_session.branch_name,
             }
 
         except self.codecommit_client.exceptions.BranchDoesNotExistException:
@@ -625,13 +632,17 @@ class CodeCommitStorage(BaseStorage):
                 file_paths.append(file["absolutePath"])
 
             # Recursively get files from subfolders
-            for subfolder_path in subfolder_paths[:]:  # Copy list to avoid modification issues
+            for subfolder_path in subfolder_paths[
+                :
+            ]:  # Copy list to avoid modification issues
                 sf_paths, f_paths = self._get_files(subfolder_path, branch_name)
                 subfolder_paths.extend(sf_paths)
                 file_paths.extend(f_paths)
 
-        except (self.codecommit_client.exceptions.FolderDoesNotExistException,
-                self.codecommit_client.exceptions.CommitDoesNotExistException):
+        except (
+            self.codecommit_client.exceptions.FolderDoesNotExistException,
+            self.codecommit_client.exceptions.CommitDoesNotExistException,
+        ):
             pass  # Folder doesn't exist or commit doesn't exist, return empty lists
 
         return subfolder_paths, file_paths
@@ -677,7 +688,7 @@ class CodeCommitStorage(BaseStorage):
                 "source_branch": source_branch,
                 "target_branch": "main",
                 "commit_message": commit_message,
-                "repository": self.repository_name
+                "repository": self.repository_name,
             }
 
         except self.codecommit_client.exceptions.BranchDoesNotExistException as e:
@@ -703,14 +714,13 @@ class CodeCommitStorage(BaseStorage):
 
         try:
             self.codecommit_client.delete_branch(
-                repositoryName=self.repository_name,
-                branchName=branch_name
+                repositoryName=self.repository_name, branchName=branch_name
             )
 
             return {
                 "deleted": True,
                 "branch_name": branch_name,
-                "repository": self.repository_name
+                "repository": self.repository_name,
             }
 
         except self.codecommit_client.exceptions.BranchDoesNotExistException:
@@ -737,16 +747,12 @@ class CodeCommitStorage(BaseStorage):
         # Try to get existing logbook
         try:
             logbook_response = self.codecommit_client.get_file(
-                repositoryName=self.repository_name,
-                filePath=log_file_path
+                repositoryName=self.repository_name, filePath=log_file_path
             )
             logbook = json.loads(logbook_response["fileContent"].decode("utf-8"))
         except self.codecommit_client.exceptions.FileDoesNotExistException:
             # Create new logbook
-            logbook = {
-                "name": self.council_code,
-                "runs": []
-            }
+            logbook = {"name": self.council_code, "runs": []}
 
         # Add new run, keeping only last 20 entries
         if len(logbook["runs"]) >= 20:
@@ -760,16 +766,14 @@ class CodeCommitStorage(BaseStorage):
 
         try:
             branch_info = self.codecommit_client.get_branch(
-                repositoryName=self.repository_name,
-                branchName=branch_name
+                repositoryName=self.repository_name, branchName=branch_name
             )
             branch_head = branch_info["branch"]["commitId"]
         except self.codecommit_client.exceptions.BranchDoesNotExistException:
             # Create branch from main
             try:
                 main_info = self.codecommit_client.get_branch(
-                    repositoryName=self.repository_name,
-                    branchName="main"
+                    repositoryName=self.repository_name, branchName="main"
                 )
                 branch_head = main_info["branch"]["commitId"]
 
@@ -787,15 +791,17 @@ class CodeCommitStorage(BaseStorage):
             branchName=branch_name,
             parentCommitId=branch_head,
             commitMessage=f"Update logbook for {self.council_code}",
-            putFiles=[{
-                "filePath": log_file_path,
-                "fileContent": json.dumps(logbook, indent=2).encode("utf-8")
-            }]
+            putFiles=[
+                {
+                    "filePath": log_file_path,
+                    "fileContent": json.dumps(logbook, indent=2).encode("utf-8"),
+                }
+            ],
         )
 
         return {
             "updated": True,
             "commit_id": commit_info["commitId"],
             "logbook_path": log_file_path,
-            "runs_count": len(logbook["runs"])
+            "runs_count": len(logbook["runs"]),
         }

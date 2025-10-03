@@ -37,7 +37,12 @@ def detect_storage_backend_from_environment(options: dict) -> str:
     return "local"
 
 
-def get_storage_backend(council_code: str, backend_type: Optional[str] = None, options: Optional[dict] = None, **kwargs) -> BaseStorage:
+def get_storage_backend(
+    council_code: str,
+    backend_type: Optional[str] = None,
+    options: Optional[dict] = None,
+    **kwargs,
+) -> BaseStorage:
     """
     Get a storage backend instance for a specific council.
 
@@ -68,7 +73,9 @@ def get_storage_backend(council_code: str, backend_type: Optional[str] = None, o
         return LocalFilesystemStorage(council_code=council_code)
     elif backend_type == "codecommit":
         scraper_object_type = kwargs.get("scraper_object_type", "Data")
-        return CodeCommitStorage(council_code=council_code, scraper_object_type=scraper_object_type)
+        return CodeCommitStorage(
+            council_code=council_code, scraper_object_type=scraper_object_type
+        )
     else:
         raise ValueError(f"Unsupported storage backend: {backend_type}")
 
