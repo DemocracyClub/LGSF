@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WOX/1974-04-01/",
-    "official_identifier": "WOX",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "West Oxfordshire District Council",
-    "common_name": "West Oxfordshire",
-    "slug": "west-oxfordshire",
-    "territory_code": "ENG",
-    "election_name": "West Oxfordshire local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "West Oxfordshire",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "West Oxfordshire local election",
+        "official_identifier": "WOX",
+        "official_name": "West Oxfordshire District Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "west-oxfordshire",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WOX/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://meetings.westoxon.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

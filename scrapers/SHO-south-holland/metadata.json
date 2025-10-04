@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SHO/1974-04-01/",
-    "official_identifier": "SHO",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "South Holland District Council",
-    "common_name": "South Holland",
-    "slug": "south-holland",
-    "territory_code": "ENG",
-    "election_name": "South Holland local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "South Holland",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "South Holland local election",
+        "official_identifier": "SHO",
+        "official_name": "South Holland District Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "south-holland",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SHO/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://democracy.sholland.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/MEL/1974-04-01/",
-    "official_identifier": "MEL",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Melton Borough Council",
-    "common_name": "Melton",
-    "slug": "melton",
-    "territory_code": "ENG",
-    "election_name": "Melton local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Melton",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Melton local election",
+        "official_identifier": "MEL",
+        "official_name": "Melton Borough Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "melton",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/MEL/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://democracy.melton.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SMT/2023-04-01/",
-    "official_identifier": "SMT",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "UA",
-    "official_name": "Somerset Council",
-    "common_name": "Somerset",
-    "slug": "somerset",
-    "territory_code": "ENG",
-    "election_name": "Somerset local election",
-    "start_date": "2023-04-01",
-    "end_date": null,
-    "created": "2023-07-12T11:46:25.976464Z"
+    "everyelectiion_data": {
+        "common_name": "Somerset",
+        "created": "2023-07-12T11:46:25.976464Z",
+        "election_name": "Somerset local election",
+        "official_identifier": "SMT",
+        "official_name": "Somerset Council",
+        "organisation_subtype": "UA",
+        "organisation_type": "local-authority",
+        "slug": "somerset",
+        "start_date": "2023-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SMT/2023-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://democracy.somerset.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

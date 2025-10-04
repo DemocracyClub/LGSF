@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/BIR/1986-07-01/",
-    "official_identifier": "BIR",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "MD",
-    "official_name": "Birmingham City Council",
-    "common_name": "Birmingham",
-    "slug": "birmingham",
-    "territory_code": "ENG",
-    "election_name": "Birmingham local election",
-    "start_date": "1986-07-01",
-    "end_date": null,
-    "created": "1986-07-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Birmingham",
+        "created": "1986-07-01T00:00:00Z",
+        "election_name": "Birmingham local election",
+        "official_identifier": "BIR",
+        "official_name": "Birmingham City Council",
+        "organisation_subtype": "MD",
+        "organisation_type": "local-authority",
+        "slug": "birmingham",
+        "start_date": "1986-07-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/BIR/1986-07-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://birmingham.cmis.uk.com/birmingham/Councillors.aspx",
+            "cms_type": "CMIS"
+        }
+    }
 }

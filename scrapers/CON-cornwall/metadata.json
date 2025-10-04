@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/CON/2009-04-01/",
-    "official_identifier": "CON",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "UA",
-    "official_name": "Cornwall Council",
-    "common_name": "Cornwall",
-    "slug": "cornwall",
-    "territory_code": "ENG",
-    "election_name": "Cornwall local election",
-    "start_date": "2009-04-01",
-    "end_date": null,
-    "created": "2009-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Cornwall",
+        "created": "2009-04-01T00:00:00Z",
+        "election_name": "Cornwall local election",
+        "official_identifier": "CON",
+        "official_name": "Cornwall Council",
+        "organisation_subtype": "UA",
+        "organisation_type": "local-authority",
+        "slug": "cornwall",
+        "start_date": "2009-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/CON/2009-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://democracy.cornwall.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

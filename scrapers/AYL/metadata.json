@@ -1,14 +1,22 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/AYL/1974-04-01/",
-    "official_identifier": "AYL",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Aylesbury Vale District Council",
-    "common_name": "Aylesbury Vale",
-    "slug": "aylesbury-vale",
-    "territory_code": "ENG",
-    "election_name": "Aylesbury Vale local election",
-    "start_date": "1974-04-01",
-    "end_date": "2020-03-31",
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Aylesbury Vale",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Aylesbury Vale local election",
+        "end_date": "2020-03-31",
+        "official_identifier": "AYL",
+        "official_name": "Aylesbury Vale District Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "aylesbury-vale",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/AYL/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://democracy.aylesburyvaledc.gov.uk/",
+            "cms_type": "ModernGov"
+        }
+    }
 }

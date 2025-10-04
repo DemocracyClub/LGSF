@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/MRT/1965-04-01/",
-    "official_identifier": "MRT",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "LBO",
-    "official_name": "London Borough of Merton",
-    "common_name": "Merton",
-    "slug": "merton",
-    "territory_code": "ENG",
-    "election_name": "Merton local election",
-    "start_date": "1965-04-01",
-    "end_date": null,
-    "created": "1965-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Merton",
+        "created": "1965-04-01T00:00:00Z",
+        "election_name": "Merton local election",
+        "official_identifier": "MRT",
+        "official_name": "London Borough of Merton",
+        "organisation_subtype": "LBO",
+        "organisation_type": "local-authority",
+        "slug": "merton",
+        "start_date": "1965-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/MRT/1965-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://democracy.merton.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

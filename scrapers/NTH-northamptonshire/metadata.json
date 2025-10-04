@@ -1,14 +1,22 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/NTH/1974-04-01/",
-    "official_identifier": "NTH",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "CTY",
-    "official_name": "Northamptonshire County Council",
-    "common_name": "Northamptonshire",
-    "slug": "northamptonshire",
-    "territory_code": "ENG",
-    "election_name": "Northamptonshire local election",
-    "start_date": "1974-04-01",
-    "end_date": "2020-05-06",
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Northamptonshire",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Northamptonshire local election",
+        "end_date": "2020-05-06",
+        "official_identifier": "NTH",
+        "official_name": "Northamptonshire County Council",
+        "organisation_subtype": "CTY",
+        "organisation_type": "local-authority",
+        "slug": "northamptonshire",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/NTH/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://cmis.northamptonshire.gov.uk/cmis5live/Councillors.aspx",
+            "cms_type": "CMIS"
+        }
+    }
 }

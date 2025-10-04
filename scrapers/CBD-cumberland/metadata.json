@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/CBD/2022-05-05/",
-    "official_identifier": "CBD",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "UA",
-    "official_name": "Cumberland Council",
-    "common_name": "Cumberland",
-    "slug": "cumberland",
-    "territory_code": "ENG",
-    "election_name": "Cumberland local election",
-    "start_date": "2022-05-05",
-    "end_date": null,
-    "created": "2022-03-22T11:52:54.407518Z"
+    "everyelectiion_data": {
+        "common_name": "Cumberland",
+        "created": "2022-03-22T11:52:54.407518Z",
+        "election_name": "Cumberland local election",
+        "official_identifier": "CBD",
+        "official_name": "Cumberland Council",
+        "organisation_subtype": "UA",
+        "organisation_type": "local-authority",
+        "slug": "cumberland",
+        "start_date": "2022-05-05",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/CBD/2022-05-05/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://cumberland.moderngov.co.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

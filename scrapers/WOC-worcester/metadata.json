@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WOC/1974-04-01/",
-    "official_identifier": "WOC",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Worcester City Council",
-    "common_name": "Worcester",
-    "slug": "worcester",
-    "territory_code": "ENG",
-    "election_name": "Worcester local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Worcester",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Worcester local election",
+        "official_identifier": "WOC",
+        "official_name": "Worcester City Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "worcester",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WOC/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://committee.worcester.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

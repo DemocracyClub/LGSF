@@ -1,14 +1,22 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SSO/1974-04-01/",
-    "official_identifier": "SSO",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "South Somerset District Council",
-    "common_name": "South Somerset",
-    "slug": "south-somerset",
-    "territory_code": "ENG",
-    "election_name": "South Somerset local election",
-    "start_date": "1974-04-01",
-    "end_date": "2023-03-31",
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "South Somerset",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "South Somerset local election",
+        "end_date": "2023-03-31",
+        "official_identifier": "SSO",
+        "official_name": "South Somerset District Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "south-somerset",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SSO/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://modgov.southsomerset.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

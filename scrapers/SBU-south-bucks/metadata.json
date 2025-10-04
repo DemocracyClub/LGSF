@@ -1,14 +1,22 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SBU/1974-04-01/",
-    "official_identifier": "SBU",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "South Bucks District Council",
-    "common_name": "South Bucks",
-    "slug": "south-bucks",
-    "territory_code": "ENG",
-    "election_name": "South Bucks local election",
-    "start_date": "1974-04-01",
-    "end_date": "2020-03-31",
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "South Bucks",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "South Bucks local election",
+        "end_date": "2020-03-31",
+        "official_identifier": "SBU",
+        "official_name": "South Bucks District Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "south-bucks",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SBU/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://sbdc-spider2.southbucks.gov.uk/democracy/",
+            "cms_type": "ModernGov"
+        }
+    }
 }

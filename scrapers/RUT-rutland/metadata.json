@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/RUT/1997-04-01/",
-    "official_identifier": "RUT",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "UA",
-    "official_name": "Rutland County Council",
-    "common_name": "Rutland",
-    "slug": "rutland",
-    "territory_code": "ENG",
-    "election_name": "Rutland local election",
-    "start_date": "1997-04-01",
-    "end_date": null,
-    "created": "1997-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Rutland",
+        "created": "1997-04-01T00:00:00Z",
+        "election_name": "Rutland local election",
+        "official_identifier": "RUT",
+        "official_name": "Rutland County Council",
+        "organisation_subtype": "UA",
+        "organisation_type": "local-authority",
+        "slug": "rutland",
+        "start_date": "1997-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/RUT/1997-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://rutlandcounty.moderngov.co.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

@@ -1,14 +1,22 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/DOR/1997-04-01/",
-    "official_identifier": "DOR",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "CTY",
-    "official_name": "Dorset County Council",
-    "common_name": "Dorset",
-    "slug": "dorset",
-    "territory_code": "ENG",
-    "election_name": "Dorset local election",
-    "start_date": "1997-04-01",
-    "end_date": "2019-03-31",
-    "created": "1997-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Dorset",
+        "created": "1997-04-01T00:00:00Z",
+        "election_name": "Dorset local election",
+        "end_date": "2019-03-31",
+        "official_identifier": "DOR",
+        "official_name": "Dorset County Council",
+        "organisation_subtype": "CTY",
+        "organisation_type": "local-authority",
+        "slug": "dorset",
+        "start_date": "1997-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/DOR/1997-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://dorset.moderngov.co.uk/",
+            "cms_type": "ModernGov"
+        }
+    }
 }

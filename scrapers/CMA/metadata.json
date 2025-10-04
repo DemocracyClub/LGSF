@@ -1,14 +1,22 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/CMA/1974-04-01/",
-    "official_identifier": "CMA",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "CTY",
-    "official_name": "Cumbria County Council",
-    "common_name": "Cumbria",
-    "slug": "cumbria",
-    "territory_code": "ENG",
-    "election_name": "Cumbria local election",
-    "start_date": "1974-04-01",
-    "end_date": "2023-03-31",
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Cumbria",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Cumbria local election",
+        "end_date": "2023-03-31",
+        "official_identifier": "CMA",
+        "official_name": "Cumbria County Council",
+        "organisation_subtype": "CTY",
+        "organisation_type": "local-authority",
+        "slug": "cumbria",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/CMA/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://councilportal.cumbria.gov.uk/",
+            "cms_type": "ModernGov"
+        }
+    }
 }

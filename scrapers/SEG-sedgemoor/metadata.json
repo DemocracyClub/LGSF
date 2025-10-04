@@ -1,14 +1,22 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SEG/1974-04-01/",
-    "official_identifier": "SEG",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Sedgemoor District Council",
-    "common_name": "Sedgemoor",
-    "slug": "sedgemoor",
-    "territory_code": "ENG",
-    "election_name": "Sedgemoor local election",
-    "start_date": "1974-04-01",
-    "end_date": "2023-03-31",
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Sedgemoor",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Sedgemoor local election",
+        "end_date": "2023-03-31",
+        "official_identifier": "SEG",
+        "official_name": "Sedgemoor District Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "sedgemoor",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SEG/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://www.sedgemoor.gov.uk/councillors",
+            "cms_type": "Custom HTML"
+        }
+    }
 }

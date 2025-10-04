@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WKF/1974-04-01/",
-    "official_identifier": "WKF",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "MD",
-    "official_name": "Wakefield Metropolitan District Council",
-    "common_name": "Wakefield",
-    "slug": "wakefield",
-    "territory_code": "ENG",
-    "election_name": "Wakefield local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Wakefield",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Wakefield local election",
+        "official_identifier": "WKF",
+        "official_name": "Wakefield Metropolitan District Council",
+        "organisation_subtype": "MD",
+        "organisation_type": "local-authority",
+        "slug": "wakefield",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WKF/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://mg.wakefield.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

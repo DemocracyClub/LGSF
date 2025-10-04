@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/BDG/1965-04-01/",
-    "official_identifier": "BDG",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "LBO",
-    "official_name": "London Borough of Barking and Dagenham",
-    "common_name": "Barking and Dagenham",
-    "slug": "barking-and-dagenham",
-    "territory_code": "ENG",
-    "election_name": "Barking and Dagenham local election",
-    "start_date": "1965-04-01",
-    "end_date": null,
-    "created": "1965-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Barking and Dagenham",
+        "created": "1965-04-01T00:00:00Z",
+        "election_name": "Barking and Dagenham local election",
+        "official_identifier": "BDG",
+        "official_name": "London Borough of Barking and Dagenham",
+        "organisation_subtype": "LBO",
+        "organisation_type": "local-authority",
+        "slug": "barking-and-dagenham",
+        "start_date": "1965-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/BDG/1965-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://lbbd.moderngov.co.uk/",
+            "cms_type": "ModernGov"
+        }
+    }
 }

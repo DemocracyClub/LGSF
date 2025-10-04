@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SLG/1998-04-01/",
-    "official_identifier": "SLG",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "UA",
-    "official_name": "Slough Borough Council",
-    "common_name": "Slough",
-    "slug": "slough",
-    "territory_code": "ENG",
-    "election_name": "Slough local election",
-    "start_date": "1998-04-01",
-    "end_date": null,
-    "created": "1998-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Slough",
+        "created": "1998-04-01T00:00:00Z",
+        "election_name": "Slough local election",
+        "official_identifier": "SLG",
+        "official_name": "Slough Borough Council",
+        "organisation_subtype": "UA",
+        "organisation_type": "local-authority",
+        "slug": "slough",
+        "start_date": "1998-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SLG/1998-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://democracy.slough.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

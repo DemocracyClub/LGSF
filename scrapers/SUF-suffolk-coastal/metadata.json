@@ -1,14 +1,22 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SUF/1974-04-01/",
-    "official_identifier": "SUF",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Suffolk Coastal District Council",
-    "common_name": "Suffolk Coastal",
-    "slug": "suffolk-coastal",
-    "territory_code": "ENG",
-    "election_name": "Suffolk Coastal local election",
-    "start_date": "1974-04-01",
-    "end_date": "2019-03-31",
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Suffolk Coastal",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Suffolk Coastal local election",
+        "end_date": "2019-03-31",
+        "official_identifier": "SUF",
+        "official_name": "Suffolk Coastal District Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "suffolk-coastal",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SUF/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://eastsuffolk.cmis.uk.com/eastsuffolk/councillors.aspx",
+            "cms_type": "CMIS"
+        }
+    }
 }

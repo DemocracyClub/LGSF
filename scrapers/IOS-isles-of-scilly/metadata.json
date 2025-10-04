@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/IOS/1974-04-01/",
-    "official_identifier": "IOS",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "UA",
-    "official_name": "Council of the Isles of Scilly",
-    "common_name": "Isles of Scilly",
-    "slug": "isles-of-scilly",
-    "territory_code": "ENG",
-    "election_name": "Isles of Scilly local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Isles of Scilly",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Isles of Scilly local election",
+        "official_identifier": "IOS",
+        "official_name": "Council of the Isles of Scilly",
+        "organisation_subtype": "UA",
+        "organisation_type": "local-authority",
+        "slug": "isles-of-scilly",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/IOS/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://committees.scilly.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

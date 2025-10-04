@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/BFS/2015-04-01/",
-    "official_identifier": "BFS",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "",
-    "official_name": "Belfast City Council",
-    "common_name": "Belfast",
-    "slug": "belfast",
-    "territory_code": "NIR",
-    "election_name": "Belfast local election",
-    "start_date": "2015-04-01",
-    "end_date": null,
-    "created": "2015-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Belfast",
+        "created": "2015-04-01T00:00:00Z",
+        "election_name": "Belfast local election",
+        "official_identifier": "BFS",
+        "official_name": "Belfast City Council",
+        "organisation_subtype": "",
+        "organisation_type": "local-authority",
+        "slug": "belfast",
+        "start_date": "2015-04-01",
+        "territory_code": "NIR",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/BFS/2015-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://minutes3.belfastcity.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

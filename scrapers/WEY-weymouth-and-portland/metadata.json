@@ -1,14 +1,22 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WEY/1974-04-01/",
-    "official_identifier": "WEY",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Weymouth and Portland Borough Council",
-    "common_name": "Weymouth and Portland",
-    "slug": "weymouth-and-portland",
-    "territory_code": "ENG",
-    "election_name": "Weymouth and Portland local election",
-    "start_date": "1974-04-01",
-    "end_date": "2019-03-31",
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Weymouth and Portland",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Weymouth and Portland local election",
+        "end_date": "2019-03-31",
+        "official_identifier": "WEY",
+        "official_name": "Weymouth and Portland Borough Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "weymouth-and-portland",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WEY/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://moderngovdcp.dorsetforyou.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

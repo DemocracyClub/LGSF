@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/BRY/1965-04-01/",
-    "official_identifier": "BRY",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "LBO",
-    "official_name": "London Borough of Bromley",
-    "common_name": "Bromley",
-    "slug": "bromley",
-    "territory_code": "ENG",
-    "election_name": "Bromley local election",
-    "start_date": "1965-04-01",
-    "end_date": null,
-    "created": "1965-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Bromley",
+        "created": "1965-04-01T00:00:00Z",
+        "election_name": "Bromley local election",
+        "official_identifier": "BRY",
+        "official_name": "London Borough of Bromley",
+        "organisation_subtype": "LBO",
+        "organisation_type": "local-authority",
+        "slug": "bromley",
+        "start_date": "1965-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/BRY/1965-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://cds.bromley.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

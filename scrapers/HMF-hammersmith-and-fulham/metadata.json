@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/HMF/1965-04-01/",
-    "official_identifier": "HMF",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "LBO",
-    "official_name": "London Borough of Hammersmith & Fulham",
-    "common_name": "Hammersmith and Fulham",
-    "slug": "hammersmith-and-fulham",
-    "territory_code": "ENG",
-    "election_name": "Hammersmith and Fulham local election",
-    "start_date": "1965-04-01",
-    "end_date": null,
-    "created": "1965-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Hammersmith and Fulham",
+        "created": "1965-04-01T00:00:00Z",
+        "election_name": "Hammersmith and Fulham local election",
+        "official_identifier": "HMF",
+        "official_name": "London Borough of Hammersmith & Fulham",
+        "organisation_subtype": "LBO",
+        "organisation_type": "local-authority",
+        "slug": "hammersmith-and-fulham",
+        "start_date": "1965-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/HMF/1965-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://democracy.lbhf.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

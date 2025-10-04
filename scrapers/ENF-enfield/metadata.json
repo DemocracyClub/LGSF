@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/ENF/1965-04-01/",
-    "official_identifier": "ENF",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "LBO",
-    "official_name": "London Borough of Enfield",
-    "common_name": "Enfield",
-    "slug": "enfield",
-    "territory_code": "ENG",
-    "election_name": "Enfield local election",
-    "start_date": "1965-04-01",
-    "end_date": null,
-    "created": "1965-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Enfield",
+        "created": "1965-04-01T00:00:00Z",
+        "election_name": "Enfield local election",
+        "official_identifier": "ENF",
+        "official_name": "London Borough of Enfield",
+        "organisation_subtype": "LBO",
+        "organisation_type": "local-authority",
+        "slug": "enfield",
+        "start_date": "1965-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/ENF/1965-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://governance.enfield.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

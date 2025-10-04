@@ -1,14 +1,22 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/CAR/1974-04-01/",
-    "official_identifier": "CAR",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Carlisle City Council",
-    "common_name": "Carlisle",
-    "slug": "carlisle",
-    "territory_code": "ENG",
-    "election_name": "Carlisle local election",
-    "start_date": "1974-04-01",
-    "end_date": "2023-03-31",
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Carlisle",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Carlisle local election",
+        "end_date": "2023-03-31",
+        "official_identifier": "CAR",
+        "official_name": "Carlisle City Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "carlisle",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/CAR/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://carlisle.cmis.uk.com/CarlisleCityCouncillors.aspx",
+            "cms_type": "CMIS"
+        }
+    }
 }

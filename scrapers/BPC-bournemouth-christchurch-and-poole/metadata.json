@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/BPC/2019-04-01/",
-    "official_identifier": "BPC",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "UA",
-    "official_name": "Bournemouth, Christchurch and Poole Council",
-    "common_name": "Bournemouth, Christchurch and Poole",
-    "slug": "bournemouth-christchurch-and-poole",
-    "territory_code": "ENG",
-    "election_name": "Bournemouth, Christchurch and Poole local election",
-    "start_date": "2019-04-01",
-    "end_date": null,
-    "created": "2019-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Bournemouth, Christchurch and Poole",
+        "created": "2019-04-01T00:00:00Z",
+        "election_name": "Bournemouth, Christchurch and Poole local election",
+        "official_identifier": "BPC",
+        "official_name": "Bournemouth, Christchurch and Poole Council",
+        "organisation_subtype": "UA",
+        "organisation_type": "local-authority",
+        "slug": "bournemouth-christchurch-and-poole",
+        "start_date": "2019-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/BPC/2019-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://democracy.bcpcouncil.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

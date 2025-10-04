@@ -1,14 +1,23 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SHE/1974-04-01/",
-    "official_identifier": "SHE",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Shepway District Council",
-    "common_name": "Shepway",
-    "slug": "shepway",
-    "territory_code": "ENG",
-    "election_name": "Shepway local election",
-    "start_date": "1974-04-01",
-    "end_date": "2018-03-31",
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Shepway",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Shepway local election",
+        "end_date": "2018-03-31",
+        "official_identifier": "SHE",
+        "official_name": "Shepway District Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "shepway",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SHE/1974-04-01/"
+    },
+    "everyelectiion_data_last_updated": "2025-10-04T07:35:42.842273",
+    "services": {
+        "councillors": {
+            "base_url": "http://www.folkestone-hythe.gov.uk/moderngov/",
+            "cms_type": "ModernGov"
+        }
+    }
 }

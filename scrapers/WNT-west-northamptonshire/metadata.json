@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WNT/2020-05-07/",
-    "official_identifier": "WNT",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "UA",
-    "official_name": "West Northamptonshire Council",
-    "common_name": "West Northamptonshire",
-    "slug": "west-northamptonshire",
-    "territory_code": "ENG",
-    "election_name": "West Northamptonshire local election",
-    "start_date": "2020-05-07",
-    "end_date": null,
-    "created": "2020-05-07T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "West Northamptonshire",
+        "created": "2020-05-07T00:00:00Z",
+        "election_name": "West Northamptonshire local election",
+        "official_identifier": "WNT",
+        "official_name": "West Northamptonshire Council",
+        "organisation_subtype": "UA",
+        "organisation_type": "local-authority",
+        "slug": "west-northamptonshire",
+        "start_date": "2020-05-07",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WNT/2020-05-07/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://westnorthants.moderngov.co.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

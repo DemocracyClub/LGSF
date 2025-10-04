@@ -1,14 +1,22 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SNR/1974-04-01/",
-    "official_identifier": "SNR",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "South Northamptonshire Council",
-    "common_name": "South Northamptonshire",
-    "slug": "south-northamptonshire",
-    "territory_code": "ENG",
-    "election_name": "South Northamptonshire local election",
-    "start_date": "1974-04-01",
-    "end_date": "2020-05-06",
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "South Northamptonshire",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "South Northamptonshire local election",
+        "end_date": "2020-05-06",
+        "official_identifier": "SNR",
+        "official_name": "South Northamptonshire Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "south-northamptonshire",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SNR/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://modgov.southnorthants.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

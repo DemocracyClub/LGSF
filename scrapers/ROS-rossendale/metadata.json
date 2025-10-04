@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/ROS/1974-04-01/",
-    "official_identifier": "ROS",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Rossendale Borough Council",
-    "common_name": "Rossendale",
-    "slug": "rossendale",
-    "territory_code": "ENG",
-    "election_name": "Rossendale local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Rossendale",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Rossendale local election",
+        "official_identifier": "ROS",
+        "official_name": "Rossendale Borough Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "rossendale",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/ROS/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://www.rossendale.gov.uk/councillors",
+            "cms_type": "Custom HTML"
+        }
+    }
 }

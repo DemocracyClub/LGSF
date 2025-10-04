@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WLA/1974-04-01/",
-    "official_identifier": "WLA",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "West Lancashire Borough Council",
-    "common_name": "West Lancashire",
-    "slug": "west-lancashire",
-    "territory_code": "ENG",
-    "election_name": "West Lancashire local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "West Lancashire",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "West Lancashire local election",
+        "official_identifier": "WLA",
+        "official_name": "West Lancashire Borough Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "west-lancashire",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WLA/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://democracy.westlancs.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

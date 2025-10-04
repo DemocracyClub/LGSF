@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/CLD/1974-04-01/",
-    "official_identifier": "CLD",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "MD",
-    "official_name": "Calderdale Metropolitan Borough Council",
-    "common_name": "Calderdale",
-    "slug": "calderdale",
-    "territory_code": "ENG",
-    "election_name": "Calderdale local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Calderdale",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Calderdale local election",
+        "official_identifier": "CLD",
+        "official_name": "Calderdale Metropolitan Borough Council",
+        "organisation_subtype": "MD",
+        "organisation_type": "local-authority",
+        "slug": "calderdale",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/CLD/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://calderdale.moderngov.co.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

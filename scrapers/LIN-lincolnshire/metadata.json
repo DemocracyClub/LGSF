@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/LIN/1974-04-01/",
-    "official_identifier": "LIN",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "CTY",
-    "official_name": "Lincolnshire County Council",
-    "common_name": "Lincolnshire",
-    "slug": "lincolnshire",
-    "territory_code": "ENG",
-    "election_name": "Lincolnshire local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Lincolnshire",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Lincolnshire local election",
+        "official_identifier": "LIN",
+        "official_name": "Lincolnshire County Council",
+        "organisation_subtype": "CTY",
+        "organisation_type": "local-authority",
+        "slug": "lincolnshire",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/LIN/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://lincolnshire.moderngov.co.uk/",
+            "cms_type": "ModernGov"
+        }
+    }
 }

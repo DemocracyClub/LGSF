@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/DUR/2009-04-01/",
-    "official_identifier": "DUR",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "UA",
-    "official_name": "Durham County Council",
-    "common_name": "County Durham",
-    "slug": "county-durham",
-    "territory_code": "ENG",
-    "election_name": "County Durham local election",
-    "start_date": "2009-04-01",
-    "end_date": null,
-    "created": "2009-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "County Durham",
+        "created": "2009-04-01T00:00:00Z",
+        "election_name": "County Durham local election",
+        "official_identifier": "DUR",
+        "official_name": "Durham County Council",
+        "organisation_subtype": "UA",
+        "organisation_type": "local-authority",
+        "slug": "county-durham",
+        "start_date": "2009-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/DUR/2009-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://democracy.durham.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

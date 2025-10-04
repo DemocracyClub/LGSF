@@ -1,14 +1,22 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WSO/1974-04-01/",
-    "official_identifier": "WSO",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "West Somerset District Council",
-    "common_name": "West Somerset",
-    "slug": "west-somerset",
-    "territory_code": "ENG",
-    "election_name": "West Somerset local election",
-    "start_date": "1974-04-01",
-    "end_date": "2019-03-31",
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "West Somerset",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "West Somerset local election",
+        "end_date": "2019-03-31",
+        "official_identifier": "WSO",
+        "official_name": "West Somerset District Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "west-somerset",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WSO/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://democracy.westsomerset.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

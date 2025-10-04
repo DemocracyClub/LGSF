@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/NGM/1998-04-01/",
-    "official_identifier": "NGM",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "UA",
-    "official_name": "Nottingham City Council",
-    "common_name": "Nottingham",
-    "slug": "nottingham",
-    "territory_code": "ENG",
-    "election_name": "Nottingham local election",
-    "start_date": "1998-04-01",
-    "end_date": null,
-    "created": "1998-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Nottingham",
+        "created": "1998-04-01T00:00:00Z",
+        "election_name": "Nottingham local election",
+        "official_identifier": "NGM",
+        "official_name": "Nottingham City Council",
+        "organisation_subtype": "UA",
+        "organisation_type": "local-authority",
+        "slug": "nottingham",
+        "start_date": "1998-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/NGM/1998-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://committee.nottinghamcity.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

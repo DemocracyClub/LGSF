@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/CHO/1974-04-01/",
-    "official_identifier": "CHO",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Chorley Borough Council",
-    "common_name": "Chorley",
-    "slug": "chorley",
-    "territory_code": "ENG",
-    "election_name": "Chorley local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Chorley",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Chorley local election",
+        "official_identifier": "CHO",
+        "official_name": "Chorley Borough Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "chorley",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/CHO/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://democracy.chorley.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

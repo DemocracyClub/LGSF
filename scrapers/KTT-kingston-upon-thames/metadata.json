@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/KTT/1965-04-01/",
-    "official_identifier": "KTT",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "LBO",
-    "official_name": "Royal Borough of Kingston upon Thames",
-    "common_name": "Kingston upon Thames",
-    "slug": "kingston-upon-thames",
-    "territory_code": "ENG",
-    "election_name": "Kingston upon Thames local election",
-    "start_date": "1965-04-01",
-    "end_date": null,
-    "created": "1965-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Kingston upon Thames",
+        "created": "1965-04-01T00:00:00Z",
+        "election_name": "Kingston upon Thames local election",
+        "official_identifier": "KTT",
+        "official_name": "Royal Borough of Kingston upon Thames",
+        "organisation_subtype": "LBO",
+        "organisation_type": "local-authority",
+        "slug": "kingston-upon-thames",
+        "start_date": "1965-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/KTT/1965-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://moderngov.kingston.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

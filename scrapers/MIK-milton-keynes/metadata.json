@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/MIK/1997-04-01/",
-    "official_identifier": "MIK",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "UA",
-    "official_name": "Milton Keynes Council",
-    "common_name": "Milton Keynes",
-    "slug": "milton-keynes",
-    "territory_code": "ENG",
-    "election_name": "Milton Keynes local election",
-    "start_date": "1997-04-01",
-    "end_date": null,
-    "created": "1997-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Milton Keynes",
+        "created": "1997-04-01T00:00:00Z",
+        "election_name": "Milton Keynes local election",
+        "official_identifier": "MIK",
+        "official_name": "Milton Keynes Council",
+        "organisation_subtype": "UA",
+        "organisation_type": "local-authority",
+        "slug": "milton-keynes",
+        "start_date": "1997-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/MIK/1997-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://milton-keynes.moderngov.co.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

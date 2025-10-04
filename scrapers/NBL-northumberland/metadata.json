@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/NBL/2009-04-01/",
-    "official_identifier": "NBL",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "UA",
-    "official_name": "Northumberland County Council",
-    "common_name": "Northumberland",
-    "slug": "northumberland",
-    "territory_code": "ENG",
-    "election_name": "Northumberland local election",
-    "start_date": "2009-04-01",
-    "end_date": null,
-    "created": "2009-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Northumberland",
+        "created": "2009-04-01T00:00:00Z",
+        "election_name": "Northumberland local election",
+        "official_identifier": "NBL",
+        "official_name": "Northumberland County Council",
+        "organisation_subtype": "UA",
+        "organisation_type": "local-authority",
+        "slug": "northumberland",
+        "start_date": "2009-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/NBL/2009-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://northumberland.moderngov.co.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

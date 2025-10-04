@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/HPL/1996-04-01/",
-    "official_identifier": "HPL",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "UA",
-    "official_name": "Hartlepool Borough Council",
-    "common_name": "Hartlepool",
-    "slug": "hartlepool",
-    "territory_code": "ENG",
-    "election_name": "Hartlepool local election",
-    "start_date": "1996-04-01",
-    "end_date": null,
-    "created": "1996-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Hartlepool",
+        "created": "1996-04-01T00:00:00Z",
+        "election_name": "Hartlepool local election",
+        "official_identifier": "HPL",
+        "official_name": "Hartlepool Borough Council",
+        "organisation_subtype": "UA",
+        "organisation_type": "local-authority",
+        "slug": "hartlepool",
+        "start_date": "1996-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/HPL/1996-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://www.hartlepool.gov.uk/councillors/name",
+            "cms_type": "Custom HTML"
+        }
+    }
 }

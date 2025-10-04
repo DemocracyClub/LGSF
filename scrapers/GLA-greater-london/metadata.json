@@ -1,14 +1,18 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/GLA/2000-07-03/",
-    "official_identifier": "GLA",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "SRA",
-    "official_name": "Greater London Authority",
-    "common_name": "Greater London",
-    "slug": "greater-london",
-    "territory_code": "ENG",
-    "election_name": "Greater London local election",
-    "start_date": "2000-07-03",
-    "end_date": null,
-    "created": "2000-07-03T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Greater London",
+        "created": "2000-07-03T00:00:00Z",
+        "election_name": "Greater London local election",
+        "official_identifier": "GLA",
+        "official_name": "Greater London Authority",
+        "organisation_subtype": "SRA",
+        "organisation_type": "local-authority",
+        "slug": "greater-london",
+        "start_date": "2000-07-03",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/GLA/2000-07-03/"
+    },
+    "services": {
+        "councillors": {}
+    }
 }

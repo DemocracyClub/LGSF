@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SWL/1974-04-01/",
-    "official_identifier": "SWL",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Swale Borough Council",
-    "common_name": "Swale",
-    "slug": "swale",
-    "territory_code": "ENG",
-    "election_name": "Swale local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Swale",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Swale local election",
+        "official_identifier": "SWL",
+        "official_name": "Swale Borough Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "swale",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SWL/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://services.swale.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

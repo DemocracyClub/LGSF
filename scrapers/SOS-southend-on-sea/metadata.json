@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SOS/1998-04-01/",
-    "official_identifier": "SOS",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "UA",
-    "official_name": "Southend-on-Sea Borough Council",
-    "common_name": "Southend-on-Sea",
-    "slug": "southend-on-sea",
-    "territory_code": "ENG",
-    "election_name": "Southend-on-Sea local election",
-    "start_date": "1998-04-01",
-    "end_date": null,
-    "created": "1998-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Southend-on-Sea",
+        "created": "1998-04-01T00:00:00Z",
+        "election_name": "Southend-on-Sea local election",
+        "official_identifier": "SOS",
+        "official_name": "Southend-on-Sea Borough Council",
+        "organisation_subtype": "UA",
+        "organisation_type": "local-authority",
+        "slug": "southend-on-sea",
+        "start_date": "1998-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SOS/1998-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://democracy.southend.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/NTY/1974-04-01/",
-    "official_identifier": "NTY",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "MD",
-    "official_name": "North Tyneside Council",
-    "common_name": "North Tyneside Council",
-    "slug": "north-tyneside",
-    "territory_code": "ENG",
-    "election_name": "North Tyneside Council",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "North Tyneside Council",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "North Tyneside Council",
+        "official_identifier": "NTY",
+        "official_name": "North Tyneside Council",
+        "organisation_subtype": "MD",
+        "organisation_type": "local-authority",
+        "slug": "north-tyneside",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/NTY/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://democracy.northtyneside.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

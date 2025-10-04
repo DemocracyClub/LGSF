@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/OXO/1974-04-01/",
-    "official_identifier": "OXO",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Oxford City Council",
-    "common_name": "Oxford",
-    "slug": "oxford",
-    "territory_code": "ENG",
-    "election_name": "Oxford local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Oxford",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Oxford local election",
+        "official_identifier": "OXO",
+        "official_name": "Oxford City Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "oxford",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/OXO/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://mycouncil.oxford.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

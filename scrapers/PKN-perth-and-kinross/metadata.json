@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/PKN/1996-04-01/",
-    "official_identifier": "PKN",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "CA",
-    "official_name": "The Perth and Kinross Council",
-    "common_name": "Perth and Kinross",
-    "slug": "perth-and-kinross",
-    "territory_code": "SCT",
-    "election_name": "Perth and Kinross local election",
-    "start_date": "1996-04-01",
-    "end_date": null,
-    "created": "1996-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Perth and Kinross",
+        "created": "1996-04-01T00:00:00Z",
+        "election_name": "Perth and Kinross local election",
+        "official_identifier": "PKN",
+        "official_name": "The Perth and Kinross Council",
+        "organisation_subtype": "CA",
+        "organisation_type": "local-authority",
+        "slug": "perth-and-kinross",
+        "start_date": "1996-04-01",
+        "territory_code": "SCT",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/PKN/1996-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://perth-and-kinross.cmis.uk.com/perth-and-kinross/Councillors/OverviewofCouncillors.aspx",
+            "cms_type": "CMIS"
+        }
+    }
 }

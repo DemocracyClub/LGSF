@@ -1,14 +1,19 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/BMH/1997-04-01/",
-    "official_identifier": "BMH",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "UA",
-    "official_name": "Bournemouth Borough Council",
-    "common_name": "Bournemouth",
-    "slug": "bournemouth",
-    "territory_code": "ENG",
-    "election_name": "Bournemouth local election",
-    "start_date": "1997-04-01",
-    "end_date": "2019-03-31",
-    "created": "1997-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Bournemouth",
+        "created": "1997-04-01T00:00:00Z",
+        "election_name": "Bournemouth local election",
+        "end_date": "2019-03-31",
+        "official_identifier": "BMH",
+        "official_name": "Bournemouth Borough Council",
+        "organisation_subtype": "UA",
+        "organisation_type": "local-authority",
+        "slug": "bournemouth",
+        "start_date": "1997-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/BMH/1997-04-01/"
+    },
+    "services": {
+        "councillors": {}
+    }
 }

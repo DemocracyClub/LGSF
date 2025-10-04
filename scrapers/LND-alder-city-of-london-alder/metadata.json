@@ -1,14 +1,18 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/LND-alder/1189-01-01/",
-    "official_identifier": "LND-alder",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "CC",
-    "official_name": "City of London Corporation (Alderman)",
-    "common_name": "City of London",
-    "slug": "city-of-london-alder",
-    "territory_code": "ENG",
-    "election_name": "City of London aldermanic election",
-    "start_date": "1189-01-01",
-    "end_date": null,
-    "created": "2021-12-14T16:38:58.624153Z"
+    "everyelectiion_data": {
+        "common_name": "City of London",
+        "created": "2021-12-14T16:38:58.624153Z",
+        "election_name": "City of London aldermanic election",
+        "official_identifier": "LND-alder",
+        "official_name": "City of London Corporation (Alderman)",
+        "organisation_subtype": "CC",
+        "organisation_type": "local-authority",
+        "slug": "city-of-london-alder",
+        "start_date": "1189-01-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/LND-alder/1189-01-01/"
+    },
+    "services": {
+        "councillors": {}
+    }
 }
