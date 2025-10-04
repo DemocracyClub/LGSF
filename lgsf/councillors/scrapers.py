@@ -23,6 +23,9 @@ class BaseCouncillorScraper(ScraperBase):
         self.councillors = set()
         self.new_data = True
 
+        # Issue metadata validation warnings
+        self._validate_metadata_consistency()
+
     @abc.abstractmethod
     def get_councillors(self):
         pass
@@ -47,6 +50,21 @@ class BaseCouncillorScraper(ScraperBase):
         )
         self.councillors.add(councillor)
         return councillor
+
+    def _validate_metadata_consistency(self):
+        """Issue warnings if scraper doesn't match metadata."""
+        try:
+            # Only validate if we have a council ID
+            if hasattr(self, "options") and self.options.get("council"):
+                council_id = self.options["council"]
+
+                # Import here to avoid circular imports
+                from lgsf.metadata.validation import issue_scraper_warnings
+
+                issue_scraper_warnings(council_id, "councillors")
+        except Exception:
+            # Don't let validation failures break scraping
+            pass
 
     @property
     def get_tags(self):
