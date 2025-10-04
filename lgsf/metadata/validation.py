@@ -77,15 +77,42 @@ class ScraperValidator:
 
             # Check base_url consistency
             councillors_service = metadata.get_service_metadata("councillors")
-            if (
-                councillors_service
-                and councillors_service.base_url
-                and scraper_info.get("base_url")
-            ):
-                if councillors_service.base_url != scraper_info["base_url"]:
+            scraper_base_url = scraper_info.get("base_url")
+            metadata_base_url = (
+                councillors_service.base_url if councillors_service else None
+            )
+
+            if scraper_base_url and metadata_base_url:
+                # Both have base_url, check if they match
+                if metadata_base_url != scraper_base_url:
                     report["warnings"].append(
-                        f"Base URL mismatch: metadata has '{councillors_service.base_url}' "
-                        f"but scraper has '{scraper_info['base_url']}'"
+                        f"Base URL mismatch: metadata has '{metadata_base_url}' "
+                        f"but scraper has '{scraper_base_url}'"
+                    )
+            elif scraper_base_url and not metadata_base_url:
+                # Scraper has base_url but metadata doesn't
+                report["suggestions"].append(
+                    f"Scraper has base_url '{scraper_base_url}' but metadata is missing base_url field"
+                )
+            elif metadata_base_url and not scraper_base_url:
+                # Metadata has base_url but scraper doesn't
+                report["warnings"].append(
+                    f"Metadata has base_url '{metadata_base_url}' but scraper is missing base_url"
+                )
+
+            # Check CMS type consistency
+            if councillors_service and councillors_service.cms_type and scraper_info:
+                parent_class = scraper_info.get("parent_class")
+                expected_cms_mapping = {
+                    "ModGovCouncillorScraper": "ModernGov",
+                    "CMISCouncillorScraper": "CMIS",
+                    "HTMLCouncillorScraper": "Custom HTML",
+                }
+                expected_cms = expected_cms_mapping.get(parent_class)
+                if expected_cms and expected_cms != councillors_service.cms_type:
+                    report["warnings"].append(
+                        f"CMS type mismatch: scraper uses '{parent_class}' (suggests '{expected_cms}') "
+                        f"but metadata has '{councillors_service.cms_type}'"
                     )
 
         except Exception as e:
@@ -109,8 +136,15 @@ class ScraperValidator:
 
             parent_class = parent_match.group(1)
 
-            # Extract base_url
+            # Extract base_url (handle both single-line and multiline definitions)
             url_match = re.search(r'base_url\s*=\s*["\']([^"\']+)["\']', content)
+            if not url_match:
+                # Try multiline pattern: base_url = ("url")
+                url_match = re.search(
+                    r'base_url\s*=\s*\(\s*["\']([^"\']+)["\']\s*\)',
+                    content,
+                    re.MULTILINE | re.DOTALL,
+                )
             base_url = url_match.group(1) if url_match else None
 
             # Extract tags if present
@@ -321,6 +355,54 @@ class ScraperValidator:
         if len(parts) >= 1:
             return parts[0]
         return None
+
+    def print_single_council_report(
+        self, report: Dict[str, Any], console: Console = None
+    ) -> None:
+        """Print a validation report for a single council."""
+        if console is None:
+            console = Console()
+
+        council_id = report.get("council_id", "Unknown")
+
+        # Determine overall status
+        has_errors = bool(report.get("errors"))
+        has_warnings = bool(report.get("warnings"))
+
+        if has_errors:
+            status = "✗ Scraper validation failed"
+            style = "red"
+        elif has_warnings:
+            status = "⚠ Scraper validation passed with warnings"
+            style = "yellow"
+        else:
+            status = "✓ Scraper validation passed"
+            style = "green"
+
+        console.print(
+            Panel(status, title=f"Validation Report for {council_id}", style=style)
+        )
+
+        # Show issues if any
+        issues = []
+        for error in report.get("errors", []):
+            issues.append(["Error", f"✗ {error}", "red"])
+        for warning in report.get("warnings", []):
+            issues.append(["Warning", f"⚠ {warning}", "yellow"])
+        for suggestion in report.get("suggestions", []):
+            issues.append(["Suggestion", f"💡 {suggestion}", "blue"])
+
+        if issues:
+            issues_table = Table(title="Issues Found")
+            issues_table.add_column("Type", style="bold")
+            issues_table.add_column("Description", style="white")
+
+            for issue_type, description, color in issues:
+                issues_table.add_row(issue_type, f"[{color}]{description}[/{color}]")
+
+            console.print(issues_table)
+        else:
+            console.print("[green]No issues found![/green]")
 
     def print_validation_report(
         self, report: Dict[str, Any], console: Console = None

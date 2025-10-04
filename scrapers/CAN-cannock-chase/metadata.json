@@ -1,20 +1,20 @@
 {
-    "everyelectiion_data": {
-        "common_name": "Cannock Chase",
-        "created": "1974-04-01T00:00:00Z",
-        "election_name": "Cannock Chase local election",
-        "official_identifier": "CAN",
-        "official_name": "Cannock Chase District Council",
-        "organisation_subtype": "NMD",
-        "organisation_type": "local-authority",
-        "slug": "cannock-chase",
-        "start_date": "1974-04-01",
-        "territory_code": "ENG",
-        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/CAN/1974-04-01/"
-    },
-    "services": {
-        "councillors": {
-            "cms_type": "Custom HTML"
-        }
+  "everyelectiion_data": {
+    "common_name": "Cannock Chase",
+    "created": "1974-04-01T00:00:00Z",
+    "election_name": "Cannock Chase local election",
+    "official_identifier": "CAN",
+    "official_name": "Cannock Chase District Council",
+    "organisation_subtype": "NMD",
+    "organisation_type": "local-authority",
+    "slug": "cannock-chase",
+    "start_date": "1974-04-01",
+    "territory_code": "ENG",
+    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/CAN/1974-04-01/"
+  },
+  "services": {
+    "councillors": {
+      "cms_type": "Custom HTML"
     }
+  }
 }

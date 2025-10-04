@@ -103,7 +103,11 @@ class Command(CouncilFilteringCommandBase):
 
         elif subcommand == "validate":
             if options.get("council"):
-                self.validate_single_scraper(options.get("council"))
+                council_ids = [c.strip() for c in options.get("council").split(",")]
+                if len(council_ids) == 1:
+                    self.validate_single_scraper(council_ids[0])
+                else:
+                    self.validate_multiple_scrapers(council_ids)
             else:
                 self.validate_all_scrapers()
             return
@@ -480,6 +484,22 @@ class Command(CouncilFilteringCommandBase):
             report = validator.validate_filtered_scrapers(councils_to_validate)
 
         validator.print_validation_report(report, console=self.console)
+
+    def validate_multiple_scrapers(self, council_ids):
+        """Validate multiple scrapers and print detailed reports."""
+        from lgsf.metadata.validation import ScraperValidator
+
+        validator = ScraperValidator()
+
+        for council_id in council_ids:
+            self.console.print(f"\n[bold blue]Validating {council_id}...[/bold blue]")
+
+            with self.console.status(
+                f"[bold green]Validating scraper for {council_id}..."
+            ):
+                report = validator.validate_council_scraper(council_id)
+
+            validator.print_single_council_report(report, console=self.console)
 
     def validate_single_scraper(self, council_id):
         """Validate a single scraper and print detailed report."""
