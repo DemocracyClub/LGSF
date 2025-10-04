@@ -7,6 +7,7 @@ from lgsf.councillors.scrapers import (
     PagedHTMLCouncillorScraper,
 )
 
+
 class Scraper(PagedHTMLCouncillorScraper):
     list_page = {
         "container_css_selector": ".localgov-directory",

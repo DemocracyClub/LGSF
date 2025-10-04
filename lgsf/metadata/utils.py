@@ -2,7 +2,6 @@
 Simple runtime utilities for scrapers to access their metadata.
 """
 
-from pathlib import Path
 from typing import Optional
 
 from .models import CouncilMetadata, ServiceData

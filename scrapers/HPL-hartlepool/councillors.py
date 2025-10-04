@@ -2,6 +2,7 @@ import re
 
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
+
 class Scraper(HTMLCouncillorScraper):
     list_page = {
         "container_css_selector": ".item-list__rich",

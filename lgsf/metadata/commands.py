@@ -4,7 +4,6 @@ import sys
 from pathlib import Path
 
 import requests
-from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
@@ -12,7 +11,6 @@ from rich.text import Text
 from lgsf.commands.base import CouncilFilteringCommandBase
 from lgsf.metadata.models import CouncilMetadata
 from lgsf.path_utils import create_org_package, scraper_abs_path
-from lgsf.storage.backends import get_storage_backend
 
 
 class Command(CouncilFilteringCommandBase):
@@ -297,7 +295,7 @@ class Command(CouncilFilteringCommandBase):
                         "base_url": service_metadata.base_url,
                     }
                     councils_data.append(summary)
-            except Exception as e:
+            except Exception:
                 # Skip councils that can't be loaded
                 continue
 
@@ -480,7 +478,7 @@ class Command(CouncilFilteringCommandBase):
 
         with self.console.status(
             f"[bold green]Running validation for {len(councils_to_validate)} scrapers..."
-        ) as status:
+        ):
             report = validator.validate_filtered_scrapers(councils_to_validate)
 
         validator.print_validation_report(report, console=self.console)

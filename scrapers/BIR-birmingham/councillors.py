@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 
 from lgsf.councillors.scrapers import CMISCouncillorScraper
 
+
 class Scraper(CMISCouncillorScraper):
     def get_from_profile_page(self, profile_url):
         # Get the real profile page

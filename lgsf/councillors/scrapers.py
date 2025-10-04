@@ -151,9 +151,9 @@ class BaseCouncillorScraper(ScraperBase):
         self.save_councillor(formatted_councillor_raw_str, councillor)
 
     def save_councillor(self, raw_content, councillor_obj):
-        assert type(councillor_obj) is CouncillorBase, (
-            "Scrapers must return a councillor object"
-        )
+        assert (
+            type(councillor_obj) is CouncillorBase
+        ), "Scrapers must return a councillor object"
         file_name = "{}.{}".format(councillor_obj.as_file_name(), self.ext)
         self.save_raw(file_name, raw_content)
         self.save_json(councillor_obj)

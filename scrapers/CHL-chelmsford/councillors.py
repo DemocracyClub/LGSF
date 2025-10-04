@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 from lgsf.councillors import SkipCouncillorException
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
+
 class Scraper(HTMLCouncillorScraper):
     def get_councillors(self):
         url = self.base_url

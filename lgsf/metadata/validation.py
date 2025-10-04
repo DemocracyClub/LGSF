@@ -1,13 +1,10 @@
 import warnings
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-import importlib.util
-import sys
 
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich.text import Text
 from rich.columns import Columns
 
 from lgsf.metadata.models import CouncilMetadata
@@ -85,13 +82,13 @@ class ScraperValidator:
             # Skip base_url validation for disabled scrapers
             if is_disabled:
                 report["suggestions"].append(
-                    f"Scraper is disabled - base_url validation skipped"
+                    "Scraper is disabled - base_url validation skipped"
                 )
             elif not metadata_base_url:
                 # No base_url in metadata
                 report["errors"].append(
-                    f"No base_url found in metadata. "
-                    f"Please set services.councillors.base_url in metadata.json"
+                    "No base_url found in metadata. "
+                    "Please set services.councillors.base_url in metadata.json"
                 )
 
             # Check CMS type consistency
@@ -157,7 +154,7 @@ class ScraperValidator:
                 "content": content,
             }
 
-        except Exception as e:
+        except Exception:
             return None
 
     def _check_missing_metadata(self, metadata: CouncilMetadata) -> List[str]:

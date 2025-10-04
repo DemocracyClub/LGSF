@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 
 from lgsf.councillors.scrapers import CMISCouncillorScraper
 
+
 class Scraper(CMISCouncillorScraper):
     def get_party_name(self, list_page_html):
         url = list_page_html.a["href"]

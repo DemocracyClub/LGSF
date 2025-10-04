@@ -1,5 +1,6 @@
 from lgsf.councillors.scrapers import JSONCouncillorScraper
 
+
 class Scraper(JSONCouncillorScraper):
     def get_councillors(self):
         return self.get(f"{self.base_url}/GetAllCouncillors").json()

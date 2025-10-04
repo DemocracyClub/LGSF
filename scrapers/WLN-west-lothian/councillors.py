@@ -1,6 +1,7 @@
 from lgsf.councillors import SkipCouncillorException
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
+
 class Scraper(HTMLCouncillorScraper):
     list_page = {
         "container_css_selector": ".container .grid--3col",
