@@ -75,29 +75,23 @@ class ScraperValidator:
             quality_issues = self._check_scraper_quality(scraper_info, councillors_file)
             report["warnings"].extend(quality_issues)
 
-            # Check base_url consistency
+            # Check base_url in metadata
             councillors_service = metadata.get_service_metadata("councillors")
-            scraper_base_url = scraper_info.get("base_url")
             metadata_base_url = (
                 councillors_service.base_url if councillors_service else None
             )
+            is_disabled = scraper_info.get("disabled", False)
 
-            if scraper_base_url and metadata_base_url:
-                # Both have base_url, check if they match
-                if metadata_base_url != scraper_base_url:
-                    report["warnings"].append(
-                        f"Base URL mismatch: metadata has '{metadata_base_url}' "
-                        f"but scraper has '{scraper_base_url}'"
-                    )
-            elif scraper_base_url and not metadata_base_url:
-                # Scraper has base_url but metadata doesn't
+            # Skip base_url validation for disabled scrapers
+            if is_disabled:
                 report["suggestions"].append(
-                    f"Scraper has base_url '{scraper_base_url}' but metadata is missing base_url field"
+                    f"Scraper is disabled - base_url validation skipped"
                 )
-            elif metadata_base_url and not scraper_base_url:
-                # Metadata has base_url but scraper doesn't
-                report["warnings"].append(
-                    f"Metadata has base_url '{metadata_base_url}' but scraper is missing base_url"
+            elif not metadata_base_url:
+                # No base_url in metadata
+                report["errors"].append(
+                    f"No base_url found in metadata. "
+                    f"Please set services.councillors.base_url in metadata.json"
                 )
 
             # Check CMS type consistency
@@ -136,17 +130,6 @@ class ScraperValidator:
 
             parent_class = parent_match.group(1)
 
-            # Extract base_url (handle both single-line and multiline definitions)
-            url_match = re.search(r'base_url\s*=\s*["\']([^"\']+)["\']', content)
-            if not url_match:
-                # Try multiline pattern: base_url = ("url")
-                url_match = re.search(
-                    r'base_url\s*=\s*\(\s*["\']([^"\']+)["\']\s*\)',
-                    content,
-                    re.MULTILINE | re.DOTALL,
-                )
-            base_url = url_match.group(1) if url_match else None
-
             # Extract tags if present
             tags_match = re.search(r"tags\s*=\s*\[([^\]]*)\]", content)
             tags = []
@@ -168,7 +151,6 @@ class ScraperValidator:
 
             return {
                 "parent_class": parent_class,
-                "base_url": base_url,
                 "tags": tags,
                 "disabled": disabled,
                 "custom_methods": custom_methods,
@@ -211,10 +193,6 @@ class ScraperValidator:
 
         if scraper_info["disabled"]:
             issues.append("Scraper is marked as disabled")
-
-        # Check for missing base_url
-        if not scraper_info["base_url"]:
-            issues.append("No base_url defined in scraper")
 
         # Check if it's just inheriting without customization
         if (

@@ -20,7 +20,7 @@ class ScraperChecker(object):
             self.checks = checks
         else:
             # Default checks
-            self.checks = (CheckBaseURL,)
+            self.checks = ()
 
     def run_checks(self):
         """
@@ -54,10 +54,3 @@ class baseCheck(metaclass=abc.ABCMeta):
         if not self.output_errors_only or error:
             print(msg)
         return error
-
-
-class CheckBaseURL(baseCheck):
-    name = "Base URL"
-
-    def check(self):
-        assert hasattr(self.scraper_class, "base_url"), "No base URL defined"
