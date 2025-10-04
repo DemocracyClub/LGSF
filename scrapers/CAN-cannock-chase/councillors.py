@@ -4,12 +4,7 @@ from urllib.parse import urljoin
 from lgsf.councillors import SkipCouncillorException
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
-
 class Scraper(HTMLCouncillorScraper):
-    base_url = (
-        "https://www.cannockchasedc.gov.uk/council/about-council/your-councillors"
-    )
-
     list_page = {
         "container_css_selector": ".all-councillors",
         "councillor_css_selector": ".all-container",

@@ -1,9 +1,6 @@
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
-
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.valeofglamorgan.gov.uk/en/our_council/Council-Structure/councillors/Councillors.aspx"
-
     list_page = {
         "container_css_selector": ".p-md-3",
         "councillor_css_selector": ".councillor-item",

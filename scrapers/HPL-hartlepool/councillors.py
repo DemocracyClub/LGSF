@@ -2,10 +2,7 @@ import re
 
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
-
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.hartlepool.gov.uk/councillors/name"
-
     list_page = {
         "container_css_selector": ".item-list__rich",
         "councillor_css_selector": "li",

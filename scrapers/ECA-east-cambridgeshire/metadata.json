@@ -14,6 +14,7 @@
     },
     "services": {
         "councillors": {
+            "base_url": "https://www.eastcambs.gov.uk/council-and-democracy/search-for-councillors",
             "cms_type": "Custom HTML"
         }
     }

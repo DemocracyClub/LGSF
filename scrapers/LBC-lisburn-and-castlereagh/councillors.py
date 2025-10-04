@@ -4,9 +4,7 @@ from urllib.parse import urljoin
 
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
-
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.lisburncastlereagh.gov.uk/en/council-and-performance/councillors-and-committees"
     list_page = {
         "container_css_selector": "#main-content",
         "councillor_css_selector": ".councillor-card",

@@ -3,9 +3,7 @@ from urllib.parse import urljoin
 from lgsf.councillors import SkipCouncillorException
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
-
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.molevalley.gov.uk/councillors-decision-making/who-are-your-councillors/"
     verify_requests = False
 
     list_page = {

@@ -5,10 +5,7 @@ from lgsf.councillors.scrapers import (
     HTMLCouncillorScraper,
 )
 
-
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.centralbedfordshire.gov.uk/directory/14/your_councillors/category/67"
-
     list_page = {
         "container_css_selector": ".item-list--navigation",
         "councillor_css_selector": ".item-list__link",

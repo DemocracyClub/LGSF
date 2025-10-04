@@ -1,5 +1,4 @@
 from lgsf.councillors.scrapers import ModGovCouncillorScraper
 
-
 class Scraper(ModGovCouncillorScraper):
-    base_url = "http://www.folkestone-hythe.gov.uk/moderngov/"
+    pass

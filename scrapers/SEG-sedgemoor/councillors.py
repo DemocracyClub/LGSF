@@ -1,8 +1,6 @@
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
-
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.sedgemoor.gov.uk/councillors"
     list_page = {
         "container_css_selector": ".content__wrapper--withmenu",
         "councillor_css_selector": ".contact-list__wrapper",

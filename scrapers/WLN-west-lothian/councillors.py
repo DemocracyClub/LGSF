@@ -1,9 +1,7 @@
 from lgsf.councillors import SkipCouncillorException
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
-
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://westlothian.gov.uk/councillors"
     list_page = {
         "container_css_selector": ".container .grid--3col",
         "councillor_css_selector": ".grid__cell--listitem",

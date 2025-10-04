@@ -3,10 +3,7 @@ from urllib.parse import urljoin
 
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
-
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.eastrenfrewshire.gov.uk/Find-my-councillor"
-
     list_page = {
         "container_css_selector": "main .a-body",
         "councillor_css_selector": "li .a-body__link",

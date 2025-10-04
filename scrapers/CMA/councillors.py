@@ -1,5 +1,4 @@
 from lgsf.councillors.scrapers import ModGovCouncillorScraper
 
-
 class Scraper(ModGovCouncillorScraper):
-    base_url = "https://councilportal.cumbria.gov.uk/"
+    pass

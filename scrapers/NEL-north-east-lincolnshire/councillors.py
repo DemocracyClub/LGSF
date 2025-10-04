@@ -4,10 +4,7 @@ import re
 from lgsf.councillors.exceptions import SkipCouncillorException
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
-
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.nelincs.gov.uk/your-council/councillors-mps-and-meps/find-your-councillor/councillors-by-party/"
-
     list_page = {
         "container_css_selector": "main .col-12 .page-content:nth-child(1)",
         "councillor_css_selector": "li",

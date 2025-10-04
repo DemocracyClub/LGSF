@@ -4,10 +4,7 @@ from bs4 import BeautifulSoup
 
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
-
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.suffolk.gov.uk/council-and-democracy/councillors-and-elected-representatives/find-your-councillor/?ward=&action=SEARCH&party=&name="
-
     list_page = {
         "container_css_selector": ".results",
         "councillor_css_selector": ".result",

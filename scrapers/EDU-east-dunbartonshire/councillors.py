@@ -4,10 +4,7 @@ from urllib.parse import urljoin
 from lgsf.councillors import SkipCouncillorException
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
-
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.eastdunbarton.gov.uk/residents/council-democracy/committees-and-councillors/councillors-2017"
-
     list_page = {
         "container_css_selector": "div.view-content",
         "councillor_css_selector": ".views-row",

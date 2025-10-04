@@ -1,5 +1,4 @@
 from lgsf.councillors.scrapers import ModGovCouncillorScraper
 
-
 class Scraper(ModGovCouncillorScraper):
-    base_url = "http://minutes-1.nwleics.gov.uk"
+    pass

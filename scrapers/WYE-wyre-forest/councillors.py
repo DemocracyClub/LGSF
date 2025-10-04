@@ -6,9 +6,7 @@ from bs4 import BeautifulSoup
 
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
-
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://forms.wyreforestdc.gov.uk/council/committees/com55.htm"
     list_page = {
         "container_css_selector": ".container table",
         "councillor_css_selector": "td",

@@ -14,6 +14,7 @@
     },
     "services": {
         "councillors": {
+            "base_url": "https://www.southtyneside.gov.uk/article/13598/councillors-a-to-z?p=1063",
             "cms_type": "Custom HTML"
         }
     }

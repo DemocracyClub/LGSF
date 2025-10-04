@@ -4,10 +4,7 @@ from urllib.parse import urljoin
 from lgsf.councillors import SkipCouncillorException
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
-
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.rugby.gov.uk/councillors/"
-
     list_page = {
         "container_css_selector": ".card-page",
         "councillor_css_selector": "dd",

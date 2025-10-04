@@ -14,6 +14,7 @@
     },
     "services": {
         "councillors": {
+            "base_url": "https://info.ambervalley.gov.uk/WebServices/AVBCFeeds/DemocracyJSON.asmx",
             "cms_type": "JSON API"
         }
     }

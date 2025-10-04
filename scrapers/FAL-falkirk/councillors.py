@@ -3,9 +3,7 @@ from urllib.parse import urljoin
 
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
-
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.falkirk.gov.uk/services/council-democracy/councillors-decision-making/councillors/"
     list_page = {
         "container_css_selector": "#page-body",
         "councillor_css_selector": ".list-group-item",
