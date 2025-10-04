@@ -9,7 +9,6 @@ from lgsf.councillors.scrapers import (
 
 
 class Scraper(PagedHTMLCouncillorScraper):
-    base_url = "https://www.argyll-bute.gov.uk/councillor_list"
     list_page = {
         "container_css_selector": ".localgov-directory",
         "councillor_css_selector": ".views-row",

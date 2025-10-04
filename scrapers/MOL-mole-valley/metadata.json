@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/MOL/1974-04-01/",
-    "official_identifier": "MOL",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Mole Valley District Council",
-    "common_name": "Mole Valley",
-    "slug": "mole-valley",
-    "territory_code": "ENG",
-    "election_name": "Mole Valley local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Mole Valley",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Mole Valley local election",
+        "official_identifier": "MOL",
+        "official_name": "Mole Valley District Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "mole-valley",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/MOL/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://www.molevalley.gov.uk/councillors-decision-making/who-are-your-councillors/",
+            "cms_type": "Custom HTML"
+        }
+    }
 }

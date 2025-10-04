@@ -7,7 +7,6 @@ from lgsf.councillors.scrapers import (
 
 
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.dundeecity.gov.uk/service-area/councillors/councillors-political-wards-ward-number"
     list_page = {
         "container_css_selector": ".node-content",
         "councillor_css_selector": "tr",

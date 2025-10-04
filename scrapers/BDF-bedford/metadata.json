@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/BDF/2009-04-01/",
-    "official_identifier": "BDF",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "UA",
-    "official_name": "Bedford Borough Council",
-    "common_name": "Bedford Borough Council",
-    "slug": "bedford",
-    "territory_code": "ENG",
-    "election_name": "Bedford Borough Council",
-    "start_date": "2009-04-01",
-    "end_date": null,
-    "created": "2009-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Bedford Borough Council",
+        "created": "2009-04-01T00:00:00Z",
+        "election_name": "Bedford Borough Council",
+        "official_identifier": "BDF",
+        "official_name": "Bedford Borough Council",
+        "organisation_subtype": "UA",
+        "organisation_type": "local-authority",
+        "slug": "bedford",
+        "start_date": "2009-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/BDF/2009-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://councillorsupport.bedford.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

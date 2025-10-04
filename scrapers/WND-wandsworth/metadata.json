@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WND/1965-04-01/",
-    "official_identifier": "WND",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "LBO",
-    "official_name": "London Borough of Wandsworth",
-    "common_name": "Wandsworth",
-    "slug": "wandsworth",
-    "territory_code": "ENG",
-    "election_name": "Wandsworth local election",
-    "start_date": "1965-04-01",
-    "end_date": null,
-    "created": "1965-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Wandsworth",
+        "created": "1965-04-01T00:00:00Z",
+        "election_name": "Wandsworth local election",
+        "official_identifier": "WND",
+        "official_name": "London Borough of Wandsworth",
+        "organisation_subtype": "LBO",
+        "organisation_type": "local-authority",
+        "slug": "wandsworth",
+        "start_date": "1965-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WND/1965-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://democracy.wandsworth.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

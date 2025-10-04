@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/POR/1997-04-01/",
-    "official_identifier": "POR",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "UA",
-    "official_name": "Portsmouth City Council",
-    "common_name": "Portsmouth",
-    "slug": "portsmouth",
-    "territory_code": "ENG",
-    "election_name": "Portsmouth local election",
-    "start_date": "1997-04-01",
-    "end_date": null,
-    "created": "1997-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Portsmouth",
+        "created": "1997-04-01T00:00:00Z",
+        "election_name": "Portsmouth local election",
+        "official_identifier": "POR",
+        "official_name": "Portsmouth City Council",
+        "organisation_subtype": "UA",
+        "organisation_type": "local-authority",
+        "slug": "portsmouth",
+        "start_date": "1997-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/POR/1997-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://democracy.portsmouth.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

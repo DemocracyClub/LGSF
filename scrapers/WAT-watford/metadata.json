@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WAT/1974-04-01/",
-    "official_identifier": "WAT",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Watford Borough Council",
-    "common_name": "Watford Borough Council",
-    "slug": "watford",
-    "territory_code": "ENG",
-    "election_name": "Watford Borough Council",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Watford Borough Council",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Watford Borough Council",
+        "official_identifier": "WAT",
+        "official_name": "Watford Borough Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "watford",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WAT/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://watford.moderngov.co.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

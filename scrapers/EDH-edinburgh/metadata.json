@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/EDH/1996-04-01/",
-    "official_identifier": "EDH",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "CA",
-    "official_name": "The City of Edinburgh Council",
-    "common_name": "Edinburgh",
-    "slug": "edinburgh",
-    "territory_code": "SCT",
-    "election_name": "Edinburgh local election",
-    "start_date": "1996-04-01",
-    "end_date": null,
-    "created": "1996-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Edinburgh",
+        "created": "1996-04-01T00:00:00Z",
+        "election_name": "Edinburgh local election",
+        "official_identifier": "EDH",
+        "official_name": "The City of Edinburgh Council",
+        "organisation_subtype": "CA",
+        "organisation_type": "local-authority",
+        "slug": "edinburgh",
+        "start_date": "1996-04-01",
+        "territory_code": "SCT",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/EDH/1996-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://democracy.edinburgh.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

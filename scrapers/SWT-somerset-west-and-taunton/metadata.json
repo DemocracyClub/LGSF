@@ -1,14 +1,22 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SWT/2019-04-01/",
-    "official_identifier": "SWT",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Somerset West and Taunton Council",
-    "common_name": "Somerset West and Taunton",
-    "slug": "somerset-west-and-taunton",
-    "territory_code": "ENG",
-    "election_name": "Somerset West and Taunton local election",
-    "start_date": "2019-04-01",
-    "end_date": "2023-03-31",
-    "created": "2019-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Somerset West and Taunton",
+        "created": "2019-04-01T00:00:00Z",
+        "election_name": "Somerset West and Taunton local election",
+        "end_date": "2023-03-31",
+        "official_identifier": "SWT",
+        "official_name": "Somerset West and Taunton Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "somerset-west-and-taunton",
+        "start_date": "2019-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SWT/2019-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://democracy.somersetwestandtaunton.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

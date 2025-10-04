@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/NNO/1974-04-01/",
-    "official_identifier": "NNO",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "North Norfolk District Council",
-    "common_name": "North Norfolk",
-    "slug": "north-norfolk",
-    "territory_code": "ENG",
-    "election_name": "North Norfolk local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "North Norfolk",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "North Norfolk local election",
+        "official_identifier": "NNO",
+        "official_name": "North Norfolk District Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "north-norfolk",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/NNO/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://modgov.north-norfolk.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WEW/1974-04-01/",
-    "official_identifier": "WEW",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Welwyn Hatfield Borough Council",
-    "common_name": "Welwyn Hatfield",
-    "slug": "welwyn-hatfield",
-    "territory_code": "ENG",
-    "election_name": "Welwyn Hatfield local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Welwyn Hatfield",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Welwyn Hatfield local election",
+        "official_identifier": "WEW",
+        "official_name": "Welwyn Hatfield Borough Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "welwyn-hatfield",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WEW/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://democracy.welhat.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

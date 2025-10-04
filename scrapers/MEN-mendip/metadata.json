@@ -1,14 +1,19 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/MEN/1974-04-01/",
-    "official_identifier": "MEN",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Mendip District Council",
-    "common_name": "Mendip",
-    "slug": "mendip",
-    "territory_code": "ENG",
-    "election_name": "Mendip local election",
-    "start_date": "1974-04-01",
-    "end_date": "2023-03-31",
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Mendip",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Mendip local election",
+        "end_date": "2023-03-31",
+        "official_identifier": "MEN",
+        "official_name": "Mendip District Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "mendip",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/MEN/1974-04-01/"
+    },
+    "services": {
+        "councillors": {}
+    }
 }

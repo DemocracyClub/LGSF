@@ -2,4 +2,4 @@ from lgsf.councillors.scrapers import ModGovCouncillorScraper
 
 
 class Scraper(ModGovCouncillorScraper):
-    base_url = "https://charnwood.moderngov.co.uk"
+    pass

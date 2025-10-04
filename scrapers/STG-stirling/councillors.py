@@ -7,8 +7,6 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.stirling.gov.uk/council-and-committees/politicians-and-elections/councillors/"
-
     list_page = {
         "container_css_selector": "main",
         "councillor_css_selector": ".link-row__inner h3",

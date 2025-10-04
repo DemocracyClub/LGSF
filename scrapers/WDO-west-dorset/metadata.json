@@ -1,14 +1,22 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WDO/1974-04-01/",
-    "official_identifier": "WDO",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "West Dorset District Council",
-    "common_name": "West Dorset",
-    "slug": "west-dorset",
-    "territory_code": "ENG",
-    "election_name": "West Dorset local election",
-    "start_date": "1974-04-01",
-    "end_date": "2019-03-31",
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "West Dorset",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "West Dorset local election",
+        "end_date": "2019-03-31",
+        "official_identifier": "WDO",
+        "official_name": "West Dorset District Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "west-dorset",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WDO/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://moderngovdcp.dorsetforyou.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

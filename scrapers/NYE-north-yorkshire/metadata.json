@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/NYE/2023-04-01/",
-    "official_identifier": "NYE",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "UA",
-    "official_name": "North Yorkshire Council",
-    "common_name": "North Yorkshire",
-    "slug": "north-yorkshire",
-    "territory_code": "ENG",
-    "election_name": "North Yorkshire local election",
-    "start_date": "2023-04-01",
-    "end_date": null,
-    "created": "2023-07-12T11:49:22.704819Z"
+    "everyelectiion_data": {
+        "common_name": "North Yorkshire",
+        "created": "2023-07-12T11:49:22.704819Z",
+        "election_name": "North Yorkshire local election",
+        "official_identifier": "NYE",
+        "official_name": "North Yorkshire Council",
+        "organisation_subtype": "UA",
+        "organisation_type": "local-authority",
+        "slug": "north-yorkshire",
+        "start_date": "2023-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/NYE/2023-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://edemocracy.northyorks.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

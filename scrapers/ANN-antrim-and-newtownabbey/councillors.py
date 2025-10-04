@@ -5,7 +5,6 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://antrimandnewtownabbey.gov.uk/councillors/"
     list_page = {
         "container_css_selector": "main",
         "councillor_css_selector": ".contact-card",

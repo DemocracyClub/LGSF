@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/LEW/1965-04-01/",
-    "official_identifier": "LEW",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "LBO",
-    "official_name": "London Borough of Lewisham",
-    "common_name": "London Borough of Lewisham",
-    "slug": "lewisham",
-    "territory_code": "ENG",
-    "election_name": "London Borough of Lewisham",
-    "start_date": "1965-04-01",
-    "end_date": null,
-    "created": "1965-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "London Borough of Lewisham",
+        "created": "1965-04-01T00:00:00Z",
+        "election_name": "London Borough of Lewisham",
+        "official_identifier": "LEW",
+        "official_name": "London Borough of Lewisham",
+        "organisation_subtype": "LBO",
+        "organisation_type": "local-authority",
+        "slug": "lewisham",
+        "start_date": "1965-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/LEW/1965-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://councilmeetings.lewisham.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

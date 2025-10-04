@@ -1,14 +1,22 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/london/2000-07-03/",
-    "official_identifier": "london",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "",
-    "official_name": "Greater London Authority",
-    "common_name": "Greater London Authority",
-    "slug": "london",
-    "territory_code": "ENG",
-    "election_name": "Greater London Authority",
-    "start_date": "2000-07-03",
-    "end_date": null,
-    "created": "2000-07-03T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Greater London Authority",
+        "created": "2000-07-03T00:00:00Z",
+        "election_name": "Greater London Authority",
+        "official_identifier": "london",
+        "official_name": "Greater London Authority",
+        "organisation_subtype": "",
+        "organisation_type": "local-authority",
+        "slug": "london",
+        "start_date": "2000-07-03",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/london/2000-07-03/"
+    },
+    "everyelectiion_data_last_updated": "2025-10-04T07:35:42.363364",
+    "services": {
+        "councillors": {
+            "base_url": "http://democracy.cityoflondon.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

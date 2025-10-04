@@ -1,14 +1,22 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/TAU/1974-04-01/",
-    "official_identifier": "TAU",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Taunton Deane Borough Council",
-    "common_name": "Taunton Deane",
-    "slug": "taunton-deane",
-    "territory_code": "ENG",
-    "election_name": "Taunton Deane local election",
-    "start_date": "1974-04-01",
-    "end_date": "2019-03-31",
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Taunton Deane",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Taunton Deane local election",
+        "end_date": "2019-03-31",
+        "official_identifier": "TAU",
+        "official_name": "Taunton Deane Borough Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "taunton-deane",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/TAU/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://democracy.tauntondeane.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

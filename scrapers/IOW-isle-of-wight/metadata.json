@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/IOW/1995-04-01/",
-    "official_identifier": "IOW",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "UA",
-    "official_name": "Isle of Wight Council",
-    "common_name": "Isle of Wight",
-    "slug": "isle-of-wight",
-    "territory_code": "ENG",
-    "election_name": "Isle of Wight local election",
-    "start_date": "1995-04-01",
-    "end_date": null,
-    "created": "1995-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Isle of Wight",
+        "created": "1995-04-01T00:00:00Z",
+        "election_name": "Isle of Wight local election",
+        "official_identifier": "IOW",
+        "official_name": "Isle of Wight Council",
+        "organisation_subtype": "UA",
+        "organisation_type": "local-authority",
+        "slug": "isle-of-wight",
+        "start_date": "1995-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/IOW/1995-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://iow.moderngov.co.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

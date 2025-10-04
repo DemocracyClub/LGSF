@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/CHL/1974-04-01/",
-    "official_identifier": "CHL",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Chelmsford City Council",
-    "common_name": "Chelmsford",
-    "slug": "chelmsford",
-    "territory_code": "ENG",
-    "election_name": "Chelmsford local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Chelmsford",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Chelmsford local election",
+        "official_identifier": "CHL",
+        "official_name": "Chelmsford City Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "chelmsford",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/CHL/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://www.chelmsford.gov.uk/your-council/councillors-committees-and-decision-making/councillors/find-a-councillor/",
+            "cms_type": "Custom HTML"
+        }
+    }
 }

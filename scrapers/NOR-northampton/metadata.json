@@ -1,14 +1,22 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/NOR/1974-04-01/",
-    "official_identifier": "NOR",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Northampton Borough Council",
-    "common_name": "Northampton",
-    "slug": "northampton",
-    "territory_code": "ENG",
-    "election_name": "Northampton local election",
-    "start_date": "1974-04-01",
-    "end_date": "2020-05-06",
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Northampton",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Northampton local election",
+        "end_date": "2020-05-06",
+        "official_identifier": "NOR",
+        "official_name": "Northampton Borough Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "northampton",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/NOR/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://www.northamptonboroughcouncil.com/councillors",
+            "cms_type": "ModernGov"
+        }
+    }
 }

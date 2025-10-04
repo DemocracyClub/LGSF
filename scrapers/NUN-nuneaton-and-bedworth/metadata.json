@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/NUN/1974-04-01/",
-    "official_identifier": "NUN",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Nuneaton and Bedworth Borough Council",
-    "common_name": "Nuneaton and Bedworth",
-    "slug": "nuneaton-and-bedworth",
-    "territory_code": "ENG",
-    "election_name": "Nuneaton and Bedworth local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Nuneaton and Bedworth",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Nuneaton and Bedworth local election",
+        "official_identifier": "NUN",
+        "official_name": "Nuneaton and Bedworth Borough Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "nuneaton-and-bedworth",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/NUN/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://www.nuneatonandbedworth.gov.uk/councillors",
+            "cms_type": "Custom HTML"
+        }
+    }
 }

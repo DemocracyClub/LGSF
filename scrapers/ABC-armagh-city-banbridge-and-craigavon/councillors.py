@@ -5,7 +5,6 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.armaghbanbridgecraigavon.gov.uk/councillors/"
     list_page = {
         "container_css_selector": ".td-main-content",
         "councillor_css_selector": ".council-wrap-inner",

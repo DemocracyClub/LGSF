@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SPE/1974-04-01/",
-    "official_identifier": "SPE",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Spelthorne Borough Council",
-    "common_name": "Spelthorne",
-    "slug": "spelthorne",
-    "territory_code": "ENG",
-    "election_name": "Spelthorne local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Spelthorne",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Spelthorne local election",
+        "official_identifier": "SPE",
+        "official_name": "Spelthorne Borough Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "spelthorne",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SPE/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://democracy.spelthorne.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

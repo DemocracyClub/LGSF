@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SHR/2009-04-01/",
-    "official_identifier": "SHR",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "UA",
-    "official_name": "Shropshire Council",
-    "common_name": "Shropshire",
-    "slug": "shropshire",
-    "territory_code": "ENG",
-    "election_name": "Shropshire local election",
-    "start_date": "2009-04-01",
-    "end_date": null,
-    "created": "2009-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Shropshire",
+        "created": "2009-04-01T00:00:00Z",
+        "election_name": "Shropshire local election",
+        "official_identifier": "SHR",
+        "official_name": "Shropshire Council",
+        "organisation_subtype": "UA",
+        "organisation_type": "local-authority",
+        "slug": "shropshire",
+        "start_date": "2009-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SHR/2009-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://shropshire.gov.uk/committee-services/",
+            "cms_type": "ModernGov"
+        }
+    }
 }

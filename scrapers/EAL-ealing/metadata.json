@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/EAL/1965-04-01/",
-    "official_identifier": "EAL",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "LBO",
-    "official_name": "London Borough of Ealing",
-    "common_name": "Ealing",
-    "slug": "ealing",
-    "territory_code": "ENG",
-    "election_name": "Ealing local election",
-    "start_date": "1965-04-01",
-    "end_date": null,
-    "created": "1965-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Ealing",
+        "created": "1965-04-01T00:00:00Z",
+        "election_name": "Ealing local election",
+        "official_identifier": "EAL",
+        "official_name": "London Borough of Ealing",
+        "organisation_subtype": "LBO",
+        "organisation_type": "local-authority",
+        "slug": "ealing",
+        "start_date": "1965-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/EAL/1965-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://ealing.moderngov.co.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

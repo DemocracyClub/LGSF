@@ -5,8 +5,6 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.fife.gov.uk/kb/docs/articles/about-your-council2/politicians-and-committees/your-local-councillors/councillor"
-
     list_page = {
         "container_css_selector": ".article-body",
         "councillor_css_selector": ".councillor-card",

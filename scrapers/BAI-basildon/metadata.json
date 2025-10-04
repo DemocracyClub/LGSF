@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/BAI/1974-04-01/",
-    "official_identifier": "BAI",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Basildon Borough Council",
-    "common_name": "Basildon",
-    "slug": "basildon",
-    "territory_code": "ENG",
-    "election_name": "Basildon local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Basildon",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Basildon local election",
+        "official_identifier": "BAI",
+        "official_name": "Basildon Borough Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "basildon",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/BAI/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://www.basildonmeetings.info",
+            "cms_type": "ModernGov"
+        }
+    }
 }

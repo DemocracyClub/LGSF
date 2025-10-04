@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/DER/1997-04-01/",
-    "official_identifier": "DER",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "UA",
-    "official_name": "Derby City Council",
-    "common_name": "Derby",
-    "slug": "derby",
-    "territory_code": "ENG",
-    "election_name": "Derby local election",
-    "start_date": "1997-04-01",
-    "end_date": null,
-    "created": "1997-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Derby",
+        "created": "1997-04-01T00:00:00Z",
+        "election_name": "Derby local election",
+        "official_identifier": "DER",
+        "official_name": "Derby City Council",
+        "organisation_subtype": "UA",
+        "organisation_type": "local-authority",
+        "slug": "derby",
+        "start_date": "1997-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/DER/1997-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://democracy.derby.gov.uk/cmis5/Councillors/tabid/62/ScreenMode/Alphabetical/Default.aspx",
+            "cms_type": "CMIS"
+        }
+    }
 }

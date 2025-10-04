@@ -5,8 +5,6 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.eastriding.gov.uk/council/councillors-and-members-of-parliament/find-a-councillor/"
-
     list_page = {
         "container_css_selector": ".er-filter-grid",
         "councillor_css_selector": ".er-filter-row",

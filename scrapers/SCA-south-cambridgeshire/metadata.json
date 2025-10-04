@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SCA/1974-04-01/",
-    "official_identifier": "SCA",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "South Cambridgeshire District Council",
-    "common_name": "South Cambridgeshire",
-    "slug": "south-cambridgeshire",
-    "territory_code": "ENG",
-    "election_name": "South Cambridgeshire local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "South Cambridgeshire",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "South Cambridgeshire local election",
+        "official_identifier": "SCA",
+        "official_name": "South Cambridgeshire District Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "south-cambridgeshire",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SCA/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://scambs.moderngov.co.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

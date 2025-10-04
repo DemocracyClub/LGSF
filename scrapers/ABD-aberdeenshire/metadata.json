@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/ABD/1996-04-01/",
-    "official_identifier": "ABD",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "CA",
-    "official_name": "The Aberdeenshire Council",
-    "common_name": "Aberdeenshire",
-    "slug": "aberdeenshire",
-    "territory_code": "SCT",
-    "election_name": "Aberdeenshire local election",
-    "start_date": "1996-04-01",
-    "end_date": null,
-    "created": "1996-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Aberdeenshire",
+        "created": "1996-04-01T00:00:00Z",
+        "election_name": "Aberdeenshire local election",
+        "official_identifier": "ABD",
+        "official_name": "The Aberdeenshire Council",
+        "organisation_subtype": "CA",
+        "organisation_type": "local-authority",
+        "slug": "aberdeenshire",
+        "start_date": "1996-04-01",
+        "territory_code": "SCT",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/ABD/1996-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://aberdeenshire.moderngov.co.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

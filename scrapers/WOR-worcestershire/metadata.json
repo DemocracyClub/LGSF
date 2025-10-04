@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WOR/1998-04-01/",
-    "official_identifier": "WOR",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "CTY",
-    "official_name": "Worcestershire County Council",
-    "common_name": "Worcestershire",
-    "slug": "worcestershire",
-    "territory_code": "ENG",
-    "election_name": "Worcestershire local election",
-    "start_date": "1998-04-01",
-    "end_date": null,
-    "created": "1998-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Worcestershire",
+        "created": "1998-04-01T00:00:00Z",
+        "election_name": "Worcestershire local election",
+        "official_identifier": "WOR",
+        "official_name": "Worcestershire County Council",
+        "organisation_subtype": "CTY",
+        "organisation_type": "local-authority",
+        "slug": "worcestershire",
+        "start_date": "1998-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WOR/1998-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://worcestershire.moderngov.co.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

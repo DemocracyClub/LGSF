@@ -5,7 +5,6 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.causewaycoastandglens.gov.uk/council/councillors"
     list_page = {
         "container_css_selector": ".councillor-list",
         "councillor_css_selector": ".item",

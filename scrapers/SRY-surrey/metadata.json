@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SRY/1974-04-01/",
-    "official_identifier": "SRY",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "CTY",
-    "official_name": "Surrey County Council",
-    "common_name": "Surrey",
-    "slug": "surrey",
-    "territory_code": "ENG",
-    "election_name": "Surrey local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Surrey",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Surrey local election",
+        "official_identifier": "SRY",
+        "official_name": "Surrey County Council",
+        "organisation_subtype": "CTY",
+        "organisation_type": "local-authority",
+        "slug": "surrey",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SRY/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://mycouncil.surreycc.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

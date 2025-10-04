@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/LEC/1997-04-01/",
-    "official_identifier": "LEC",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "CTY",
-    "official_name": "Leicestershire County Council",
-    "common_name": "Leicestershire",
-    "slug": "leicestershire",
-    "territory_code": "ENG",
-    "election_name": "Leicestershire local election",
-    "start_date": "1997-04-01",
-    "end_date": null,
-    "created": "1997-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Leicestershire",
+        "created": "1997-04-01T00:00:00Z",
+        "election_name": "Leicestershire local election",
+        "official_identifier": "LEC",
+        "official_name": "Leicestershire County Council",
+        "organisation_subtype": "CTY",
+        "organisation_type": "local-authority",
+        "slug": "leicestershire",
+        "start_date": "1997-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/LEC/1997-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://democracy.leics.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

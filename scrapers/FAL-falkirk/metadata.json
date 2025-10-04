@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/FAL/1996-04-01/",
-    "official_identifier": "FAL",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "CA",
-    "official_name": "The Falkirk Council",
-    "common_name": "Falkirk",
-    "slug": "falkirk",
-    "territory_code": "SCT",
-    "election_name": "Falkirk local election",
-    "start_date": "1996-04-01",
-    "end_date": null,
-    "created": "1996-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Falkirk",
+        "created": "1996-04-01T00:00:00Z",
+        "election_name": "Falkirk local election",
+        "official_identifier": "FAL",
+        "official_name": "The Falkirk Council",
+        "organisation_subtype": "CA",
+        "organisation_type": "local-authority",
+        "slug": "falkirk",
+        "start_date": "1996-04-01",
+        "territory_code": "SCT",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/FAL/1996-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://www.falkirk.gov.uk/services/council-democracy/councillors-decision-making/councillors/",
+            "cms_type": "Custom HTML"
+        }
+    }
 }

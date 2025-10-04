@@ -8,8 +8,6 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.newrymournedown.org/your-councillors"
-
     list_page = {
         "container_css_selector": ".list_images_text",
         "councillor_css_selector": "li",

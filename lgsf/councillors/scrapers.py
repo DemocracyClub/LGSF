@@ -9,6 +9,7 @@ from dateutil.parser import parse
 from lgsf.aws_lambda.run_log import RunLog
 from lgsf.councillors import CouncillorBase
 from lgsf.councillors.exceptions import SkipCouncillorException
+from lgsf.metadata.models import CouncilMetadata
 from lgsf.scrapers import ScraperBase
 
 
@@ -17,11 +18,67 @@ class BaseCouncillorScraper(ScraperBase):
     class_tags = []
     ext = "html"
     scraper_object_type = "Councillors"
+    service_name = "councillors"  # Identifies which service this scraper is for
 
     def __init__(self, options, console):
         super().__init__(options, console)
         self.councillors = set()
         self.new_data = True
+
+        # Initialize base_url from metadata
+        self._initialize_base_url()
+
+        # Validate that base_url is now available
+        self._validate_base_url_available()
+
+        # Issue metadata validation warnings
+        self._validate_metadata_consistency()
+
+    def _initialize_base_url(self):
+        """Initialize base_url from metadata."""
+        # If scraper is disabled, don't require base_url
+        if hasattr(self.__class__, "disabled") and self.__class__.disabled:
+            self.base_url = "http://disabled-scraper.example.com"
+            return
+
+        # Get base_url from metadata
+        if hasattr(self, "options") and self.options.get("council"):
+            council_id = self.options["council"]
+            try:
+                metadata = CouncilMetadata.for_council(council_id)
+                service_metadata = metadata.get_service_metadata(self.service_name)
+
+                if service_metadata and service_metadata.base_url:
+                    self.base_url = service_metadata.base_url
+                else:
+                    raise ValueError(
+                        f"No base_url found in metadata for {council_id} service '{self.service_name}'. "
+                        f"Please ensure the metadata.json file has services.{self.service_name}.base_url set."
+                    )
+            except Exception as e:
+                raise ValueError(
+                    f"Failed to load base_url from metadata for {council_id}: {e}"
+                )
+
+    def get_base_url_source(self) -> str:
+        """Get information about where the base_url comes from."""
+        if hasattr(self, "base_url"):
+            return f"metadata: {self.base_url}"
+        else:
+            return "not set"
+
+    def _validate_base_url_available(self):
+        """Ensure base_url is available after initialization."""
+        # Skip validation for disabled scrapers
+        if hasattr(self.__class__, "disabled") and self.__class__.disabled:
+            return
+
+        if not hasattr(self, "base_url") or not self.base_url:
+            council_id = self.options.get("council", "unknown")
+            raise ValueError(
+                f"No base_url available for {council_id} after initialization. "
+                f"Please ensure metadata.json has services.{self.service_name}.base_url set."
+            )
 
     @abc.abstractmethod
     def get_councillors(self):
@@ -47,6 +104,21 @@ class BaseCouncillorScraper(ScraperBase):
         )
         self.councillors.add(councillor)
         return councillor
+
+    def _validate_metadata_consistency(self):
+        """Issue warnings if scraper doesn't match metadata."""
+        try:
+            # Only validate if we have a council ID
+            if hasattr(self, "options") and self.options.get("council"):
+                council_id = self.options["council"]
+
+                # Import here to avoid circular imports
+                from lgsf.metadata.validation import issue_scraper_warnings
+
+                issue_scraper_warnings(council_id, "councillors")
+        except Exception:
+            # Don't let validation failures break scraping
+            pass
 
     @property
     def get_tags(self):
@@ -79,9 +151,9 @@ class BaseCouncillorScraper(ScraperBase):
         self.save_councillor(formatted_councillor_raw_str, councillor)
 
     def save_councillor(self, raw_content, councillor_obj):
-        assert type(councillor_obj) is CouncillorBase, (
-            "Scrapers must return a councillor object"
-        )
+        assert (
+            type(councillor_obj) is CouncillorBase
+        ), "Scrapers must return a councillor object"
         file_name = "{}.{}".format(councillor_obj.as_file_name(), self.ext)
         self.save_raw(file_name, raw_content)
         self.save_json(councillor_obj)

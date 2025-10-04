@@ -4,10 +4,6 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    base_url = (
-        "https://www.southtyneside.gov.uk/article/13598/councillors-a-to-z?p=1063"
-    )
-
     list_page = {
         "container_css_selector": "#COUNCILLORSLISTBYNAME_HTML",  # lol
         "councillor_css_selector": "tbody td a",

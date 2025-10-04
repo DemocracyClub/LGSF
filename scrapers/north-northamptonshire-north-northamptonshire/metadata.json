@@ -1,14 +1,18 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/north-northamptonshire/2020-05-07/",
-    "official_identifier": "north-northamptonshire",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "UA",
-    "official_name": "North Northamptonshire Council",
-    "common_name": "North Northamptonshire",
-    "slug": "north-northamptonshire",
-    "territory_code": "ENG",
-    "election_name": "North Northamptonshire local election",
-    "start_date": "2020-05-07",
-    "end_date": null,
-    "created": "2020-05-07T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "North Northamptonshire",
+        "created": "2020-05-07T00:00:00Z",
+        "election_name": "North Northamptonshire local election",
+        "official_identifier": "north-northamptonshire",
+        "official_name": "North Northamptonshire Council",
+        "organisation_subtype": "UA",
+        "organisation_type": "local-authority",
+        "slug": "north-northamptonshire",
+        "start_date": "2020-05-07",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/north-northamptonshire/2020-05-07/"
+    },
+    "services": {
+        "councillors": {}
+    }
 }

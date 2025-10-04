@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/CAS/1974-04-01/",
-    "official_identifier": "CAS",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Castle Point Borough Council",
-    "common_name": "Castle Point",
-    "slug": "castle-point",
-    "territory_code": "ENG",
-    "election_name": "Castle Point local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Castle Point",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Castle Point local election",
+        "official_identifier": "CAS",
+        "official_name": "Castle Point Borough Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "castle-point",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/CAS/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://castlepoint.cmis.uk.com/castlepoint/Councillors.aspx",
+            "cms_type": "CMIS"
+        }
+    }
 }

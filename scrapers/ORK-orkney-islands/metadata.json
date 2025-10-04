@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/ORK/1996-04-01/",
-    "official_identifier": "ORK",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "CA",
-    "official_name": "Orkney Islands Council",
-    "common_name": "Orkney Islands",
-    "slug": "orkney-islands",
-    "territory_code": "SCT",
-    "election_name": "Orkney Islands local election",
-    "start_date": "1996-04-01",
-    "end_date": null,
-    "created": "1996-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Orkney Islands",
+        "created": "1996-04-01T00:00:00Z",
+        "election_name": "Orkney Islands local election",
+        "official_identifier": "ORK",
+        "official_name": "Orkney Islands Council",
+        "organisation_subtype": "CA",
+        "organisation_type": "local-authority",
+        "slug": "orkney-islands",
+        "start_date": "1996-04-01",
+        "territory_code": "SCT",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/ORK/1996-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://www.orkney.gov.uk/your-council/councillors/councillors/",
+            "cms_type": "Custom HTML"
+        }
+    }
 }

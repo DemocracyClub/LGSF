@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/CBF/2009-04-01/",
-    "official_identifier": "CBF",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "UA",
-    "official_name": "Central Bedfordshire Council",
-    "common_name": "Central Bedfordshire",
-    "slug": "central-bedfordshire",
-    "territory_code": "ENG",
-    "election_name": "Central Bedfordshire local election",
-    "start_date": "2009-04-01",
-    "end_date": null,
-    "created": "2009-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Central Bedfordshire",
+        "created": "2009-04-01T00:00:00Z",
+        "election_name": "Central Bedfordshire local election",
+        "official_identifier": "CBF",
+        "official_name": "Central Bedfordshire Council",
+        "organisation_subtype": "UA",
+        "organisation_type": "local-authority",
+        "slug": "central-bedfordshire",
+        "start_date": "2009-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/CBF/2009-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://www.centralbedfordshire.gov.uk/directory/14/your_councillors/category/67",
+            "cms_type": "Custom HTML"
+        }
+    }
 }

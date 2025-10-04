@@ -1,14 +1,22 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/BAR/1974-04-01/",
-    "official_identifier": "BAR",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Barrow-in-Furness Borough Council",
-    "common_name": "Barrow-in-Furness",
-    "slug": "barrow-in-furness",
-    "territory_code": "ENG",
-    "election_name": "Barrow-in-Furness local election",
-    "start_date": "1974-04-01",
-    "end_date": "2023-03-31",
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Barrow-in-Furness",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Barrow-in-Furness local election",
+        "end_date": "2023-03-31",
+        "official_identifier": "BAR",
+        "official_name": "Barrow-in-Furness Borough Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "barrow-in-furness",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/BAR/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://democracy.barrowbc.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

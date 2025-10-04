@@ -5,7 +5,6 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 class Scraper(HTMLCouncillorScraper):
     disabled = True
-    base_url = "https://ardsandnorthdown.gov.uk/article/1631/Councillor-Search"
     list_page = {
         "container_css_selector": ".grid--searchgrid",
         "councillor_css_selector": ".grid__cell--searchitem-article",
@@ -23,7 +22,6 @@ class Scraper(HTMLCouncillorScraper):
         councillor = self.add_councillor(
             url=url, identifier=url, name=name, division=division, party=party
         )
-
         container = soup.select_one(".councillor-specific")
 
         councillor.email = container.select_one("a[href^=mailto]")["href"].replace(

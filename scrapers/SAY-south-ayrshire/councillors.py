@@ -5,8 +5,6 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.south-ayrshire.gov.uk/councillors/"
-
     list_page = {
         "container_css_selector": "main .a-body",
         "councillor_css_selector": "li .a-body__link",

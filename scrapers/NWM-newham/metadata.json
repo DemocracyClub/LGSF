@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/NWM/1965-04-01/",
-    "official_identifier": "NWM",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "LBO",
-    "official_name": "London Borough of Newham",
-    "common_name": "London Borough of Newham",
-    "slug": "newham",
-    "territory_code": "ENG",
-    "election_name": "London Borough of Newham",
-    "start_date": "1965-04-01",
-    "end_date": null,
-    "created": "1965-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "London Borough of Newham",
+        "created": "1965-04-01T00:00:00Z",
+        "election_name": "London Borough of Newham",
+        "official_identifier": "NWM",
+        "official_name": "London Borough of Newham",
+        "organisation_subtype": "LBO",
+        "organisation_type": "local-authority",
+        "slug": "newham",
+        "start_date": "1965-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/NWM/1965-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://mgov.newham.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

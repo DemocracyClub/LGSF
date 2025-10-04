@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/BAN/1974-04-01/",
-    "official_identifier": "BAN",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Basingstoke and Deane Borough Council",
-    "common_name": "Basingstoke and Deane",
-    "slug": "basingstoke-and-deane",
-    "territory_code": "ENG",
-    "election_name": "Basingstoke and Deane local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Basingstoke and Deane",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Basingstoke and Deane local election",
+        "official_identifier": "BAN",
+        "official_name": "Basingstoke and Deane Borough Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "basingstoke-and-deane",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/BAN/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://democracy.basingstoke.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

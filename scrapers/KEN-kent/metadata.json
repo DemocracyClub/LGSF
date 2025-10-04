@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/KEN/1998-04-01/",
-    "official_identifier": "KEN",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "CTY",
-    "official_name": "Kent County Council",
-    "common_name": "Kent",
-    "slug": "kent",
-    "territory_code": "ENG",
-    "election_name": "Kent local election",
-    "start_date": "1998-04-01",
-    "end_date": null,
-    "created": "1998-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Kent",
+        "created": "1998-04-01T00:00:00Z",
+        "election_name": "Kent local election",
+        "official_identifier": "KEN",
+        "official_name": "Kent County Council",
+        "organisation_subtype": "CTY",
+        "organisation_type": "local-authority",
+        "slug": "kent",
+        "start_date": "1998-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/KEN/1998-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://democracy.kent.gov.uk/",
+            "cms_type": "ModernGov"
+        }
+    }
 }

@@ -8,8 +8,6 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.chelmsford.gov.uk/your-council/councillors-committees-and-decision-making/councillors/find-a-councillor/"
-
     def get_councillors(self):
         url = self.base_url
         soup = self.get_page(url)

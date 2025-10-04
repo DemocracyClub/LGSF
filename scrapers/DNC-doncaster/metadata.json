@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/DNC/1974-04-01/",
-    "official_identifier": "DNC",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "MD",
-    "official_name": "Doncaster Metropolitan Borough Council",
-    "common_name": "Doncaster Metropolitan Borough Council",
-    "slug": "doncaster",
-    "territory_code": "ENG",
-    "election_name": "Doncaster Metropolitan Borough Council",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Doncaster Metropolitan Borough Council",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Doncaster Metropolitan Borough Council",
+        "official_identifier": "DNC",
+        "official_name": "Doncaster Metropolitan Borough Council",
+        "organisation_subtype": "MD",
+        "organisation_type": "local-authority",
+        "slug": "doncaster",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/DNC/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://doncaster.moderngov.co.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

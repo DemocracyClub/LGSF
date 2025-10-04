@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SUR/1974-04-01/",
-    "official_identifier": "SUR",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Surrey Heath Borough Council",
-    "common_name": "Surrey Heath",
-    "slug": "surrey-heath",
-    "territory_code": "ENG",
-    "election_name": "Surrey Heath local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Surrey Heath",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Surrey Heath local election",
+        "official_identifier": "SUR",
+        "official_name": "Surrey Heath Borough Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "surrey-heath",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SUR/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://surreyheath.moderngov.co.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/KWL/1974-04-01/",
-    "official_identifier": "KWL",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "MD",
-    "official_name": "Knowsley Metropolitan Borough Council",
-    "common_name": "Knowsley",
-    "slug": "knowsley",
-    "territory_code": "ENG",
-    "election_name": "Knowsley local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Knowsley",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Knowsley local election",
+        "official_identifier": "KWL",
+        "official_name": "Knowsley Metropolitan Borough Council",
+        "organisation_subtype": "MD",
+        "organisation_type": "local-authority",
+        "slug": "knowsley",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/KWL/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://councillors.knowsley.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

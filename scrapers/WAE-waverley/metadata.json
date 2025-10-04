@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WAE/1974-04-01/",
-    "official_identifier": "WAE",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Waverley Borough Council",
-    "common_name": "Waverley",
-    "slug": "waverley",
-    "territory_code": "ENG",
-    "election_name": "Waverley local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Waverley",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Waverley local election",
+        "official_identifier": "WAE",
+        "official_name": "Waverley Borough Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "waverley",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WAE/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://modgov.waverley.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

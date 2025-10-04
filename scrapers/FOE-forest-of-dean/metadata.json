@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/FOE/1974-04-01/",
-    "official_identifier": "FOE",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "NMD",
-    "official_name": "Forest of Dean District Council",
-    "common_name": "Forest of Dean",
-    "slug": "forest-of-dean",
-    "territory_code": "ENG",
-    "election_name": "Forest of Dean local election",
-    "start_date": "1974-04-01",
-    "end_date": null,
-    "created": "1974-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Forest of Dean",
+        "created": "1974-04-01T00:00:00Z",
+        "election_name": "Forest of Dean local election",
+        "official_identifier": "FOE",
+        "official_name": "Forest of Dean District Council",
+        "organisation_subtype": "NMD",
+        "organisation_type": "local-authority",
+        "slug": "forest-of-dean",
+        "start_date": "1974-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/FOE/1974-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://meetings.fdean.gov.uk/",
+            "cms_type": "ModernGov"
+        }
+    }
 }

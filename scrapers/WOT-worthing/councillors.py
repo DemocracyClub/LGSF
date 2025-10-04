@@ -14,8 +14,6 @@ class Scraper(ModGovCouncillorScraper):
     Not ideal, but it's a good enough first attempt.
     """
 
-    base_url = "https://democracy.adur-worthing.gov.uk"
-
     def get_single_councillor(self, ward, councillor_xml):
         councillor = super().get_single_councillor(ward, councillor_xml)
         email = getattr(councillor, "email", None)

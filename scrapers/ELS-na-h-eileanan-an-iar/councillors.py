@@ -8,8 +8,6 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 class Scraper(HTMLCouncillorScraper):
     verify_requests = False
-    base_url = "https://cne-siar.gov.uk/home/your-council/council-members/"
-
     list_page = {
         "container_css_selector": "main",
         "councillor_css_selector": "h3",
@@ -18,6 +16,7 @@ class Scraper(HTMLCouncillorScraper):
     def get_single_councillor(self, councillor_html):
         if "Related Documents" in councillor_html.get_text(strip=True):
             raise SkipCouncillorException()
+
         url = urljoin(self.base_url, councillor_html.a["href"])
         soup = self.get_page(url)
 
@@ -41,8 +40,10 @@ class Scraper(HTMLCouncillorScraper):
             party=party,
             division=ward,
         )
+
         with contextlib.suppress(AttributeError):
             councillor.email = soup.select_one("h5 a[href^=mailto]").getText(strip=True)
+
         with contextlib.suppress(TypeError):
             councillor.photo_url = urljoin(
                 self.base_url,

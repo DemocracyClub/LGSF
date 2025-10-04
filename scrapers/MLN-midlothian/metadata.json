@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/MLN/1996-04-01/",
-    "official_identifier": "MLN",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "CA",
-    "official_name": "The Midlothian Council",
-    "common_name": "Midlothian",
-    "slug": "midlothian",
-    "territory_code": "SCT",
-    "election_name": "Midlothian local election",
-    "start_date": "1996-04-01",
-    "end_date": null,
-    "created": "1996-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Midlothian",
+        "created": "1996-04-01T00:00:00Z",
+        "election_name": "Midlothian local election",
+        "official_identifier": "MLN",
+        "official_name": "The Midlothian Council",
+        "organisation_subtype": "CA",
+        "organisation_type": "local-authority",
+        "slug": "midlothian",
+        "start_date": "1996-04-01",
+        "territory_code": "SCT",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/MLN/1996-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "https://midlothian.cmis.uk.com/live/Councillors.aspx",
+            "cms_type": "CMIS"
+        }
+    }
 }

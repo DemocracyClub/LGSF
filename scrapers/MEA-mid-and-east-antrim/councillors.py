@@ -4,7 +4,6 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    base_url = "https://www.midandeastantrim.gov.uk/council/councillors"
     list_page = {
         "container_css_selector": ".list-councillors",
         "councillor_css_selector": ".col-4",

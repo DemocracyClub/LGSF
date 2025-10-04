@@ -1,14 +1,21 @@
 {
-    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/HRY/1965-04-01/",
-    "official_identifier": "HRY",
-    "organisation_type": "local-authority",
-    "organisation_subtype": "LBO",
-    "official_name": "London Borough of Haringey",
-    "common_name": "Haringey",
-    "slug": "haringey",
-    "territory_code": "ENG",
-    "election_name": "Haringey local election",
-    "start_date": "1965-04-01",
-    "end_date": null,
-    "created": "1965-04-01T00:00:00Z"
+    "everyelectiion_data": {
+        "common_name": "Haringey",
+        "created": "1965-04-01T00:00:00Z",
+        "election_name": "Haringey local election",
+        "official_identifier": "HRY",
+        "official_name": "London Borough of Haringey",
+        "organisation_subtype": "LBO",
+        "organisation_type": "local-authority",
+        "slug": "haringey",
+        "start_date": "1965-04-01",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/HRY/1965-04-01/"
+    },
+    "services": {
+        "councillors": {
+            "base_url": "http://www.minutes.haringey.gov.uk",
+            "cms_type": "ModernGov"
+        }
+    }
 }

@@ -79,17 +79,71 @@ class Council:
 
     @property
     def current(self):
-        if self.metadata["end_date"] and parse(self.metadata["end_date"]) < today():
+        if self.metadata.get("end_date") and parse(self.metadata["end_date"]) < today():
             # This council has a known end data, and that date is in the past
             return False
-        if parse(self.metadata["start_date"]) > today():
+        if (
+            self.metadata.get("start_date")
+            and parse(self.metadata["start_date"]) > today()
+        ):
             return False
         return True
 
 
-class PerCouncilCommandBase(CommandBase):
+class CouncilFilteringCommandBase(CommandBase):
     """
-    For commands that operate on a list of councils
+    Base class for commands that need council filtering but don't run scrapers.
+    Provides council selection and filtering without scraper-specific options.
+    """
+
+    def create_parser(self):
+        self.parser = argparse.ArgumentParser()
+        self.add_default_arguments(self.parser)
+        if hasattr(self, "add_arguments"):
+            self.add_arguments(self.parser)
+        return self.parser.parse_args(self.argv[1:])
+
+    @property
+    def _all_council_dirs(self) -> List[str]:
+        """
+        Return a list of paths for each directory in the scraper directory
+        """
+        return [
+            d.name.split("-")[0]
+            for d in (settings.BASE_PATH / settings.SCRAPER_DIR_NAME).iterdir()
+            if d.is_dir() and not d.name.startswith("__")
+        ]
+
+    @property
+    def all_councils(self) -> List[Council]:
+        return [Council(council_id) for council_id in self._all_council_dirs]
+
+    @property
+    def current_councils(self):
+        return [council for council in self.all_councils if council.current]
+
+    @cached_property
+    def current_council_ids(self):
+        return {c.council_id for c in self.current_councils}
+
+    def disabled(self):
+        from lgsf.path_utils import load_scraper
+
+        disabled_councils = []
+        for council in self.current_councils:
+            scraper = load_scraper(council.council_id, self.command_name)
+            if scraper and scraper.disabled:
+                council_info = {
+                    "code": council.council_id,
+                    "name": council.metadata.get("official_name", "Unknown"),
+                }
+                disabled_councils.append(council_info)
+        return sorted(disabled_councils, key=lambda d: d["code"])
+
+
+class PerCouncilCommandBase(CouncilFilteringCommandBase):
+    """
+    For commands that operate on a list of councils and run scrapers
     """
 
     def create_parser(self):
@@ -157,21 +211,6 @@ class PerCouncilCommandBase(CommandBase):
             self.parser.error("Can't use --tags and --council together")
         return args
 
-    @property
-    def _all_council_dirs(self) -> List[str]:
-        """
-        Return a list of paths for each directory in the scraper directory
-        """
-        return [
-            d.name.split("-")[0]
-            for d in (settings.BASE_PATH / settings.SCRAPER_DIR_NAME).iterdir()
-            if d.is_dir() and not d.name.startswith("__")
-        ]
-
-    @property
-    def all_councils(self) -> List[Council]:
-        return [Council(council_id) for council_id in self._all_council_dirs]
-
     def missing(self):
         always_excluded = ["GLA", "london"]
         missing_councils = []
@@ -182,7 +221,7 @@ class PerCouncilCommandBase(CommandBase):
             if not scraper:
                 council_info = {
                     "code": council.council_id,
-                    "name": council.metadata["official_name"],
+                    "name": council.metadata.get("official_name", "Unknown"),
                 }
                 missing_councils.append(council_info)
         return sorted(missing_councils, key=lambda d: d["code"])
@@ -196,26 +235,6 @@ class PerCouncilCommandBase(CommandBase):
             table.add_row(council["code"], council["name"])
 
         self.console.print(table)
-
-    def disabled(self):
-        disabled_councils = []
-        for council in self.current_councils:
-            scraper = load_scraper(council.council_id, self.command_name)
-            if scraper and scraper.disabled:
-                council_info = {
-                    "code": council.council_id,
-                    "name": council.metadata["official_name"],
-                }
-                disabled_councils.append(council_info)
-        return sorted(disabled_councils, key=lambda d: d["code"])
-
-    @property
-    def current_councils(self):
-        return [council for council in self.all_councils if council.current]
-
-    @cached_property
-    def current_council_ids(self):
-        return {c.council_id for c in self.current_councils}
 
     def output_disabled(self):
         table = Table(title=f"Councils with '{self.command_name}' disabled scraper")
