@@ -3,6 +3,7 @@ from typing import Optional
 
 from lgsf.storage.backends.base import BaseStorage
 from lgsf.storage.backends.codecommit import CodeCommitStorage
+from lgsf.storage.backends.github import GitHubStorage
 from lgsf.storage.backends.local import LocalFilesystemStorage
 
 
@@ -76,13 +77,21 @@ def get_storage_backend(
         return CodeCommitStorage(
             council_code=council_code, scraper_object_type=scraper_object_type
         )
+    elif backend_type == "github":
+        scraper_object_type = kwargs.get("scraper_object_type", "Data")
+        return GitHubStorage(
+            council_code=council_code,
+            scraper_object_type=scraper_object_type,
+            repository_url=kwargs.get("repository_url"),
+            github_token=kwargs.get("github_token"),
+        )
     else:
         raise ValueError(f"Unsupported storage backend: {backend_type}")
 
 
 def get_available_backends() -> list[str]:
     """Return a list of available storage backend types."""
-    return ["local", "codecommit"]
+    return ["local", "codecommit", "github"]
 
 
 if __name__ == "__main__":

@@ -70,4 +70,4 @@ class CouncillorBase:
         return out
 
     def as_json(self):
-        return json.dumps(self.as_dict(), indent=4)
+        return json.dumps(self.as_dict(), indent=4, sort_keys=True)
