@@ -599,8 +599,8 @@ class GitHubStorage(BaseStorage):
         council2-2024-01-15-def456     # Another council's run branch
 
     Pull Request Workflow:
-    - When auto_merge=False (default): PR is created but left open for manual review
-    - When auto_merge=True: PR is created and immediately merged
+    - When auto_merge=False: PR is created but left open for manual review
+    - When auto_merge=True (default): PR is created and immediately merged
     - Branch cleanup only occurs after successful merge
     - Failed PR creation or merge leaves branches for manual intervention
 
@@ -644,7 +644,7 @@ class GitHubStorage(BaseStorage):
         scraper_object_type: str = "Data",
         repository_url: Optional[str] = None,
         github_token: Optional[str] = None,
-        auto_merge: bool = False,
+        auto_merge: bool = True,
     ):
         """
         Initialize GitHub storage backend.

@@ -6,7 +6,6 @@ readme = "README.md"
 requires-python = "==3.12.*"
 dependencies = [
     "beautifulsoup4==4.13.4",
-    "boto3==1.38.42",
     "html5lib>=1.1",
     "httpx==0.28.1",
     "lxml>=6.0.1",
@@ -27,6 +26,11 @@ dev = [
     "pytest-mypy-plugins==3.2.0",
     "pytest-ruff==0.5",
     "ruff==0.12.0",
+]
+cdk = [
+    "aws-cdk-lib>=2.100.0,<3.0.0",
+    "constructs>=10.0.0,<11.0.0",
+    "aws-cdk-aws-lambda-python-alpha>=2.100.0,<3.0.0",
 ]
 
 [tool.uv]

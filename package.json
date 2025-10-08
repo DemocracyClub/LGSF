@@ -1,0 +1,23 @@
+{
+  "name": "lgsf-cdk",
+  "version": "0.1.0",
+  "description": "CDK deployment for LGSF Local Government Scraper Framework",
+  "main": "index.js",
+  "scripts": {
+    "build": "echo 'No build required'",
+    "watch": "cdk watch",
+    "test": "echo 'No tests configured'",
+    "cdk": "cdk"
+  },
+  "devDependencies": {
+    "aws-cdk": "^2.100.0"
+  },
+  "keywords": [
+    "aws-cdk",
+    "lgsf",
+    "local-government",
+    "scraper"
+  ],
+  "author": "Democracy Club",
+  "license": "MIT"
+}
