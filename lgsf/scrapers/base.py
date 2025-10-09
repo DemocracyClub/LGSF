@@ -21,6 +21,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
     http_lib = "httpx"
     verify_requests = True
     timeout = 10
+    service_name = None
 
     def __init__(self, options, console):
         self.options = options
@@ -148,7 +149,10 @@ class ScraperBase(metaclass=abc.ABCMeta):
         self._set_last_run()
         # End session if still active
         if self.storage_session:
-            self.storage_backend.end_session(self.storage_session, "Scraping completed")
+            self.storage_backend.end_session(
+                self.storage_session,
+                f"Scraping {self.service_name} for {self.options['council']} completed",
+            )
             self.storage_session = None
 
     def _save_file(self, dir_name, file_name, content):
@@ -205,7 +209,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
                     run_log.log = self.console.export_text()
 
             # End session with run log for backend-specific finalization
-            commit_message = "Scraping completed"
+            commit_message = f"Updated {self.options['council']}"
             self.storage_backend.end_session(
                 self.storage_session, commit_message, run_log=run_log
             )

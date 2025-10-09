@@ -45,6 +45,7 @@ class _GitHubSession(StorageSession):
         scraper_object_type: str = "Data",
         run_id: Optional[str] = None,
         storage_backend: Optional[Any] = None,
+        disable_change_detection: bool = False,
     ):
         self.repository_url: str = repository_url.rstrip("/")
         self.github_token: str = github_token
@@ -73,6 +74,7 @@ class _GitHubSession(StorageSession):
         self._staged: Dict[str, bytes] = {}
         self._closed: bool = False
         self._existing_files: List[str] = []  # Track existing files for deletion
+        self.disable_change_detection: bool = disable_change_detection
 
         # Branch management
         self.today: str = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -407,6 +409,16 @@ class _GitHubSession(StorageSession):
         if not self._staged:
             return {"skipped": True, "reason": "no files to commit"}
 
+        # Check if there are any actual changes before proceeding (unless disabled)
+        if not self.disable_change_detection:
+            changes_detected = self._detect_changes()
+            if not changes_detected:
+                return {"skipped": True, "reason": "no changes detected"}
+        else:
+            print(
+                f"🔧 Change detection disabled - proceeding with commit for {self.council_code}/{self.scraper_object_type}"
+            )
+
         self._ensure_branch_exists()
 
         # Get current tree SHA
@@ -558,6 +570,152 @@ class _GitHubSession(StorageSession):
             "branch": self.branch_name,
         }
 
+    def _detect_changes(self) -> bool:
+        """
+        Detect if there are any actual changes between staged files and existing files.
+
+        If we can't access the repository (e.g., permission issues), we'll assume
+        changes exist to ensure the scraping process continues normally.
+
+        Returns:
+            bool: True if changes detected, False if no changes
+        """
+        try:
+            # Get current files from the main branch
+            repo_response = self.session.get(f"{self.api_base_url}")
+
+            # Handle permission errors gracefully
+            if repo_response.status_code == 403:
+                print(
+                    f"⚠️  GitHub API access forbidden - assuming changes exist for {self.council_code}/{self.scraper_object_type}"
+                )
+                print(f"    Repository: {self.repository_url}")
+                print(f"    API URL: {self.api_base_url}")
+                print("    This may be due to:")
+                print("    - Insufficient token permissions (needs 'repo' scope)")
+                print("    - Rate limiting")
+                print("    - Repository access denied")
+
+                # Try to get rate limit info
+                try:
+                    rate_limit_response = self.session.get(
+                        "https://api.github.com/rate_limit"
+                    )
+                    if rate_limit_response.status_code == 200:
+                        rate_info = rate_limit_response.json()
+                        core_limit = rate_info.get("resources", {}).get("core", {})
+                        remaining = core_limit.get("remaining", "unknown")
+                        limit = core_limit.get("limit", "unknown")
+                        print(
+                            f"    API rate limit: {remaining}/{limit} requests remaining"
+                        )
+                except Exception:
+                    pass
+
+                return True
+            elif repo_response.status_code == 404:
+                print(
+                    f"⚠️  Repository not found - assuming changes exist for {self.council_code}/{self.scraper_object_type}"
+                )
+                print(f"    Repository: {self.repository_url}")
+                return True
+
+            repo_response.raise_for_status()
+            default_branch = repo_response.json()["default_branch"]
+
+            scraper_folder_prefix = f"{self.council_code}/{self.scraper_object_type}/"
+            existing_files_to_delete = getattr(self, "_existing_files", [])
+
+            print(
+                f"🔍 Change detection for {self.council_code}/{self.scraper_object_type}: "
+                f"{len(self._staged)} staged files, {len(existing_files_to_delete)} existing files"
+            )
+
+            # Check if any files will be deleted
+            files_to_delete = []
+            for existing_file_path in existing_files_to_delete:
+                if (
+                    existing_file_path.startswith(scraper_folder_prefix)
+                    and existing_file_path not in self._staged
+                ):
+                    files_to_delete.append(existing_file_path)
+
+            # If files will be deleted, there are changes
+            if files_to_delete:
+                print(f"📝 Changes detected: {len(files_to_delete)} files to delete")
+                return True
+
+            # Check if any staged files are new or have different content
+            files_checked = 0
+
+            for file_path, staged_content in self._staged.items():
+                try:
+                    # Get existing file content from GitHub
+                    file_url = f"{self.api_base_url}/contents/{file_path}"
+                    file_response = self.session.get(
+                        file_url, params={"ref": default_branch}
+                    )
+
+                    if file_response.status_code == 403:
+                        print(
+                            f"⚠️  Access forbidden for file {file_path} - assuming changes exist"
+                        )
+                        return True
+                    elif file_response.status_code == 404:
+                        # File doesn't exist, so it's a new file
+                        print(f"📝 Changes detected: new file {file_path}")
+                        return True
+                    elif file_response.status_code == 200:
+                        # File exists, compare content
+                        import base64
+
+                        existing_file_data = file_response.json()
+                        existing_content = base64.b64decode(
+                            existing_file_data["content"]
+                        )
+
+                        if existing_content != staged_content:
+                            print(f"📝 Changes detected: modified file {file_path}")
+                            return True
+
+                        files_checked += 1
+                    else:
+                        # If we can't determine, assume there are changes to be safe
+                        print(
+                            f"⚠️  Unable to check file {file_path} (HTTP {file_response.status_code}) - assuming changes exist"
+                        )
+                        return True
+
+                except requests.exceptions.RequestException as e:
+                    # Network or HTTP errors - assume changes to be safe
+                    print(
+                        f"⚠️  Network error checking file {file_path}: {e} - assuming changes exist"
+                    )
+                    return True
+                except Exception as e:
+                    # Other errors - assume changes to be safe
+                    print(
+                        f"⚠️  Error checking file {file_path}: {e} - assuming changes exist"
+                    )
+                    return True
+
+            # If we get here, no changes were detected
+            print(
+                f"✅ No changes detected: all {files_checked}/{len(self._staged)} staged files match existing content"
+            )
+            return False
+
+        except requests.exceptions.RequestException as e:
+            # Network errors accessing repository - assume changes exist
+            print(
+                f"⚠️  Network error during change detection: {e} - assuming changes exist"
+            )
+            return True
+        except Exception as e:
+            # Any other error - assume changes exist to be safe
+            print(f"⚠️  Error during change detection: {e} - assuming changes exist")
+            return True
+
 
 class GitHubStorage(BaseStorage):
     """
@@ -645,6 +803,7 @@ class GitHubStorage(BaseStorage):
         repository_url: Optional[str] = None,
         github_token: Optional[str] = None,
         auto_merge: bool = True,
+        disable_change_detection: bool = False,
     ):
         """
         Initialize GitHub storage backend.
@@ -656,6 +815,7 @@ class GitHubStorage(BaseStorage):
             github_token: GitHub authentication token
             auto_merge: If True, automatically merge PRs after creation (default: False)
                        If False, create PRs but leave them open for manual review
+            disable_change_detection: If True, skip change detection and always commit
 
         Raises:
             ValueError: If repository_url or github_token are not provided
@@ -685,6 +845,19 @@ class GitHubStorage(BaseStorage):
 
         self._active: Optional[_GitHubSession] = None
         self.auto_merge: bool = auto_merge
+
+        # Check environment variable for disabling change detection
+        env_disable_change_detection = os.environ.get(
+            "LGSF_DISABLE_CHANGE_DETECTION", ""
+        ).lower() in ("true", "1", "yes")
+        self.disable_change_detection: bool = (
+            disable_change_detection or env_disable_change_detection
+        )
+
+        if self.disable_change_detection:
+            print(
+                "🔧 Change detection disabled via configuration or LGSF_DISABLE_CHANGE_DETECTION environment variable"
+            )
 
     def _start_session(self, **kwargs) -> StorageSession:
         """
@@ -723,6 +896,7 @@ class GitHubStorage(BaseStorage):
             scraper_object_type=scraper_type,
             run_id=run_id,
             storage_backend=self,
+            disable_change_detection=self.disable_change_detection,
         )
 
         # Check for existing data (for logging purposes)
@@ -794,6 +968,20 @@ class GitHubStorage(BaseStorage):
 
             # If no changes were detected, skip finalization but clean up properly
             if commit_result.get("skipped"):
+                # Log the reason for skipping
+                skip_reason = commit_result.get("reason", "unknown")
+                if skip_reason == "no changes detected":
+                    print(
+                        f"✅ No changes detected for {session.council_code}/{session.scraper_object_type} - skipping commit and PR creation"
+                    )
+                elif skip_reason == "no files to commit":
+                    print(
+                        f"✅ No files staged for {session.council_code}/{session.scraper_object_type} - skipping commit and PR creation"
+                    )
+                else:
+                    print(
+                        f"✅ Skipping GitHub operations for {session.council_code}/{session.scraper_object_type}: {skip_reason}"
+                    )
                 return commit_result
 
             # Perform GitHub-specific finalization with automatic merge and cleanup
@@ -885,7 +1073,7 @@ class GitHubStorage(BaseStorage):
                     # Merge pull request
                     merge_data = {
                         "commit_title": f"Merge {session.council_code} data ({session.today})",
-                        "merge_method": "squash",
+                        "merge_method": "merge",
                     }
 
                     merge_response = session.session.put(
