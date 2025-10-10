@@ -2,9 +2,6 @@ import os
 from typing import Optional
 
 from lgsf.storage.backends.base import BaseStorage
-from lgsf.storage.backends.codecommit import CodeCommitStorage
-from lgsf.storage.backends.github import GitHubStorage
-from lgsf.storage.backends.local import LocalFilesystemStorage
 
 
 def detect_storage_backend_from_environment(options: dict) -> str:
@@ -71,14 +68,17 @@ def get_storage_backend(
     backend_type = backend_type.lower()
 
     if backend_type == "local":
+        from lgsf.storage.backends.local import LocalFilesystemStorage
         return LocalFilesystemStorage(council_code=council_code)
     elif backend_type == "codecommit":
         scraper_object_type = kwargs.get("scraper_object_type", "Data")
+        from lgsf.storage.backends.codecommit import CodeCommitStorage
         return CodeCommitStorage(
             council_code=council_code, scraper_object_type=scraper_object_type
         )
     elif backend_type == "github":
         scraper_object_type = kwargs.get("scraper_object_type", "Data")
+        from lgsf.storage.backends.github import GitHubStorage
         return GitHubStorage(
             council_code=council_code,
             scraper_object_type=scraper_object_type,
