@@ -96,22 +96,6 @@ class CouncilMetadata:
                 "everyelectiion_data_last_updated"
             )
 
-        # Legacy manual_data format
-        elif "manual_data" in data:
-            if "everyelectiion_data" in data:
-                metadata.everyelection_data = EveryElectionData.from_dict(
-                    data["everyelectiion_data"]
-                )
-
-            metadata.councillors = ServiceData.from_dict(data["manual_data"])
-            metadata.everyelection_data_last_updated = data.get(
-                "everyelection_data_last_updated"
-            )
-
-        # Very old format - all data at root
-        else:
-            metadata.everyelection_data = EveryElectionData.from_dict(data)
-
         return metadata
 
     def to_dict(self) -> Dict[str, Any]:

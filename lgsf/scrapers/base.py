@@ -7,6 +7,7 @@ import httpx
 import requests
 from dateutil import parser
 
+from ..metadata.models import CouncilMetadata
 from ..storage.backends import get_storage_backend
 from .checks import ScraperChecker
 
@@ -22,16 +23,24 @@ class ScraperBase(metaclass=abc.ABCMeta):
     verify_requests = True
     timeout = 10
     service_name = None
+    scraper_object_type = None
 
     def __init__(self, options, console):
         self.options = options
         self.console = console
         self.check()
 
+        self.council_id = self.options["council"]
+
+        self.council_metadata = CouncilMetadata.for_council(self.council_id)
+        self.base_url = self.council_metadata.get_service_metadata(
+            self.service_name
+        ).base_url
+
         # Get storage backend based on options and environment
         scraper_object_type = getattr(self, "scraper_object_type", "Data")
         self.storage_backend = get_storage_backend(
-            council_code=self.options["council"],
+            council_code=self.council_id,
             options=self.options,
             scraper_object_type=scraper_object_type,
         )
@@ -60,6 +69,8 @@ class ScraperBase(metaclass=abc.ABCMeta):
         return response
 
     def check(self):
+        assert self.service_name
+        assert self.scraper_object_type
         checker = ScraperChecker(self.__class__)
         checker.run_checks()
 
