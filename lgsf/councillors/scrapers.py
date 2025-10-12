@@ -17,19 +17,12 @@ class BaseCouncillorScraper(ScraperBase):
     class_tags = []
     ext = "html"
     scraper_object_type = "Councillors"
-    service_name = "councillors"  # Identifies which service this scraper is for
+    service_name = "councillors"
 
     def __init__(self, options, console):
         super().__init__(options, console)
         self.councillors = set()
         self.new_data = True
-
-    def get_base_url_source(self) -> str:
-        """Get information about where the base_url comes from."""
-        if hasattr(self, "base_url"):
-            return f"metadata: {self.base_url}"
-        else:
-            return "not set"
 
     @abc.abstractmethod
     def get_councillors(self):
@@ -113,6 +106,10 @@ class BaseCouncillorScraper(ScraperBase):
 class HTMLCouncillorScraper(BaseCouncillorScraper):
     class_tags = ["html"]
 
+    @abc.abstractmethod
+    def get_councillors(self):
+        pass
+
     def get_page(self, url):
         page = self.get(url, extra_headers=self.extra_headers).text
         return BeautifulSoup(page, "html5lib")
@@ -145,6 +142,10 @@ class PagedHTMLCouncillorScraper(HTMLCouncillorScraper):
             )
         except Exception:
             return None
+
+    @abc.abstractmethod
+    def get_councillors(self):
+        pass
 
     def get_councillors(self):
         url = self.base_url
@@ -279,4 +280,6 @@ class CMISCouncillorScraper(BaseCouncillorScraper):
 
 
 class JSONCouncillorScraper(BaseCouncillorScraper):
-    pass
+    @abc.abstractmethod
+    def get_councillors(self):
+        pass

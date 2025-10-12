@@ -37,12 +37,10 @@ class ScraperBase(metaclass=abc.ABCMeta):
             self.service_name
         ).base_url
 
-        # Get storage backend based on options and environment
-        scraper_object_type = getattr(self, "scraper_object_type", "Data")
         self.storage_backend = get_storage_backend(
             council_code=self.council_id,
             options=self.options,
-            scraper_object_type=scraper_object_type,
+            scraper_object_type=self.scraper_object_type,
         )
         self.storage_session = self.storage_backend.start_session()
         if self.http_lib == "requests":
@@ -69,8 +67,8 @@ class ScraperBase(metaclass=abc.ABCMeta):
         return response
 
     def check(self):
-        assert self.service_name
-        assert self.scraper_object_type
+        assert self.service_name, "Scrapers must set a service_name"
+        assert self.scraper_object_type, "Scrapers must set a scraper object type"
         checker = ScraperChecker(self.__class__)
         checker.run_checks()
 
