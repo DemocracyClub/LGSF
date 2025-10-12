@@ -107,9 +107,19 @@ class ScraperBase(metaclass=abc.ABCMeta):
     def _set_last_run(self):
         timestamp = datetime.datetime.now().isoformat()
 
-        # Use existing session if available, otherwise create a new one
+        # Use existing session if available and still open, otherwise create a new one
         if self.storage_session:
-            self.storage_session.write(self._last_run_file_name(), timestamp)
+            try:
+                self.storage_session.write(self._last_run_file_name(), timestamp)
+            except RuntimeError as e:
+                if "Storage session is closed" in str(e):
+                    # Session is closed, create a new one
+                    with self.storage_backend.session(
+                        "Updating last run timestamp"
+                    ) as session:
+                        session.write(self._last_run_file_name(), timestamp)
+                else:
+                    raise
         else:
             with self.storage_backend.session("Updating last run timestamp") as session:
                 session.write(self._last_run_file_name(), timestamp)

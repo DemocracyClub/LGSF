@@ -24,22 +24,22 @@ class _GitHubSession(StorageSession):
     - **Per-run branches**: Operations happen on unique run-based branches
     - **Atomic commits**: All staged files are committed together
     - **Race condition handling**: Uses unique branch names to avoid conflicts
-    - **Single repository**: All councils share one repository with separate folders
+    - **Per-council repositories**: Each council gets its own dedicated repository
 
     The session works with GitHub's API to provide git-like semantics
     while maintaining the storage session interface.
 
     Args:
-        repository_url: Full GitHub repository URL (owner/repo format)
+        organization: GitHub organization name where council repositories are created
         github_token: GitHub authentication token
-        council_code: Council identifier for folder isolation
+        council_code: Council identifier (used to generate repository name as uppercase)
         scraper_object_type: Type of scraper (e.g., "Councillors")
         run_id: Unique identifier for this scraper run
     """
 
     def __init__(
         self,
-        repository_url: str,
+        organization: str,
         github_token: str,
         council_code: str,
         scraper_object_type: str = "Data",
@@ -47,7 +47,7 @@ class _GitHubSession(StorageSession):
         storage_backend: Optional[Any] = None,
         disable_change_detection: bool = False,
     ):
-        self.repository_url: str = repository_url.rstrip("/")
+        self.organization: str = organization
         self.github_token: str = github_token
         self.council_code: str = council_code
         self.scraper_object_type: str = scraper_object_type
@@ -56,24 +56,17 @@ class _GitHubSession(StorageSession):
             run_id or f"{str(uuid.uuid4())[:8]}-{int(time.time() * 1000) % 10000:04d}"
         )
 
-        # Parse repository URL to get owner and repo name
-        if self.repository_url.startswith("https://github.com/"):
-            repo_path = self.repository_url.replace("https://github.com/", "")
-        else:
-            repo_path = self.repository_url
-
-        parts = repo_path.split("/")
-        if len(parts) != 2:
-            raise ValueError(
-                f"Invalid repository URL format. Expected 'owner/repo', got: {repo_path}"
-            )
-
-        self.owner: str = parts[0]
-        self.repo: str = parts[1]
+        # Generate repository name from council code (uppercase)
+        self.owner: str = organization
+        self.repo: str = council_code.upper()
+        self.repository_url: str = f"https://github.com/{self.owner}/{self.repo}"
 
         self._staged: Dict[str, bytes] = {}
         self._closed: bool = False
         self._existing_files: List[str] = []  # Track existing files for deletion
+        self._preparation_result: Optional[Dict[str, Any]] = (
+            None  # Track preparation results
+        )
         self.disable_change_detection: bool = disable_change_detection
 
         # Branch management
@@ -90,6 +83,60 @@ class _GitHubSession(StorageSession):
                 "User-Agent": "LGSF-GitHub-Storage/1.0",
             }
         )
+
+        # Ensure repository exists
+        self._ensure_repository_exists()
+
+    def _ensure_repository_exists(self) -> None:
+        """
+        Ensure the council's repository exists, create it if it doesn't.
+
+        Raises:
+            requests.exceptions.HTTPError: If repository creation fails
+        """
+
+        # Check if repository exists
+        response = self.session.get(f"{self.api_base_url}")
+
+        if response.status_code == 200:
+            return  # Repository exists
+        elif response.status_code == 404:
+            # Repository doesn't exist, create it
+            self._create_repository()
+        else:
+            # Other error, raise it
+
+            response.raise_for_status()
+
+    def _create_repository(self) -> None:
+        """
+        Create a new repository for this council.
+
+        Raises:
+            requests.exceptions.HTTPError: If repository creation fails
+        """
+        create_data = {
+            "name": self.repo,
+            "description": f"Data storage for council {self.council_code}",
+            "private": True,  # Make private by default
+            "has_issues": False,
+            "has_projects": False,
+            "has_wiki": False,
+            "auto_init": True,  # Initialize with README
+        }
+
+        # Create repository in organization
+        response = self.session.post(
+            f"https://api.github.com/orgs/{self.owner}/repos", json=create_data
+        )
+
+        if response.status_code == 201:
+            # Wait a moment for repository initialization to complete
+            import time
+
+            time.sleep(5)
+        else:
+            response.raise_for_status()
 
     @property
     def branch_name(self) -> str:
@@ -131,6 +178,35 @@ class _GitHubSession(StorageSession):
         blob_response = self.session.post(
             f"{self.api_base_url}/git/blobs", json=blob_data
         )
+        if blob_response.status_code != 201:
+            print(
+                f"❌ Failed to create blob: {blob_response.status_code} - {blob_response.text}"
+            )
+            print(f"❌ Request URL: {self.api_base_url}/git/blobs")
+            print(f"❌ Auth header present: {'Authorization' in self.session.headers}")
+
+            if blob_response.status_code == 403:
+                print(
+                    "❌ 403 Forbidden on blob creation - this is a token permissions issue"
+                )
+                print("❌ For organization repos, you need either:")
+                print("❌   1. Classic PAT with 'repo' scope + org permissions")
+                print(
+                    "❌   2. Fine-grained PAT with Contents:write + Metadata:read permissions"
+                )
+
+                # Check if this is a fine-grained token by testing user endpoint
+                user_resp = self.session.get("https://api.github.com/user")
+                if user_resp.status_code == 200:
+                    print(f"🔧 Token works for user API, likely scope/permission issue")
+
+                # Check rate limit headers for more token info
+                rate_limit_resp = self.session.get("https://api.github.com/rate_limit")
+                if rate_limit_resp.status_code == 200:
+                    rate_data = rate_limit_resp.json()
+                    print(
+                        f"🔧 Rate limit info available - token is valid but lacks permissions"
+                    )
         blob_response.raise_for_status()
         blob_sha = blob_response.json()["sha"]
 
@@ -207,20 +283,26 @@ class _GitHubSession(StorageSession):
             response.raise_for_status()
             return default_branch_sha
         except requests.exceptions.HTTPError as e:
-            if e.response.status_code == 422:
+            if e.response.status_code == 403:
+                print(
+                    f"❌ 403 Forbidden creating git reference - token may lack branch creation permissions"
+                )
+                print(f"❌ Falling back to direct commit to main branch")
+                self._branch_name = default_branch
+                return default_branch_sha
+            elif e.response.status_code == 422:
                 # Branch already exists, try to get its SHA
                 try:
                     return self._get_branch_sha(self.branch_name)
                 except:
                     # Generate new unique branch name and try again
+                    import time
+
+                    self._branch_name = None
                     self.run_id = (
                         f"{str(uuid.uuid4())[:8]}-{int(time.time() * 1000) % 10000:04d}"
                     )
-                    self._branch_name = None  # Reset cached branch name
-                    create_ref_data["ref"] = f"refs/heads/{self.branch_name}"
-                    response = self.session.post(create_ref_url, json=create_ref_data)
-                    response.raise_for_status()
-                    return default_branch_sha
+                    return self._create_branch()
             else:
                 raise
 
@@ -302,8 +384,8 @@ class _GitHubSession(StorageSession):
             repo_response.raise_for_status()
             default_branch = repo_response.json()["default_branch"]
 
-            # Check if council folder exists and has data for this scraper type
-            folder_path = f"{self.council_code}/{self.scraper_object_type}"
+            # Check if scraper type folder exists and has data
+            folder_path = self.scraper_object_type
             self._existing_files = []
 
             def collect_files(path: str) -> None:
@@ -344,9 +426,8 @@ class _GitHubSession(StorageSession):
         if filename.is_absolute():
             raise ValueError("filename must be relative")
 
-        # Prefix with council code for folder isolation
-        full_path = Path(self.council_code) / filename
-        key = str(full_path).replace("\\", "/")  # Normalize path separators
+        # Store file directly without council code prefix (per-council repos)
+        key = str(filename).replace("\\", "/")  # Normalize path separators
         self._staged[key] = content.encode("utf-8")
 
     def write_bytes(self, filename: Path, content: bytes) -> None:
@@ -355,9 +436,8 @@ class _GitHubSession(StorageSession):
         if filename.is_absolute():
             raise ValueError("filename must be relative")
 
-        # Prefix with council code for folder isolation
-        full_path = Path(self.council_code) / filename
-        key = str(full_path).replace("\\", "/")  # Normalize path separators
+        # Store file directly without council code prefix (per-council repos)
+        key = str(filename).replace("\\", "/")  # Normalize path separators
         self._staged[key] = content
 
     def touch(self, filename: Path) -> None:
@@ -371,8 +451,7 @@ class _GitHubSession(StorageSession):
             raise ValueError("filename must be relative")
 
         # Check staged files first
-        full_path = Path(self.council_code) / filename
-        key = str(full_path).replace("\\", "/")
+        key = str(filename).replace("\\", "/")
 
         if key in self._staged:
             content = self._staged[key]
@@ -405,7 +484,7 @@ class _GitHubSession(StorageSession):
             raise RuntimeError("Storage session is closed")
 
     def _commit_files(self, commit_message: str) -> Dict[str, Any]:
-        """Commit all staged files to the GitHub repository with clean-slate approach."""
+        """Commit all staged files to the GitHub repository with branch-based PR workflow."""
         if not self._staged:
             return {"skipped": True, "reason": "no files to commit"}
 
@@ -466,15 +545,11 @@ class _GitHubSession(StorageSession):
             )
 
         # Delete existing files for this scraper type that aren't in staged files
-        scraper_folder_prefix = f"{self.council_code}/{self.scraper_object_type}/"
         existing_files_to_delete = getattr(self, "_existing_files", [])
 
         for existing_file_path in existing_files_to_delete:
-            # Only delete files that belong to this scraper type and aren't being updated
-            if (
-                existing_file_path.startswith(scraper_folder_prefix)
-                and existing_file_path not in self._staged
-            ):
+            # Only delete files that aren't being updated
+            if existing_file_path not in self._staged:
                 tree_items.append(
                     {
                         "path": existing_file_path,
@@ -554,13 +629,9 @@ class _GitHubSession(StorageSession):
         # Calculate deletion count
         deleted_count = 0
         existing_files_to_delete = getattr(self, "_existing_files", [])
-        scraper_folder_prefix = f"{self.council_code}/{self.scraper_object_type}/"
 
         for existing_file_path in existing_files_to_delete:
-            if (
-                existing_file_path.startswith(scraper_folder_prefix)
-                and existing_file_path not in self._staged
-            ):
+            if existing_file_path not in self._staged:
                 deleted_count += 1
 
         return {
@@ -725,10 +796,11 @@ class GitHubStorage(BaseStorage):
     repositories. It provides:
 
     - **Git-based storage**: All files are stored in git repositories
-    - **Council isolation**: Each council gets its own folder in the repository
+    - **Council isolation**: Each council gets its own dedicated repository
     - **Per-run branching**: Operations happen on unique run-specific branches
     - **Atomic commits**: Session operations are committed atomically
     - **Race condition handling**: Unique branch names prevent conflicts
+    - **Automatic repository creation**: Creates council repositories as needed
     - **GitHub integration**: Native integration with GitHub API
     - **Pull request workflow**: Configurable PR creation and auto-merge behavior
 
@@ -763,7 +835,7 @@ class GitHubStorage(BaseStorage):
     - Failed PR creation or merge leaves branches for manual intervention
 
     Environment Requirements:
-    - GITHUB_REPOSITORY_URL: Repository URL in format 'owner/repo' or full GitHub URL
+    - GITHUB_ORGANIZATION: GitHub organization name for council repositories
     - GITHUB_TOKEN: Personal access token or GitHub App token with repo permissions
 
     GitHub Token Permissions Required:
@@ -800,7 +872,7 @@ class GitHubStorage(BaseStorage):
         self,
         council_code: str,
         scraper_object_type: str = "Data",
-        repository_url: Optional[str] = None,
+        organization: Optional[str] = None,
         github_token: Optional[str] = None,
         auto_merge: bool = True,
         disable_change_detection: bool = False,
@@ -811,26 +883,26 @@ class GitHubStorage(BaseStorage):
         Args:
             council_code: Unique identifier for the council
             scraper_object_type: Type of objects being scraped (default: "Data")
-            repository_url: GitHub repository URL (owner/repo format or full URL)
+            organization: GitHub organization name (repositories will be created as {council_code.upper()})
             github_token: GitHub authentication token
             auto_merge: If True, automatically merge PRs after creation (default: False)
                        If False, create PRs but leave them open for manual review
             disable_change_detection: If True, skip change detection and always commit
 
         Raises:
-            ValueError: If repository_url or github_token are not provided
+            ValueError: If organization or github_token are not provided
         """
         super().__init__(council_code)
         self.scraper_object_type: str = scraper_object_type
 
-        # Get repository URL from parameter or environment
-        self.repository_url: Optional[str] = repository_url or os.environ.get(
-            "GITHUB_REPOSITORY_URL"
+        # Get organization from parameter or environment
+        self.organization: Optional[str] = organization or os.environ.get(
+            "GITHUB_ORGANIZATION"
         )
-        if not self.repository_url:
+        if not self.organization:
             raise ValueError(
-                "GitHub repository URL not provided. Set GITHUB_REPOSITORY_URL environment "
-                "variable or pass repository_url parameter."
+                "GitHub organization not provided. Set GITHUB_ORGANIZATION environment "
+                "variable or pass organization parameter."
             )
 
         # Get GitHub token from parameter or environment
@@ -890,7 +962,7 @@ class GitHubStorage(BaseStorage):
         run_id = kwargs.get("run_id")
 
         session = _GitHubSession(
-            repository_url=self.repository_url or "",
+            organization=self.organization or "",
             github_token=self.github_token or "",
             council_code=self.council_code,
             scraper_object_type=scraper_type,

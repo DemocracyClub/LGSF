@@ -85,7 +85,7 @@ def get_storage_backend(
         return GitHubStorage(
             council_code=council_code,
             scraper_object_type=scraper_object_type,
-            repository_url=kwargs.get("repository_url"),
+            organization=kwargs.get("organization"),
             github_token=kwargs.get("github_token"),
         )
     else:

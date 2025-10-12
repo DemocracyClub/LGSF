@@ -47,8 +47,8 @@ class LgsfStack(cdk.Stack):
         self.github_token = ssm.StringParameter.value_for_string_parameter(
             self, f"/lgsf/{self.dc_environment}/github/token"
         )
-        self.github_repository_url = ssm.StringParameter.value_for_string_parameter(
-            self, f"/lgsf/{self.dc_environment}/github/repository_url"
+        self.github_organization = ssm.StringParameter.value_for_string_parameter(
+            self, f"/lgsf/{self.dc_environment}/github/organization"
         )
 
         # Create resources
@@ -151,7 +151,7 @@ class LgsfStack(cdk.Stack):
                 "PYTHONPATH": "/var/task:/opt/python",
                 "DC_ENVIRONMENT": self.dc_environment,
                 "GITHUB_TOKEN": self.github_token,
-                "GITHUB_REPOSITORY_URL": self.github_repository_url,
+                "GITHUB_ORGANIZATION": self.github_organization,
                 "LGSF_STORAGE_BACKEND": "github",
             },
             description="Enumerate councils for parallel scraping",
@@ -176,7 +176,7 @@ class LgsfStack(cdk.Stack):
                 "PYTHONPATH": "/var/task:/opt/python",
                 "DC_ENVIRONMENT": self.dc_environment,
                 "GITHUB_TOKEN": self.github_token,
-                "GITHUB_REPOSITORY_URL": self.github_repository_url,
+                "GITHUB_ORGANIZATION": self.github_organization,
                 "LGSF_STORAGE_BACKEND": "github",
             },
             description="Process individual council scraper tasks",
@@ -200,7 +200,7 @@ class LgsfStack(cdk.Stack):
                 "PYTHONPATH": "/var/task:/opt/python",
                 "DC_ENVIRONMENT": self.dc_environment,
                 "GITHUB_TOKEN": self.github_token,
-                "GITHUB_REPOSITORY_URL": self.github_repository_url,
+                "GITHUB_ORGANIZATION": self.github_organization,
                 "LGSF_STORAGE_BACKEND": "github",
             },
             description="Post-processing tasks after all scrapers complete",
@@ -448,6 +448,6 @@ class LgsfStack(cdk.Stack):
         cdk.CfnOutput(
             self,
             "GitHubConfigInfo",
-            value=f"Store GitHub token at: /lgsf/{self.dc_environment}/github/token and repository URL at: /lgsf/{self.dc_environment}/github/repository_url",
+            value=f"Store GitHub token at: /lgsf/{self.dc_environment}/github/token and organization at: /lgsf/{self.dc_environment}/github/organization",
             description="Information about GitHub configuration requirements",
         )
