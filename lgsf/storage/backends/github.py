@@ -1,16 +1,19 @@
 from __future__ import annotations
 
+import base64
 import datetime
+import logging
 import os
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, override
 
 import requests
 
-
 from lgsf.storage.backends.base import BaseStorage, StorageSession
+
+logger = logging.getLogger(__name__)
 
 
 class _GitHubSession(StorageSession):
@@ -18,23 +21,7 @@ class _GitHubSession(StorageSession):
     GitHub session implementation for GitHub repositories.
 
     This session implementation stages all file operations in memory and creates
-    a single commit with all changes when the session is committed. It provides:
-
-    - **Git-based operations**: All files are committed to a git repository
-    - **Per-run branches**: Operations happen on unique run-based branches
-    - **Atomic commits**: All staged files are committed together
-    - **Race condition handling**: Uses unique branch names to avoid conflicts
-    - **Per-council repositories**: Each council gets its own dedicated repository
-
-    The session works with GitHub's API to provide git-like semantics
-    while maintaining the storage session interface.
-
-    Args:
-        organization: GitHub organization name where council repositories are created
-        github_token: GitHub authentication token
-        council_code: Council identifier (used to generate repository name as uppercase)
-        scraper_object_type: Type of scraper (e.g., "Councillors")
-        run_id: Unique identifier for this scraper run
+    a single commit with all changes when the session is committed.
     """
 
     def __init__(
@@ -43,100 +30,97 @@ class _GitHubSession(StorageSession):
         github_token: str,
         council_code: str,
         scraper_object_type: str = "Data",
-        run_id: Optional[str] = None,
-        storage_backend: Optional[Any] = None,
+        run_id: str | None = None,
         disable_change_detection: bool = False,
     ):
         self.organization: str = organization
         self.github_token: str = github_token
         self.council_code: str = council_code
         self.scraper_object_type: str = scraper_object_type
-        self.storage_backend: Optional[Any] = storage_backend
-        self.run_id: str = (
-            run_id or f"{str(uuid.uuid4())[:8]}-{int(time.time() * 1000) % 10000:04d}"
-        )
+        self.run_id: str = run_id or self._generate_run_id()
+        self.disable_change_detection: bool = disable_change_detection
 
-        # Generate repository name from council code (uppercase)
+        # Repository configuration
         self.owner: str = organization
         self.repo: str = council_code.upper()
         self.repository_url: str = f"https://github.com/{self.owner}/{self.repo}"
 
-        self._staged: Dict[str, bytes] = {}
+        # Session state
+        self._staged: dict[str, bytes] = {}
         self._closed: bool = False
-        self._existing_files: List[str] = []  # Track existing files for deletion
-        self._preparation_result: Optional[Dict[str, Any]] = (
-            None  # Track preparation results
-        )
-        self.disable_change_detection: bool = disable_change_detection
+        self._existing_files: list[str] = []
+        self._preparation_result: dict[str, Any] | None = None
 
         # Branch management
         self.today: str = datetime.datetime.now().strftime("%Y-%m-%d")
-        self._branch_name: Optional[str] = None
-        self._base_sha: Optional[str] = None
+        self._branch_name: str | None = None
+        self._base_sha: str | None = None
 
         # GitHub API session
-        self.session: requests.Session = requests.Session()
-        self.session.headers.update(
+        self.session: requests.Session = self._create_api_session()
+        self._ensure_repository_exists()
+
+    def _generate_run_id(self) -> str:
+        """Generate a unique run ID."""
+        return f"{str(uuid.uuid4())[:8]}-{int(time.time() * 1000) % 10000:04d}"
+
+    def _create_api_session(self) -> requests.Session:
+        """Create and configure the GitHub API session."""
+        session = requests.Session()
+        session.headers.update(
             {
                 "Authorization": f"token {self.github_token}",
                 "Accept": "application/vnd.github.v3+json",
                 "User-Agent": "LGSF-GitHub-Storage/1.0",
             }
         )
+        return session
 
-        # Ensure repository exists
-        self._ensure_repository_exists()
+    def _normalize_path(self, filename: Path) -> str:
+        """Normalize file path for cross-platform compatibility."""
+        return str(filename).replace("\\", "/")
 
-    def _ensure_repository_exists(self) -> None:
+    def _retry_request(
+        self,
+        func: Callable[..., requests.Response],
+        max_retries: int = 3,
+        *args: Any,
+        **kwargs: Any,
+    ) -> requests.Response:
+        """Retry a request function with exponential backoff for network issues."""
+        for attempt in range(max_retries):
+            try:
+                return func(*args, **kwargs)
+            except (
+                requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout,
+            ):
+                if attempt < max_retries - 1:
+                    time.sleep(2**attempt)
+                    continue
+                raise
+        raise RuntimeError("Should not reach here")
+
+    def _handle_api_error(self, response: requests.Response, context: str) -> bool:
         """
-        Ensure the council's repository exists, create it if it doesn't.
+        Handle common GitHub API errors with helpful messages.
 
-        Raises:
-            requests.exceptions.HTTPError: If repository creation fails
+        Returns:
+            bool: True if error was handled and caller should continue, False if should raise
         """
-
-        # Check if repository exists
-        response = self.session.get(f"{self.api_base_url}")
-
-        if response.status_code == 200:
-            return  # Repository exists
+        if response.status_code == 403:
+            logger.warning(
+                f"GitHub API access forbidden during {context} for {self.council_code}. "
+                "Check token permissions (needs 'repo' scope)"
+            )
+            return True
         elif response.status_code == 404:
-            # Repository doesn't exist, create it
-            self._create_repository()
-        else:
-            # Other error, raise it
+            logger.warning(
+                f"Resource not found during {context} for {self.council_code}"
+            )
+            return True
 
-            response.raise_for_status()
-
-    def _create_repository(self) -> None:
-        """
-        Create a new repository for this council.
-
-        Raises:
-            requests.exceptions.HTTPError: If repository creation fails
-        """
-        create_data = {
-            "name": self.repo,
-            "description": f"Data storage for council {self.council_code}",
-            "private": True,  # Make private by default
-            "has_issues": False,
-            "has_projects": False,
-            "has_wiki": False,
-            "auto_init": True,  # Initialize with README
-        }
-
-        # Create repository in organization
-        response = self.session.post(
-            f"https://api.github.com/orgs/{self.owner}/repos", json=create_data
-        )
-
-        if response.status_code == 201:
-            # Wait a moment for repository initialization to complete
-            import time
-
-            time.sleep(5)
-        else:
-            response.raise_for_status()
+        return False
 
     @property
     def branch_name(self) -> str:
@@ -150,265 +134,238 @@ class _GitHubSession(StorageSession):
         """Returns GitHub API base URL for this repository"""
         return f"https://api.github.com/repos/{self.owner}/{self.repo}"
 
-    def _get_default_branch_sha(self) -> str:
-        """Get the SHA of the default branch (usually main or master)"""
-        url = f"{self.api_base_url}"
-        response = self.session.get(url)
+    def _ensure_repository_exists(self) -> None:
+        """Ensure the council's repository exists, create it if it doesn't."""
+        response = self.session.get(self.api_base_url)
+
+        if response.status_code == 200:
+            return
+        elif response.status_code == 404:
+            self._create_repository()
+        else:
+            response.raise_for_status()
+
+    def _create_repository(self) -> None:
+        """Create a new repository for this council."""
+        create_data = {
+            "name": self.repo,
+            "description": f"Data storage for council {self.council_code}",
+            "private": True,
+            "has_issues": False,
+            "has_projects": False,
+            "has_wiki": False,
+            "auto_init": True,
+        }
+
+        response = self.session.post(
+            f"https://api.github.com/orgs/{self.owner}/repos", json=create_data
+        )
+
+        if response.status_code == 201:
+            time.sleep(5)  # Wait for repository initialization
+        else:
+            response.raise_for_status()
+
+    def _get_default_branch_name(self) -> str:
+        """Get the name of the default branch."""
+        response = self.session.get(self.api_base_url)
         response.raise_for_status()
         return response.json()["default_branch"]
 
     def _is_repository_empty(self) -> bool:
         """Check if the repository is empty (no commits)"""
         try:
-            repo_url = f"{self.api_base_url}"
-            repo_response = self.session.get(repo_url)
-            repo_response.raise_for_status()
-            repo_data = repo_response.json()
-            return repo_data.get("size", 0) == 0
-        except:
+            response = self.session.get(self.api_base_url)
+            response.raise_for_status()
+            return response.json().get("size", 0) == 0
+        except Exception:
             return True
 
     def _create_initial_commit(self) -> str:
-        """Create initial commit with README.md using Git objects API"""
-        # Create README.md blob
-        readme_content = "# LGSF Data Repository\n\nThis repository contains scraped data from the Local Government Scraper Framework (LGSF)."
-
-        blob_data = {"content": readme_content, "encoding": "utf-8"}
-
-        blob_response = self.session.post(
-            f"{self.api_base_url}/git/blobs", json=blob_data
+        """Create initial commit with README.md."""
+        readme_content = (
+            "# LGSF Data Repository\n\n"
+            "This repository contains scraped data from the "
+            "Local Government Scraper Framework (LGSF)."
         )
+
+        # Create blob
+        blob_data = {"content": readme_content, "encoding": "utf-8"}
+        blob_response = self._retry_request(
+            self.session.post, 3, f"{self.api_base_url}/git/blobs", json=blob_data
+        )
+
         if blob_response.status_code != 201:
-            print(
-                f"❌ Failed to create blob: {blob_response.status_code} - {blob_response.text}"
-            )
-            print(f"❌ Request URL: {self.api_base_url}/git/blobs")
-            print(f"❌ Auth header present: {'Authorization' in self.session.headers}")
+            if self._handle_api_error(blob_response, "blob creation"):
+                logger.warning("Failed to create initial commit blob, but continuing")
+            else:
+                blob_response.raise_for_status()
 
-            if blob_response.status_code == 403:
-                print(
-                    "❌ 403 Forbidden on blob creation - this is a token permissions issue"
-                )
-                print("❌ For organization repos, you need either:")
-                print("❌   1. Classic PAT with 'repo' scope + org permissions")
-                print(
-                    "❌   2. Fine-grained PAT with Contents:write + Metadata:read permissions"
-                )
-
-                # Check if this is a fine-grained token by testing user endpoint
-                user_resp = self.session.get("https://api.github.com/user")
-                if user_resp.status_code == 200:
-                    print(f"🔧 Token works for user API, likely scope/permission issue")
-
-                # Check rate limit headers for more token info
-                rate_limit_resp = self.session.get("https://api.github.com/rate_limit")
-                if rate_limit_resp.status_code == 200:
-                    rate_data = rate_limit_resp.json()
-                    print(
-                        f"🔧 Rate limit info available - token is valid but lacks permissions"
-                    )
-        blob_response.raise_for_status()
         blob_sha = blob_response.json()["sha"]
 
-        # Create tree with README.md
+        # Create tree
         tree_data = {
             "tree": [
                 {"path": "README.md", "mode": "100644", "type": "blob", "sha": blob_sha}
             ]
         }
-
-        tree_response = self.session.post(
-            f"{self.api_base_url}/git/trees", json=tree_data
+        tree_response = self._retry_request(
+            self.session.post, 3, f"{self.api_base_url}/git/trees", json=tree_data
         )
         tree_response.raise_for_status()
         tree_sha = tree_response.json()["sha"]
 
-        # Create initial commit (no parents for first commit)
+        # Create commit
         commit_data = {
             "message": "Initial commit - LGSF data repository",
             "tree": tree_sha,
             "parents": [],
         }
-
-        commit_response = self.session.post(
-            f"{self.api_base_url}/git/commits", json=commit_data
+        commit_response = self._retry_request(
+            self.session.post, 3, f"{self.api_base_url}/git/commits", json=commit_data
         )
         commit_response.raise_for_status()
         commit_sha = commit_response.json()["sha"]
 
         # Create main branch reference
         ref_data = {"ref": "refs/heads/main", "sha": commit_sha}
-
-        ref_response = self.session.post(f"{self.api_base_url}/git/refs", json=ref_data)
+        ref_response = self._retry_request(
+            self.session.post, 3, f"{self.api_base_url}/git/refs", json=ref_data
+        )
         ref_response.raise_for_status()
 
         return commit_sha
 
     def _get_branch_sha(self, branch_name: str) -> str:
-        """Get the SHA of a specific branch"""
+        """Get the SHA of a specific branch."""
         url = f"{self.api_base_url}/git/refs/heads/{branch_name}"
         response = self.session.get(url)
 
-        if response.status_code == 409:
-            # Repository might be empty
-            if self._is_repository_empty():
-                # Create initial commit first
-                self._create_initial_commit()
-                # Try again
-                response = self.session.get(url)
+        if response.status_code == 409 and self._is_repository_empty():
+            self._create_initial_commit()
+            response = self.session.get(url)
 
         response.raise_for_status()
         return response.json()["object"]["sha"]
 
     def _create_branch(self) -> str:
-        """Create a new branch from the default branch and return its SHA"""
-        # Get default branch info
-        repo_url = f"{self.api_base_url}"
-        repo_response = self.session.get(repo_url)
-        repo_response.raise_for_status()
-        default_branch = repo_response.json()["default_branch"]
-
-        # Get the SHA of the default branch
+        """Create a new branch from the default branch and return its SHA."""
+        default_branch = self._get_default_branch_name()
         default_branch_sha = self._get_branch_sha(default_branch)
 
-        # Create new branch
-        create_ref_url = f"{self.api_base_url}/git/refs"
         create_ref_data = {
             "ref": f"refs/heads/{self.branch_name}",
             "sha": default_branch_sha,
         }
 
         try:
-            response = self.session.post(create_ref_url, json=create_ref_data)
+            response = self.session.post(
+                f"{self.api_base_url}/git/refs", json=create_ref_data
+            )
             response.raise_for_status()
             return default_branch_sha
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 403:
-                print(
-                    f"❌ 403 Forbidden creating git reference - token may lack branch creation permissions"
+                logger.warning(
+                    "Insufficient permissions to create branch, using default branch"
                 )
-                print(f"❌ Falling back to direct commit to main branch")
                 self._branch_name = default_branch
                 return default_branch_sha
             elif e.response.status_code == 422:
-                # Branch already exists, try to get its SHA
+                # Branch already exists or conflict - generate new ID and retry
                 try:
                     return self._get_branch_sha(self.branch_name)
                 except:
-                    # Generate new unique branch name and try again
-                    import time
-
+                    self.run_id = self._generate_run_id()
                     self._branch_name = None
-                    self.run_id = (
-                        f"{str(uuid.uuid4())[:8]}-{int(time.time() * 1000) % 10000:04d}"
-                    )
                     return self._create_branch()
-            else:
-                raise
+            raise
 
     def _ensure_branch_exists(self) -> str:
-        """Ensure the branch exists and return its base SHA"""
+        """Ensure the branch exists and return its base SHA."""
         if self._base_sha:
             return self._base_sha
 
         try:
-            # Try to get existing branch
             self._base_sha = self._get_branch_sha(self.branch_name)
-            return self._base_sha
         except requests.exceptions.HTTPError as e:
             if e.response.status_code == 404:
-                # Branch doesn't exist, create it
                 self._base_sha = self._create_branch()
-                return self._base_sha
             elif e.response.status_code == 409:
-                # Some other conflict, try with new branch name
-                self.run_id = (
-                    f"{str(uuid.uuid4())[:8]}-{int(time.time() * 1000) % 10000:04d}"
-                )
-                self._branch_name = None  # Reset cached branch name
+                self.run_id = self._generate_run_id()
+                self._branch_name = None
                 self._base_sha = self._create_branch()
-                return self._base_sha
             else:
                 raise
 
         return self._base_sha
 
-    def _cleanup_old_branches(self):
-        """Clean up old branches created by this council's scrapers"""
+    def _cleanup_old_branches(self) -> dict[str, Any]:
+        """Clean up old branches created by this council's scrapers."""
         try:
-            # Get all branches
-            branches_url = f"{self.api_base_url}/git/refs/heads"
-            response = self.session.get(branches_url)
+            response = self.session.get(f"{self.api_base_url}/git/refs/heads")
             response.raise_for_status()
 
             branches = response.json()
             if not isinstance(branches, list):
                 return {"cleaned_up": 0}
 
-            # Find branches that match our council pattern but aren't the current one
             council_prefix = f"{self.council_code}-"
             current_branch = self.branch_name
             cleanup_count = 0
 
             for branch in branches:
-                ref = branch["ref"]
-                branch_name = ref.replace("refs/heads/", "")
+                branch_name = branch["ref"].replace("refs/heads/", "")
 
-                # Skip if not our council's branch or if it's the current branch
                 if (
                     not branch_name.startswith(council_prefix)
                     or branch_name == current_branch
                 ):
                     continue
 
-                # Delete the old branch
                 try:
                     delete_response = self.session.delete(
                         f"{self.api_base_url}/git/refs/heads/{branch_name}"
                     )
                     if delete_response.status_code in [200, 204]:
                         cleanup_count += 1
-                except:
-                    continue  # Skip if deletion fails
+                except Exception:
+                    continue
 
             return {"cleaned_up": cleanup_count}
 
         except Exception as e:
             return {"error": str(e), "cleaned_up": 0}
 
-    def _delete_existing_data_if_needed(self):
-        """Get information about existing data that will be replaced"""
+    def _collect_existing_files(self, path: str, default_branch: str) -> None:
+        """Recursively collect all files in the scraper type folder."""
         try:
-            # Get the default branch to check for existing files
-            repo_response = self.session.get(f"{self.api_base_url}")
-            repo_response.raise_for_status()
-            default_branch = repo_response.json()["default_branch"]
+            response = self.session.get(
+                f"{self.api_base_url}/contents/{path}", params={"ref": default_branch}
+            )
+            if response.status_code != 200:
+                return
 
-            # Check if scraper type folder exists and has data
+            items = response.json()
+            if not isinstance(items, list):
+                items = [items]
+
+            for item in items:
+                if item["type"] == "file":
+                    self._existing_files.append(item["path"])
+                elif item["type"] == "dir":
+                    self._collect_existing_files(item["path"], default_branch)
+        except requests.exceptions.HTTPError:
+            pass
+
+    def _delete_existing_data_if_needed(self) -> dict[str, Any]:
+        """Get information about existing data that will be replaced."""
+        try:
+            default_branch = self._get_default_branch_name()
             folder_path = self.scraper_object_type
             self._existing_files = []
 
-            def collect_files(path: str) -> None:
-                """Recursively collect all files in the scraper type folder"""
-                try:
-                    contents_url = f"{self.api_base_url}/contents/{path}"
-                    contents_response = self.session.get(
-                        contents_url, params={"ref": default_branch}
-                    )
-                    if contents_response.status_code == 200:
-                        items = contents_response.json()
-                        if not isinstance(items, list):
-                            items = [items]
-
-                        for item in items:
-                            if item["type"] == "file":
-                                self._existing_files.append(item["path"])
-                            elif item["type"] == "dir":
-                                collect_files(item["path"])
-                except requests.exceptions.HTTPError:
-                    pass
-
-            collect_files(folder_path)
+            self._collect_existing_files(folder_path, default_branch)
 
             return {
                 "existing_files_found": len(self._existing_files),
@@ -416,124 +373,99 @@ class _GitHubSession(StorageSession):
             }
 
         except Exception as e:
-            # If we can't check, proceed anyway
             self._existing_files = []
             return {"error": str(e), "will_proceed": True}
 
+    @override
     def write(self, filename: Path, content: str) -> None:
         """Stage a UTF-8 text file for writing in this session."""
         self._assert_open()
         if filename.is_absolute():
             raise ValueError("filename must be relative")
 
-        # Store file directly without council code prefix (per-council repos)
-        key = str(filename).replace("\\", "/")  # Normalize path separators
+        key = self._normalize_path(filename)
         self._staged[key] = content.encode("utf-8")
 
+    @override
     def write_bytes(self, filename: Path, content: bytes) -> None:
         """Stage a binary file for writing in this session."""
         self._assert_open()
         if filename.is_absolute():
             raise ValueError("filename must be relative")
 
-        # Store file directly without council code prefix (per-council repos)
-        key = str(filename).replace("\\", "/")  # Normalize path separators
+        key = self._normalize_path(filename)
         self._staged[key] = content
 
+    @override
     def touch(self, filename: Path) -> None:
         """Stage an empty file for creation in this session."""
         self.write_bytes(filename, b"")
 
-    def open(self, filename: Path, mode: str = "r") -> Union[str, bytes]:
+    @override
+    def open(self, filename: Path, mode: str = "r") -> str | bytes:
         """Read a file within this session context."""
         self._assert_open()
         if filename.is_absolute():
             raise ValueError("filename must be relative")
 
-        # Check staged files first
-        key = str(filename).replace("\\", "/")
+        key = self._normalize_path(filename)
 
+        # Check staged files first
         if key in self._staged:
             content = self._staged[key]
-            if mode == "r":
-                return content.decode("utf-8")
-            else:
-                return content
+            return content.decode("utf-8") if mode == "r" else content
 
         # Try to read from repository
         try:
-            contents_url = f"{self.api_base_url}/contents/{key}"
-            response = self.session.get(contents_url)
+            response = self.session.get(f"{self.api_base_url}/contents/{key}")
             if response.status_code == 200:
-                import base64
-
                 file_data = response.json()
                 content = base64.b64decode(file_data["content"])
-                if mode == "r":
-                    return content.decode("utf-8")
-                else:
-                    return content
-            else:
-                raise FileNotFoundError(f"File not found: {filename}")
+                return content.decode("utf-8") if mode == "r" else content
+            raise FileNotFoundError(f"File not found: {filename}")
         except requests.exceptions.HTTPError:
             raise FileNotFoundError(f"File not found: {filename}")
 
-    def _assert_open(self):
+    def _assert_open(self) -> None:
         """Assert that the session is still open."""
         if self._closed:
             raise RuntimeError("Storage session is closed")
 
-    def _commit_files(self, commit_message: str) -> Dict[str, Any]:
-        """Commit all staged files to the GitHub repository with branch-based PR workflow."""
+    def _commit_files(self, commit_message: str) -> dict[str, Any]:
+        """Commit all staged files to the GitHub repository."""
         if not self._staged:
             return {"skipped": True, "reason": "no files to commit"}
 
-        # Check if there are any actual changes before proceeding (unless disabled)
-        if not self.disable_change_detection:
-            changes_detected = self._detect_changes()
-            if not changes_detected:
-                return {"skipped": True, "reason": "no changes detected"}
-        else:
-            print(
-                f"🔧 Change detection disabled - proceeding with commit for {self.council_code}/{self.scraper_object_type}"
+        if not self.disable_change_detection and not self._detect_changes():
+            return {"skipped": True, "reason": "no changes detected"}
+
+        if self.disable_change_detection:
+            logger.info(
+                f"Change detection disabled - proceeding with commit for "
+                f"{self.council_code}/{self.scraper_object_type}"
             )
 
         self._ensure_branch_exists()
 
         # Get current tree SHA
-        current_commit_url = f"{self.api_base_url}/git/commits/{self._base_sha}"
-        current_commit_response = self.session.get(current_commit_url)
+        current_commit_response = self.session.get(
+            f"{self.api_base_url}/git/commits/{self._base_sha}"
+        )
         current_commit_response.raise_for_status()
         current_tree_sha = current_commit_response.json()["tree"]["sha"]
 
-        # Create blobs for all staged files with retry for network issues
+        # Create blobs for all staged files
         blobs = {}
         for file_path, content in self._staged.items():
-            import base64
-
             blob_data = {
                 "content": base64.b64encode(content).decode("ascii"),
                 "encoding": "base64",
             }
-
-            # Retry blob creation for network issues
-            for retry_attempt in range(3):
-                try:
-                    blob_response = self.session.post(
-                        f"{self.api_base_url}/git/blobs", json=blob_data
-                    )
-                    blob_response.raise_for_status()
-                    blobs[file_path] = blob_response.json()["sha"]
-                    break
-                except (
-                    requests.exceptions.ConnectionError,
-                    requests.exceptions.Timeout,
-                ) as e:
-                    if retry_attempt < 2:
-                        time.sleep(2**retry_attempt)
-                        continue
-                    else:
-                        raise
+            blob_response = self._retry_request(
+                self.session.post, 3, f"{self.api_base_url}/git/blobs", json=blob_data
+            )
+            blob_response.raise_for_status()
+            blobs[file_path] = blob_response.json()["sha"]
 
         # Create new tree with staged files and deletions
         tree_items = []
@@ -544,11 +476,8 @@ class _GitHubSession(StorageSession):
                 {"path": file_path, "mode": "100644", "type": "blob", "sha": blob_sha}
             )
 
-        # Delete existing files for this scraper type that aren't in staged files
-        existing_files_to_delete = getattr(self, "_existing_files", [])
-
-        for existing_file_path in existing_files_to_delete:
-            # Only delete files that aren't being updated
+        # Delete existing files that aren't being updated
+        for existing_file_path in self._existing_files:
             if existing_file_path not in self._staged:
                 tree_items.append(
                     {
@@ -560,25 +489,11 @@ class _GitHubSession(StorageSession):
                 )
 
         tree_data = {"base_tree": current_tree_sha, "tree": tree_items}
-
-        # Create tree with retry
-        for retry_attempt in range(3):
-            try:
-                tree_response = self.session.post(
-                    f"{self.api_base_url}/git/trees", json=tree_data
-                )
-                tree_response.raise_for_status()
-                new_tree_sha = tree_response.json()["sha"]
-                break
-            except (
-                requests.exceptions.ConnectionError,
-                requests.exceptions.Timeout,
-            ) as e:
-                if retry_attempt < 2:
-                    time.sleep(2**retry_attempt)
-                    continue
-                else:
-                    raise
+        tree_response = self._retry_request(
+            self.session.post, 3, f"{self.api_base_url}/git/trees", json=tree_data
+        )
+        tree_response.raise_for_status()
+        new_tree_sha = tree_response.json()["sha"]
 
         # Create commit
         commit_data = {
@@ -586,53 +501,26 @@ class _GitHubSession(StorageSession):
             "tree": new_tree_sha,
             "parents": [self._base_sha],
         }
-
-        for retry_attempt in range(3):
-            try:
-                commit_response = self.session.post(
-                    f"{self.api_base_url}/git/commits", json=commit_data
-                )
-                commit_response.raise_for_status()
-                new_commit_sha = commit_response.json()["sha"]
-                break
-            except (
-                requests.exceptions.ConnectionError,
-                requests.exceptions.Timeout,
-            ) as e:
-                if retry_attempt < 2:
-                    time.sleep(2**retry_attempt)
-                    continue
-                else:
-                    raise
+        commit_response = self._retry_request(
+            self.session.post, 3, f"{self.api_base_url}/git/commits", json=commit_data
+        )
+        commit_response.raise_for_status()
+        new_commit_sha = commit_response.json()["sha"]
 
         # Update branch reference
-        update_ref_url = f"{self.api_base_url}/git/refs/heads/{self.branch_name}"
         update_ref_data = {"sha": new_commit_sha, "force": False}
-
-        for retry_attempt in range(3):
-            try:
-                update_response = self.session.patch(
-                    update_ref_url, json=update_ref_data
-                )
-                update_response.raise_for_status()
-                break
-            except (
-                requests.exceptions.ConnectionError,
-                requests.exceptions.Timeout,
-            ) as e:
-                if retry_attempt < 2:
-                    time.sleep(2**retry_attempt)
-                    continue
-                else:
-                    raise
+        update_response = self._retry_request(
+            self.session.patch,
+            3,
+            f"{self.api_base_url}/git/refs/heads/{self.branch_name}",
+            json=update_ref_data,
+        )
+        update_response.raise_for_status()
 
         # Calculate deletion count
-        deleted_count = 0
-        existing_files_to_delete = getattr(self, "_existing_files", [])
-
-        for existing_file_path in existing_files_to_delete:
-            if existing_file_path not in self._staged:
-                deleted_count += 1
+        deleted_count = sum(
+            1 for path in self._existing_files if path not in self._staged
+        )
 
         return {
             "files_committed": len(self._staged),
@@ -645,75 +533,30 @@ class _GitHubSession(StorageSession):
         """
         Detect if there are any actual changes between staged files and existing files.
 
-        If we can't access the repository (e.g., permission issues), we'll assume
-        changes exist to ensure the scraping process continues normally.
-
-        Returns:
-            bool: True if changes detected, False if no changes
+        Returns True if changes detected, False if no changes.
+        If we can't access the repository, we assume changes exist.
         """
         try:
-            # Get current files from the main branch
-            repo_response = self.session.get(f"{self.api_base_url}")
+            repo_response = self.session.get(self.api_base_url)
 
-            # Handle permission errors gracefully
-            if repo_response.status_code == 403:
-                print(
-                    f"⚠️  GitHub API access forbidden - assuming changes exist for {self.council_code}/{self.scraper_object_type}"
-                )
-                print(f"    Repository: {self.repository_url}")
-                print(f"    API URL: {self.api_base_url}")
-                print("    This may be due to:")
-                print("    - Insufficient token permissions (needs 'repo' scope)")
-                print("    - Rate limiting")
-                print("    - Repository access denied")
-
-                # Try to get rate limit info
-                try:
-                    rate_limit_response = self.session.get(
-                        "https://api.github.com/rate_limit"
-                    )
-                    if rate_limit_response.status_code == 200:
-                        rate_info = rate_limit_response.json()
-                        core_limit = rate_info.get("resources", {}).get("core", {})
-                        remaining = core_limit.get("remaining", "unknown")
-                        limit = core_limit.get("limit", "unknown")
-                        print(
-                            f"    API rate limit: {remaining}/{limit} requests remaining"
-                        )
-                except Exception:
-                    pass
-
-                return True
-            elif repo_response.status_code == 404:
-                print(
-                    f"⚠️  Repository not found - assuming changes exist for {self.council_code}/{self.scraper_object_type}"
-                )
-                print(f"    Repository: {self.repository_url}")
+            if self._handle_api_error(repo_response, "change detection"):
                 return True
 
             repo_response.raise_for_status()
             default_branch = repo_response.json()["default_branch"]
 
-            scraper_folder_prefix = f"{self.council_code}/{self.scraper_object_type}/"
-            existing_files_to_delete = getattr(self, "_existing_files", [])
-
-            print(
-                f"🔍 Change detection for {self.council_code}/{self.scraper_object_type}: "
-                f"{len(self._staged)} staged files, {len(existing_files_to_delete)} existing files"
+            logger.info(
+                f"Change detection for {self.council_code}/{self.scraper_object_type}: "
+                f"{len(self._staged)} staged files, {len(self._existing_files)} existing files"
             )
 
             # Check if any files will be deleted
-            files_to_delete = []
-            for existing_file_path in existing_files_to_delete:
-                if (
-                    existing_file_path.startswith(scraper_folder_prefix)
-                    and existing_file_path not in self._staged
-                ):
-                    files_to_delete.append(existing_file_path)
+            files_to_delete = [
+                path for path in self._existing_files if path not in self._staged
+            ]
 
-            # If files will be deleted, there are changes
             if files_to_delete:
-                print(f"📝 Changes detected: {len(files_to_delete)} files to delete")
+                logger.info(f"Changes detected: {len(files_to_delete)} files to delete")
                 return True
 
             # Check if any staged files are new or have different content
@@ -721,70 +564,61 @@ class _GitHubSession(StorageSession):
 
             for file_path, staged_content in self._staged.items():
                 try:
-                    # Get existing file content from GitHub
-                    file_url = f"{self.api_base_url}/contents/{file_path}"
-                    file_response = self.session.get(
-                        file_url, params={"ref": default_branch}
+                    response = self.session.get(
+                        f"{self.api_base_url}/contents/{file_path}",
+                        params={"ref": default_branch},
                     )
 
-                    if file_response.status_code == 403:
-                        print(
-                            f"⚠️  Access forbidden for file {file_path} - assuming changes exist"
-                        )
+                    if self._handle_api_error(response, f"file check for {file_path}"):
                         return True
-                    elif file_response.status_code == 404:
-                        # File doesn't exist, so it's a new file
-                        print(f"📝 Changes detected: new file {file_path}")
-                        return True
-                    elif file_response.status_code == 200:
-                        # File exists, compare content
-                        import base64
 
-                        existing_file_data = file_response.json()
+                    if response.status_code == 404:
+                        logger.info(f"Changes detected: new file {file_path}")
+                        return True
+                    elif response.status_code == 200:
+                        existing_file_data = response.json()
                         existing_content = base64.b64decode(
                             existing_file_data["content"]
                         )
 
                         if existing_content != staged_content:
-                            print(f"📝 Changes detected: modified file {file_path}")
+                            logger.info(f"Changes detected: modified file {file_path}")
                             return True
 
                         files_checked += 1
                     else:
-                        # If we can't determine, assume there are changes to be safe
-                        print(
-                            f"⚠️  Unable to check file {file_path} (HTTP {file_response.status_code}) - assuming changes exist"
+                        logger.warning(
+                            f"Unable to check file {file_path} "
+                            f"(HTTP {response.status_code}) - assuming changes exist"
                         )
                         return True
 
                 except requests.exceptions.RequestException as e:
-                    # Network or HTTP errors - assume changes to be safe
-                    print(
-                        f"⚠️  Network error checking file {file_path}: {e} - assuming changes exist"
+                    logger.warning(
+                        f"Network error checking file {file_path}: {e} - assuming changes exist"
                     )
                     return True
                 except Exception as e:
-                    # Other errors - assume changes to be safe
-                    print(
-                        f"⚠️  Error checking file {file_path}: {e} - assuming changes exist"
+                    logger.warning(
+                        f"Error checking file {file_path}: {e} - assuming changes exist"
                     )
                     return True
 
-            # If we get here, no changes were detected
-            print(
-                f"✅ No changes detected: all {files_checked}/{len(self._staged)} staged files match existing content"
+            logger.info(
+                f"No changes detected: all {files_checked}/{len(self._staged)} "
+                "staged files match existing content"
             )
             return False
 
         except requests.exceptions.RequestException as e:
-            # Network errors accessing repository - assume changes exist
-            print(
-                f"⚠️  Network error during change detection: {e} - assuming changes exist"
+            logger.warning(
+                f"Network error during change detection: {e} - assuming changes exist"
             )
             return True
         except Exception as e:
-            # Any other error - assume changes exist to be safe
-            print(f"⚠️  Error during change detection: {e} - assuming changes exist")
+            logger.warning(
+                f"Error during change detection: {e} - assuming changes exist"
+            )
             return True
 
 
@@ -793,87 +627,15 @@ class GitHubStorage(BaseStorage):
     GitHub storage backend with git-based operations and per-run branching.
 
     This storage backend implements the BaseStorage interface using GitHub
-    repositories. It provides:
-
-    - **Git-based storage**: All files are stored in git repositories
-    - **Council isolation**: Each council gets its own dedicated repository
-    - **Per-run branching**: Operations happen on unique run-specific branches
-    - **Atomic commits**: Session operations are committed atomically
-    - **Race condition handling**: Unique branch names prevent conflicts
-    - **Automatic repository creation**: Creates council repositories as needed
-    - **GitHub integration**: Native integration with GitHub API
-    - **Pull request workflow**: Configurable PR creation and auto-merge behavior
-
-    Architecture:
-    - Single repository shared across all councils
-    - Council data is isolated in folders: {council-code}/
-    - Run-specific branches follow the pattern: {council-code}-{YYYY-MM-DD}-{run-id}
-    - Files are organized under scraper type subdirectories
-
-    Repository Structure:
-        main/
-        ├── council1/
-        │   └── Councillors/
-        │       ├── json/
-        │       │   └── councillor1.json
-        │       └── raw/
-        │           └── councillor1.html
-        └── council2/
-            └── Councillors/
-                ├── json/
-                └── raw/
-
-    Branch Structure:
-        main                           # Main branch for merged data
-        council1-2024-01-15-abc123     # Unique run branch
-        council2-2024-01-15-def456     # Another council's run branch
-
-    Pull Request Workflow:
-    - When auto_merge=False: PR is created but left open for manual review
-    - When auto_merge=True (default): PR is created and immediately merged
-    - Branch cleanup only occurs after successful merge
-    - Failed PR creation or merge leaves branches for manual intervention
-
-    Environment Requirements:
-    - GITHUB_ORGANIZATION: GitHub organization name for council repositories
-    - GITHUB_TOKEN: Personal access token or GitHub App token with repo permissions
-
-    GitHub Token Permissions Required:
-    - Contents: read/write (for file operations)
-    - Metadata: read (for repository information)
-    - Pull requests: write (for creating and merging PRs)
-
-    Examples:
-        # Basic usage with manual review (default behavior)
-        storage = GitHubStorage(council_code="ABC123")
-        with storage.session("Scrape councillors") as session:
-            session.write(Path("Councillors/json/councillor1.json"), json_data)
-            # PR created but left open for manual review
-
-        # Auto-merge workflow
-        storage = GitHubStorage(
-            council_code="ABC123",
-            auto_merge=True
-        )
-        with storage.session("Scrape councillors") as session:
-            session.write(Path("Councillors/json/councillor1.json"), json_data)
-            # PR created and auto-merged at session end
-
-        # Manual repository specification
-        storage = GitHubStorage(
-            council_code="ABC123",
-            repository_url="myorg/council-data",
-            github_token="ghp_...",
-            auto_merge=True
-        )
+    repositories for council data storage.
     """
 
     def __init__(
         self,
         council_code: str,
         scraper_object_type: str = "Data",
-        organization: Optional[str] = None,
-        github_token: Optional[str] = None,
+        organization: str | None = None,
+        github_token: str | None = None,
         auto_merge: bool = True,
         disable_change_detection: bool = False,
     ):
@@ -882,22 +644,17 @@ class GitHubStorage(BaseStorage):
 
         Args:
             council_code: Unique identifier for the council
-            scraper_object_type: Type of objects being scraped (default: "Data")
-            organization: GitHub organization name (repositories will be created as {council_code.upper()})
+            scraper_object_type: Type of objects being scraped
+            organization: GitHub organization name
             github_token: GitHub authentication token
-            auto_merge: If True, automatically merge PRs after creation (default: False)
-                       If False, create PRs but leave them open for manual review
+            auto_merge: If True, automatically merge PRs after creation
             disable_change_detection: If True, skip change detection and always commit
-
-        Raises:
-            ValueError: If organization or github_token are not provided
         """
         super().__init__(council_code)
         self.scraper_object_type: str = scraper_object_type
 
-        # Get organization from parameter or environment
-        self.organization: Optional[str] = organization or os.environ.get(
-            "GITHUB_ORGANIZATION"
+        self.organization: str = organization or os.environ.get(
+            "GITHUB_ORGANIZATION", ""
         )
         if not self.organization:
             raise ValueError(
@@ -905,17 +662,14 @@ class GitHubStorage(BaseStorage):
                 "variable or pass organization parameter."
             )
 
-        # Get GitHub token from parameter or environment
-        self.github_token: Optional[str] = github_token or os.environ.get(
-            "GITHUB_TOKEN"
-        )
+        self.github_token: str = github_token or os.environ.get("GITHUB_TOKEN", "")
         if not self.github_token:
             raise ValueError(
                 "GitHub token not provided. Set GITHUB_TOKEN environment variable "
                 "or pass github_token parameter."
             )
 
-        self._active: Optional[_GitHubSession] = None
+        self._active: _GitHubSession | None = None
         self.auto_merge: bool = auto_merge
 
         # Check environment variable for disabling change detection
@@ -927,32 +681,14 @@ class GitHubStorage(BaseStorage):
         )
 
         if self.disable_change_detection:
-            print(
-                "🔧 Change detection disabled via configuration or LGSF_DISABLE_CHANGE_DETECTION environment variable"
+            logger.info(
+                "Change detection disabled via configuration or "
+                "LGSF_DISABLE_CHANGE_DETECTION environment variable"
             )
 
-    def _start_session(self, **kwargs) -> StorageSession:
-        """
-        Create a new GitHub session for this council.
-
-        This method handles all preparation:
-        - Creates a unique branch for this run
-        - Checks for existing data that may need cleanup
-        - Returns a session ready for file operations
-
-        Args:
-            **kwargs: Additional parameters:
-                - scraper_object_type: Override the scraper type for file organization
-                - run_id: Override the run ID for branch naming
-
-        Returns:
-            _GitHubSession: A new session for GitHub operations
-
-        Raises:
-            RuntimeError: If a session is already active
-            ValueError: If repository URL or token is invalid
-            requests.exceptions.HTTPError: If GitHub API operations fail
-        """
+    @override
+    def _start_session(self, **kwargs: Any) -> StorageSession:
+        """Create a new GitHub session for this council."""
         if self._active is not None:
             raise RuntimeError(
                 "A session is already active on this GitHubStorage instance."
@@ -961,17 +697,19 @@ class GitHubStorage(BaseStorage):
         scraper_type = kwargs.get("scraper_object_type", self.scraper_object_type)
         run_id = kwargs.get("run_id")
 
+        if not self.organization or not self.github_token:
+            raise ValueError("Organization and GitHub token are required")
+
         session = _GitHubSession(
-            organization=self.organization or "",
-            github_token=self.github_token or "",
+            organization=self.organization,
+            github_token=self.github_token,
             council_code=self.council_code,
             scraper_object_type=scraper_type,
             run_id=run_id,
-            storage_backend=self,
             disable_change_detection=self.disable_change_detection,
         )
 
-        # Check for existing data (for logging purposes)
+        # Check for existing data
         delete_result = session._delete_existing_data_if_needed()
         if delete_result.get("existing_files_found", 0) > 0:
             session._preparation_result = delete_result
@@ -979,51 +717,13 @@ class GitHubStorage(BaseStorage):
         self._active = session
         return session
 
-    def _end_session(self, session: StorageSession, commit_message: str, **kwargs):
-        """
-        Commit all staged changes and perform GitHub finalization with PR workflow.
-
-        This method handles the complete workflow:
-        1. Commits all staged files atomically to the run branch
-        2. Creates a pull request from the run branch to main branch
-        3. Optionally auto-merges the PR (based on auto_merge setting)
-        4. Cleans up the run branch after successful merge (auto-merge only)
-        5. Cleans up any old branches from previous runs (auto-merge only)
-
-        Manual review behavior (auto_merge=False, default):
-        - PR is created but left open for manual review
-        - Branch is preserved for the PR to remain valid
-        - No cleanup of old branches occurs
-
-        Auto-merge behavior (auto_merge=True):
-        - PR is created and immediately merged using squash method
-        - Branch is cleaned up after successful merge
-        - Old branches from previous runs are also cleaned up
-
-        Args:
-            session: The session to commit (must be from this storage instance)
-            commit_message: Description of the changes (must be non-empty)
-            **kwargs: Additional parameters:
-                - run_log: Optional run log for logbook updates
-                - skip_merge: If True, skip PR creation and cleanup (default: False)
-                - max_merge_retries: Maximum retries for merge conflicts (default: 3)
-
-        Returns:
-            dict: Complete workflow results including commit, PR creation, and cleanup info
-                - For auto_merge=False (default): includes PR URL but no merge/cleanup results
-                - For auto_merge=True: includes merge and cleanup results
-
-        Raises:
-            ValueError: If commit_message is empty
-            RuntimeError: If session is invalid or doesn't belong to this instance
-            requests.exceptions.HTTPError: If GitHub API operations fail
-        """
-        # Handle case where session has already been finalized
+    @override
+    def _end_session(self, session: StorageSession, commit_message: str, **kwargs: Any):  # type: ignore[override]
+        """Commit all staged changes and perform GitHub finalization with PR workflow."""
         if not isinstance(session, _GitHubSession):
             raise RuntimeError("Unknown session type for this GitHubStorage.")
 
         if session is not self._active:
-            # Session already finalized or not from this storage instance
             if getattr(session, "_closed", False):
                 return {"skipped": True, "reason": "session already finalized"}
             else:
@@ -1038,47 +738,33 @@ class GitHubStorage(BaseStorage):
             # Commit the staged files
             commit_result = session._commit_files(commit_message.strip())
 
-            # If no changes were detected, skip finalization but clean up properly
             if commit_result.get("skipped"):
-                # Log the reason for skipping
                 skip_reason = commit_result.get("reason", "unknown")
-                if skip_reason == "no changes detected":
-                    print(
-                        f"✅ No changes detected for {session.council_code}/{session.scraper_object_type} - skipping commit and PR creation"
-                    )
-                elif skip_reason == "no files to commit":
-                    print(
-                        f"✅ No files staged for {session.council_code}/{session.scraper_object_type} - skipping commit and PR creation"
-                    )
-                else:
-                    print(
-                        f"✅ Skipping GitHub operations for {session.council_code}/{session.scraper_object_type}: {skip_reason}"
-                    )
+                logger.info(
+                    f"Skipping GitHub operations for {session.council_code}/"
+                    f"{session.scraper_object_type}: {skip_reason}"
+                )
                 return commit_result
 
-            # Perform GitHub-specific finalization with automatic merge and cleanup
             finalization_result = commit_result.copy()
 
-            # Skip merge and cleanup if explicitly requested (for testing)
             if kwargs.get("skip_merge", False):
                 return finalization_result
 
-            # Step 1: Create PR and optionally merge to main branch
+            # Create PR and optionally merge
             pr_result = self._create_pull_request(
                 session, max_retries=kwargs.get("max_merge_retries", 3)
             )
             finalization_result["pull_request"] = pr_result
 
-            # Step 2: Clean up current branch (only if PR was merged)
+            # Clean up branch if PR was merged
             if pr_result.get("success") and pr_result.get("merged", False):
                 cleanup_result = self._delete_branch(session)
                 finalization_result["branch_cleanup"] = cleanup_result
 
-                # Step 3: Clean up old branches from previous runs
                 old_branches_cleanup = session._cleanup_old_branches()
                 finalization_result["old_branches_cleanup"] = old_branches_cleanup
             elif pr_result.get("success") and not pr_result.get("merged", True):
-                # PR created but not merged - keep branch for review
                 finalization_result["branch_cleanup"] = {"skipped": "pr_not_merged"}
                 finalization_result["old_branches_cleanup"] = {
                     "skipped": "pr_not_merged"
@@ -1094,35 +780,22 @@ class GitHubStorage(BaseStorage):
             return finalization_result
 
         finally:
-            # Always clean up session state
             self._reset_session_state(session)
 
-    def _reset_session_state(self, session: Optional[StorageSession]) -> None:
-        """Reset session state after an error occurs."""
+    @override
+    def _reset_session_state(self, session: StorageSession | None) -> None:
+        """Reset session state."""
         if isinstance(session, _GitHubSession):
             session._closed = True
         self._active = None
 
     def _create_pull_request(
         self, session: _GitHubSession, max_retries: int = 3
-    ) -> Dict[str, Any]:
-        """
-        Create a pull request and optionally merge it to the main branch.
-
-        Args:
-            session: The active session
-            max_retries: Maximum number of retry attempts for merge conflicts
-
-        Returns:
-            dict: PR creation and merge result information
-        """
+    ) -> dict[str, Any]:
+        """Create a pull request and optionally merge it to the main branch."""
         for attempt in range(max_retries + 1):
             try:
-                # Get repository info to find default branch
-                repo_url = f"{session.api_base_url}"
-                repo_response = session.session.get(repo_url)
-                repo_response.raise_for_status()
-                default_branch = repo_response.json()["default_branch"]
+                default_branch = session._get_default_branch_name()
 
                 # Create pull request
                 pr_data = {
@@ -1142,7 +815,6 @@ class GitHubStorage(BaseStorage):
 
                 # Only merge if auto_merge is enabled
                 if self.auto_merge:
-                    # Merge pull request
                     merge_data = {
                         "commit_title": f"Merge {session.council_code} data ({session.today})",
                         "merge_method": "merge",
@@ -1177,7 +849,6 @@ class GitHubStorage(BaseStorage):
                     and attempt < max_retries
                     and self.auto_merge
                 ):
-                    # Merge conflict during auto-merge, wait and retry
                     time.sleep(2**attempt)  # Exponential backoff
                     continue
                 else:
@@ -1189,16 +860,8 @@ class GitHubStorage(BaseStorage):
             "attempts": max_retries + 1,
         }
 
-    def _delete_branch(self, session: _GitHubSession) -> Dict[str, Any]:
-        """
-        Delete the session's branch after successful merge.
-
-        Args:
-            session: The active session
-
-        Returns:
-            dict: Branch deletion result
-        """
+    def _delete_branch(self, session: _GitHubSession) -> dict[str, Any]:
+        """Delete the session's branch after successful merge."""
         try:
             delete_url = f"{session.api_base_url}/git/refs/heads/{session.branch_name}"
             response = session.session.delete(delete_url)
