@@ -303,12 +303,7 @@ class LgsfStack(cdk.Stack):
                 log_group_name=f"/aws/lambda/lgsf-scrapers/{scraper_type}",
                 retention=aws_logs.RetentionDays.ONE_MONTH,
                 removal_policy=cdk.RemovalPolicy.DESTROY,
-                # Add tags for better resource management
-                tags={
-                    "Project": "LGSF",
-                    "ScraperType": scraper_type,
-                    "Purpose": "Scraper logging",
-                },
+
             )
             self.scraper_log_groups[scraper_type] = log_group
 

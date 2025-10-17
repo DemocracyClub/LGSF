@@ -37,6 +37,12 @@ class RunLog:
     def as_json(self) -> str:
         return json.dumps(self.as_dict, default=str)
 
+    def as_lambda_status_code(self):
+        if self.status_code == RunStatus.ERROR.value or self.error:
+            return 500
+        return 200
+
+
     @property
     def as_rich_table(self):
         table = Table(title="Run report")

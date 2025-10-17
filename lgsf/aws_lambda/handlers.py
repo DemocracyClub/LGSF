@@ -1,14 +1,17 @@
 import datetime
 import json
+import os
 import sys
 import traceback
 
 from rich.console import Console
 
+from lgsf.aws_lambda.cloudwatch import CloudWatchLogStream
 from lgsf.conf import settings
 from lgsf.councillors.commands import Command
 from lgsf.path_utils import load_scraper
 
+os.environ["TERM"] = "dumb"
 
 def council_enumerator_handler(event, context):
     """
@@ -24,6 +27,7 @@ def council_enumerator_handler(event, context):
         councillors_command.options = {
             "all_councils": True,
             "exclude_missing": True,
+            "exclude_disabled": True,
         }
         councils = councillors_command.councils_to_run
 
@@ -56,8 +60,14 @@ def scraper_worker_handler(event, context):
     Process individual scraper tasks. This is adapted from the original
     scraper_worker_handler to work with Step Functions instead of SQS.
     """
-    console = Console(file=sys.stdout, record=True)
-    run_log = settings.RUN_LOGGER(start=datetime.datetime.utcnow())
+    cw_stream = CloudWatchLogStream(
+        log_group=event["scraper_type"],
+        log_stream=event["council"],
+        flush_interval=0.2,  # tune if you log very heavily
+        tee_stdout=True,
+    )
+    console = Console(file=cw_stream, force_terminal=True, record=True, soft_wrap=False)
+    run_log = settings.RUN_LOGGER(start=datetime.datetime.now(datetime.UTC))
 
     try:
         # For Step Functions, the council data comes directly in the event
@@ -95,10 +105,10 @@ def scraper_worker_handler(event, context):
             if not scraper.disabled:
                 scraper.run(run_log)
                 console.log(f"Successfully completed scraping for: {council}")
-                return {"statusCode": 200, "council": council, "status": "completed"}
+                return {"statusCode": run_log.as_lambda_status_code(), "council": council, "status": "completed"}
             else:
                 console.log(f"Scraper for {council} is disabled")
-                return {"statusCode": 200, "council": council, "status": "disabled"}
+                return {"statusCode": run_log.as_lambda_status_code(), "council": council, "status": "disabled"}
         except Exception as e:
             scraper.console.log(e)
             run_log.error = traceback.format_exc()
@@ -108,7 +118,7 @@ def scraper_worker_handler(event, context):
 
             console.log(f"Error scraping {council}: {e}")
             return {
-                "statusCode": 500,
+                "statusCode": run_log.as_lambda_status_code(),
                 "council": council,
                 "error": str(e),
                 "status": "failed",
