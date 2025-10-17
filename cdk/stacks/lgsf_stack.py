@@ -222,44 +222,18 @@ class LgsfStack(cdk.Stack):
             "ParallelScrapers",
             items_path="$.councils",
             max_concurrency=5,  # Increased concurrency for distributed map
-            result_path=sfn.JsonPath.DISCARD,  # Don't accumulate results to avoid payload size limits
+            result_path="$.scraper_results",  # Store results in job data
+            label="CouncilScraping",  # Base name for scraper executions
         )
 
-        # Individual scraper task with retry configuration
-        scraper_task = (
-            tasks.LambdaInvoke(
-                self,
-                "RunScraper",
-                lambda_function=self.scraper_worker_function,
-                payload=sfn.TaskInput.from_json_path_at("$"),
-                retry_on_service_exceptions=False,
-                result_path=sfn.JsonPath.DISCARD,  # Don't keep individual results
-            )
-            .add_retry(
-                errors=["Lambda.TooManyRequestsException"],
-                interval=cdk.Duration.seconds(20),
-                max_attempts=10,
-                backoff_rate=2.0,
-            )
-            .add_retry(
-                errors=[
-                    "States.TaskFailed",
-                    "Lambda.ServiceException",
-                    "Lambda.AWSLambdaException",
-                ],
-                interval=cdk.Duration.seconds(2),
-                max_attempts=3,
-                backoff_rate=2.0,
-            )
-            .add_catch(
-                errors=["States.ALL"],
-                handler=sfn.Pass(
-                    self,
-                    "HandleScraperError",
-                    result=sfn.Result.from_object({"status": "failed"}),
-                ),
-                result_path="$.error",
-            )
+        # Individual scraper task without retry configuration (as requested)
+        scraper_task = tasks.LambdaInvoke(
+            self,
+            "RunScraper",
+            lambda_function=self.scraper_worker_function,
+            payload=sfn.TaskInput.from_json_path_at("$"),
+            retry_on_service_exceptions=False,
+            result_path="$.result",  # Store individual results
         )
 
         parallel_scrapers_map.item_processor(scraper_task)
@@ -303,7 +277,6 @@ class LgsfStack(cdk.Stack):
                 log_group_name=f"/aws/lambda/lgsf-scrapers/{scraper_type}",
                 retention=aws_logs.RetentionDays.ONE_MONTH,
                 removal_policy=cdk.RemovalPolicy.DESTROY,
-
             )
             self.scraper_log_groups[scraper_type] = log_group
 

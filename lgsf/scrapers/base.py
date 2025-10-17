@@ -216,6 +216,9 @@ class ScraperBase(metaclass=abc.ABCMeta):
 
         Args:
             run_log: Optional run log for recording operations
+
+        Returns:
+            Storage result from the backend, or None if no session was active
         """
         if self.storage_session:
             # Ensure the run log has console output if supported
@@ -229,7 +232,13 @@ class ScraperBase(metaclass=abc.ABCMeta):
 
             # End session with run log for backend-specific finalization
             commit_message = f"Updated {self.options['council']}"
-            self.storage_backend.end_session(
+            storage_result = self.storage_backend.end_session(
                 self.storage_session, commit_message, run_log=run_log
             )
             self.storage_session = None
+
+            # Store result for later access
+            self._last_storage_result = storage_result
+            return storage_result
+
+        return None
