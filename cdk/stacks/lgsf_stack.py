@@ -1,13 +1,12 @@
 import aws_cdk as cdk
-from aws_cdk import aws_lambda as aws_lambda
 import aws_cdk.aws_lambda_python_alpha as aws_lambda_python
-from aws_cdk import aws_stepfunctions as sfn
-from aws_cdk import aws_stepfunctions_tasks as tasks
 from aws_cdk import aws_events as events
 from aws_cdk import aws_events_targets as targets
-from aws_cdk import aws_iam
+from aws_cdk import aws_iam, aws_logs
+from aws_cdk import aws_lambda as aws_lambda
 from aws_cdk import aws_ssm as ssm
-from aws_cdk import aws_logs
+from aws_cdk import aws_stepfunctions as sfn
+from aws_cdk import aws_stepfunctions_tasks as tasks
 from constructs import Construct
 
 EXCLUDE_FILES = [
@@ -286,6 +285,33 @@ class LgsfStack(cdk.Stack):
             removal_policy=cdk.RemovalPolicy.DESTROY,
         )
 
+        # Create scraper-type specific log groups
+        self.scraper_log_groups = {}
+        # Current scraper types - add more as they're implemented
+        scraper_types = [
+            "councillors",
+            "metadata",
+            "templates",
+            "meetings",
+            "committees",
+        ]
+
+        for scraper_type in scraper_types:
+            log_group = aws_logs.LogGroup(
+                self,
+                f"ScraperLogGroup{scraper_type.title()}",
+                log_group_name=f"/aws/lambda/lgsf-scrapers/{scraper_type}",
+                retention=aws_logs.RetentionDays.ONE_MONTH,
+                removal_policy=cdk.RemovalPolicy.DESTROY,
+                # Add tags for better resource management
+                tags={
+                    "Project": "LGSF",
+                    "ScraperType": scraper_type,
+                    "Purpose": "Scraper logging",
+                },
+            )
+            self.scraper_log_groups[scraper_type] = log_group
+
         # Create IAM role for Step Functions
         self.step_function_role = aws_iam.Role(
             self,
@@ -359,6 +385,26 @@ class LgsfStack(cdk.Stack):
                 resources=["*"],
             )
         )
+
+        # Grant Lambda functions permission to write to scraper-specific log groups
+        scraper_log_arns = [
+            log_group.log_group_arn for log_group in self.scraper_log_groups.values()
+        ]
+        if scraper_log_arns:
+            # Use a single policy statement for all log groups to avoid policy size limits
+            self.lambda_execution_role.add_to_policy(
+                aws_iam.PolicyStatement(
+                    effect=aws_iam.Effect.ALLOW,
+                    actions=[
+                        "logs:CreateLogGroup",
+                        "logs:CreateLogStream",
+                        "logs:PutLogEvents",
+                        "logs:DescribeLogStreams",
+                        "logs:DescribeLogGroups",
+                    ],
+                    resources=[f"{log_arn}*" for log_arn in scraper_log_arns],
+                )
+            )
 
     def create_event_rules(self) -> None:
         """Create EventBridge rules for scheduled execution."""
