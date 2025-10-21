@@ -4,6 +4,7 @@ from aws_cdk import aws_events as events
 from aws_cdk import aws_events_targets as targets
 from aws_cdk import aws_iam, aws_logs
 from aws_cdk import aws_lambda as aws_lambda
+from aws_cdk import aws_sns as sns
 from aws_cdk import aws_ssm as ssm
 from aws_cdk import aws_stepfunctions as sfn
 from aws_cdk import aws_stepfunctions_tasks as tasks
@@ -50,8 +51,14 @@ class LgsfStack(cdk.Stack):
             self, f"/lgsf/{self.dc_environment}/github/organization"
         )
 
+        # Fetch notification email addresses from Parameter Store at build time
+        self.notification_emails = ssm.StringParameter.value_for_string_parameter(
+            self, f"/lgsf/{self.dc_environment}/notification/emails"
+        )
+
         # Create resources
         self.create_dependencies_layer()
+        self.create_sns_topic()
         self.create_lambda_execution_role()
         self.create_lambda_functions()
         self.create_step_function()
@@ -82,6 +89,16 @@ class LgsfStack(cdk.Stack):
             compatible_runtimes=[aws_lambda.Runtime.PYTHON_3_12],
             description="Dependencies layer for LGSF Lambda functions",
             removal_policy=cdk.RemovalPolicy.DESTROY,
+        )
+
+    def create_sns_topic(self) -> None:
+        """Create SNS topic for scraper execution notifications."""
+
+        self.scraper_notification_topic = sns.Topic(
+            self,
+            "ScraperNotificationTopic",
+            topic_name=self.get_resource_name("topic", "scraper-notifications"),
+            display_name="LGSF Scraper Execution Notifications",
         )
 
     def create_lambda_execution_role(self) -> None:
@@ -124,6 +141,17 @@ class LgsfStack(cdk.Stack):
                     "states:StartExecution",
                     "states:DescribeExecution",
                     "states:StopExecution",
+                ],
+                resources=["*"],
+            )
+        )
+
+        # Add SNS permissions for sending notifications
+        self.lambda_execution_role.add_to_policy(
+            aws_iam.PolicyStatement(
+                effect=aws_iam.Effect.ALLOW,
+                actions=[
+                    "sns:Publish",
                 ],
                 resources=["*"],
             )
@@ -205,6 +233,50 @@ class LgsfStack(cdk.Stack):
             description="Post-processing tasks after all scrapers complete",
         )
 
+        # Aggregation Function - aggregates results from distributed map
+        self.aggregation_function = aws_lambda.Function(
+            self,
+            "AggregationFunction",
+            function_name=self.get_lambda_function_name("aggregation"),
+            code=aws_lambda.Code.from_asset(
+                ".",
+                exclude=EXCLUDE_FILES,
+            ),
+            handler="lgsf.aws_lambda.handlers.aggregation_handler",
+            runtime=aws_lambda.Runtime.PYTHON_3_12,
+            timeout=cdk.Duration.minutes(5),
+            layers=[self.dependencies_layer],
+            role=self.lambda_execution_role,
+            environment={
+                "PYTHONPATH": "/var/task:/opt/python",
+                "DC_ENVIRONMENT": self.dc_environment,
+            },
+            description="Aggregate scraper execution results",
+        )
+
+        # Notification Report Function - sends failure report via SNS
+        self.notification_report_function = aws_lambda.Function(
+            self,
+            "NotificationReportFunction",
+            function_name=self.get_lambda_function_name("notification-report"),
+            code=aws_lambda.Code.from_asset(
+                ".",
+                exclude=EXCLUDE_FILES,
+            ),
+            handler="lgsf.aws_lambda.handlers.send_report_notification_handler",
+            runtime=aws_lambda.Runtime.PYTHON_3_12,
+            timeout=cdk.Duration.minutes(2),
+            layers=[self.dependencies_layer],
+            role=self.lambda_execution_role,
+            environment={
+                "PYTHONPATH": "/var/task:/opt/python",
+                "DC_ENVIRONMENT": self.dc_environment,
+                "SNS_TOPIC_ARN": self.scraper_notification_topic.topic_arn,
+                "NOTIFICATION_EMAILS": self.notification_emails,
+            },
+            description="Send execution report notification via SNS",
+        )
+
     def create_step_function(self) -> None:
         """Create Step Functions state machine for orchestrating scrapers."""
 
@@ -224,21 +296,59 @@ class LgsfStack(cdk.Stack):
             max_concurrency=5,  # Increased concurrency for distributed map
             result_path="$.scraper_results",  # Store results in job data
             label="CouncilScraping",  # Base name for scraper executions
+            tolerated_failure_percentage=100,  # Allow all scrapers to fail without failing the map
         )
 
-        # Individual scraper task without retry configuration (as requested)
+        # Individual scraper task with Catch block to handle failures gracefully
         scraper_task = tasks.LambdaInvoke(
             self,
             "RunScraper",
             lambda_function=self.scraper_worker_function,
             payload=sfn.TaskInput.from_json_path_at("$"),
             retry_on_service_exceptions=False,
-            result_path="$.result",  # Store individual results
+            output_path="$.Payload",  # Extract the Lambda result payload
+        )
+
+        # Add a Pass state to catch errors and return structured error info
+        error_handler = sfn.Pass(
+            self,
+            "HandleScraperError",
+            parameters={
+                "council.$": "$.council",
+                "scraper_type.$": "$.scraper_type",
+                "status": "failed",
+                "statusCode": 500,
+                "error.$": "$.Error",
+                "cause.$": "$.Cause",
+            },
+        )
+
+        # Add Catch to the scraper task
+        scraper_task.add_catch(
+            error_handler,
+            errors=["States.ALL"],
+            result_path="$.error_info",
         )
 
         parallel_scrapers_map.item_processor(scraper_task)
 
-        # Step 3: Post-processing after all scrapers complete
+        # Step 3: Aggregate results from the distributed map
+        aggregation_task = tasks.LambdaInvoke(
+            self,
+            "AggregateResults",
+            lambda_function=self.aggregation_function,
+            output_path="$.Payload",
+        )
+
+        # Step 4: Send notification report with results
+        notification_report_task = tasks.LambdaInvoke(
+            self,
+            "SendNotificationReport",
+            lambda_function=self.notification_report_function,
+            output_path="$.Payload",
+        )
+
+        # Step 5: Post-processing after email is sent
         post_processing_task = tasks.LambdaInvoke(
             self,
             "PostProcessing",
@@ -246,8 +356,11 @@ class LgsfStack(cdk.Stack):
         )
 
         # Chain the steps together
-        definition = enumerate_councils_task.next(parallel_scrapers_map).next(
-            post_processing_task
+        definition = (
+            enumerate_councils_task.next(parallel_scrapers_map)
+            .next(aggregation_task)
+            .next(notification_report_task)
+            .next(post_processing_task)
         )
 
         # Create CloudWatch log group for Step Functions logging
@@ -310,6 +423,8 @@ class LgsfStack(cdk.Stack):
         # Grant Step Functions permission to invoke Lambda functions
         self.council_enumerator_function.grant_invoke(self.step_function_role)
         self.scraper_worker_function.grant_invoke(self.step_function_role)
+        self.aggregation_function.grant_invoke(self.step_function_role)
+        self.notification_report_function.grant_invoke(self.step_function_role)
         self.post_processing_function.grant_invoke(self.step_function_role)
 
         # Add permissions for distributed map execution
@@ -449,6 +564,33 @@ class LgsfStack(cdk.Stack):
             export_name=f"{self._stack_name}-PostProcessingFunctionArn",
         )
 
+        # Aggregation Function ARN
+        cdk.CfnOutput(
+            self,
+            "AggregationFunctionArn",
+            value=self.aggregation_function.function_arn,
+            description="Aggregation Lambda Function ARN",
+            export_name=f"{self._stack_name}-AggregationFunctionArn",
+        )
+
+        # Notification Report Function ARN
+        cdk.CfnOutput(
+            self,
+            "NotificationReportFunctionArn",
+            value=self.notification_report_function.function_arn,
+            description="Notification Report Lambda Function ARN",
+            export_name=f"{self._stack_name}-NotificationReportFunctionArn",
+        )
+
+        # SNS Topic ARN
+        cdk.CfnOutput(
+            self,
+            "ScraperNotificationTopicArn",
+            value=self.scraper_notification_topic.topic_arn,
+            description="SNS Topic ARN for scraper notifications",
+            export_name=f"{self._stack_name}-ScraperNotificationTopicArn",
+        )
+
         # Lambda Execution Role ARN
         cdk.CfnOutput(
             self,
@@ -458,10 +600,18 @@ class LgsfStack(cdk.Stack):
             export_name=f"{self._stack_name}-LambdaExecutionRoleArn",
         )
 
-        # GitHub Configuration Information
+        # Configuration Information
         cdk.CfnOutput(
             self,
-            "GitHubConfigInfo",
-            value=f"Store GitHub token at: /lgsf/{self.dc_environment}/github/token and organization at: /lgsf/{self.dc_environment}/github/organization",
-            description="Information about GitHub configuration requirements",
+            "ConfigurationInfo",
+            value=f"Required SSM Parameters: /lgsf/{self.dc_environment}/github/token, /lgsf/{self.dc_environment}/github/organization, /lgsf/{self.dc_environment}/notification/emails (comma-separated)",
+            description="Information about required SSM Parameter Store configuration",
+        )
+
+        # SNS Subscription Instructions
+        cdk.CfnOutput(
+            self,
+            "SNSSubscriptionInstructions",
+            value="Subscribe emails to SNS topic via AWS Console or CLI. Emails are read from SSM Parameter Store.",
+            description="Instructions for subscribing to SNS notifications",
         )

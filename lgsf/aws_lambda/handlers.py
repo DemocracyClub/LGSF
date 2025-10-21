@@ -4,6 +4,7 @@ import os
 import sys
 import traceback
 
+import boto3
 from rich.console import Console
 
 from lgsf.aws_lambda.cloudwatch import CloudWatchLogStream
@@ -147,7 +148,7 @@ def scraper_worker_handler(event, context):
                         "status": "completed",
                         "end_time": run_log.end.isoformat() if run_log.end else None,
                         "duration": str(run_log.duration) if run_log.duration else None,
-                        "run_log": run_log.as_dict,
+                        "run_log": json.loads(run_log.as_json),
                     }
                 )
 
@@ -186,7 +187,7 @@ def scraper_worker_handler(event, context):
                     "status": "failed",
                     "end_time": run_log.end.isoformat() if run_log.end else None,
                     "duration": str(run_log.duration) if run_log.duration else None,
-                    "run_log": run_log.as_dict,
+                    "run_log": json.loads(run_log.as_json),
                 }
             )
 
@@ -198,17 +199,19 @@ def scraper_worker_handler(event, context):
     except Exception as e:
         console.log(f"Unexpected error in scraper_worker_handler: {e}")
         console.log(traceback.format_exc())
-        # Raise a structured exception so Step Functions registers it as a failure
-        raise ScraperException(
-            f"Scraper failed for {event.get('council', 'unknown')} ({event.get('scraper_type', 'unknown')}): {str(e)}",
-            council=event.get("council", "unknown"),
-            scraper_type=event.get("scraper_type", "unknown"),
-            error_details={
-                "statusCode": 500,
+        # Return error information rather than raising to prevent map failure
+        return {
+            "council": event.get("council", "unknown"),
+            "scraper_type": event.get("scraper_type", "unknown"),
+            "statusCode": 500,
+            "status": "failed",
+            "error": str(e),
+            "error_details": {
                 "original_error": str(e),
                 "traceback": traceback.format_exc(),
             },
-        )
+            "end_time": datetime.datetime.now(datetime.UTC).isoformat(),
+        }
 
 
 def post_processing_handler(event, context):
@@ -285,4 +288,208 @@ def post_processing_handler(event, context):
             "statusCode": 500,
             "error": str(e),
             "timestamp": datetime.datetime.utcnow().isoformat(),
+        }
+
+
+def aggregation_handler(event, context):
+    """
+    Aggregate results from the distributed map execution.
+    Collects statistics about successes, failures, and disabled scrapers.
+    """
+    console = Console(file=sys.stdout, record=True)
+    console.log("Starting result aggregation")
+
+    try:
+        # Extract scraper results from the distributed map output
+        scraper_results = event.get("scraper_results", [])
+
+        # Handle both direct results and nested Payload structure from Lambda invocations
+        processed_results = []
+        for result in scraper_results:
+            # If the result has a Payload key, extract it (Lambda invocation result)
+            if isinstance(result, dict) and "Payload" in result:
+                processed_results.append(result["Payload"])
+            else:
+                processed_results.append(result)
+
+        console.log(f"Processing {len(processed_results)} scraper results")
+
+        # Initialize counters and lists
+        total_ran = 0
+        total_succeeded = 0
+        total_failed = 0
+        total_disabled = 0
+
+        successful_scrapers = []
+        failed_scrapers = []
+        disabled_scrapers = []
+
+        # Process each result
+        for result in processed_results:
+            if not isinstance(result, dict):
+                console.log(f"Skipping invalid result: {result}")
+                continue
+
+            council = result.get("council", "unknown")
+            scraper_type = result.get("scraper_type", "unknown")
+            status = result.get("status", "unknown")
+
+            total_ran += 1
+
+            if status == "completed":
+                total_succeeded += 1
+                successful_scrapers.append(
+                    {
+                        "council": council,
+                        "scraper_type": scraper_type,
+                        "duration": result.get("duration"),
+                    }
+                )
+            elif status == "failed":
+                total_failed += 1
+                failed_scrapers.append(
+                    {
+                        "council": council,
+                        "scraper_type": scraper_type,
+                        "error": result.get("error", "Unknown error"),
+                        "error_details": result.get("error_details", {}),
+                    }
+                )
+            elif status == "disabled":
+                total_disabled += 1
+                disabled_scrapers.append(
+                    {
+                        "council": council,
+                        "scraper_type": scraper_type,
+                    }
+                )
+
+        # Create summary
+        summary = {
+            "total_ran": total_ran,
+            "total_succeeded": total_succeeded,
+            "total_failed": total_failed,
+            "total_disabled": total_disabled,
+            "success_rate": f"{(total_succeeded / total_ran * 100) if total_ran > 0 else 0:.2f}%",
+        }
+
+        console.log(f"Aggregation summary: {summary}")
+
+        return {
+            "statusCode": 200,
+            "timestamp": datetime.datetime.now(datetime.UTC).isoformat(),
+            "summary": summary,
+            "successful_scrapers": successful_scrapers,
+            "failed_scrapers": failed_scrapers,
+            "disabled_scrapers": disabled_scrapers,
+        }
+
+    except Exception as e:
+        console.log(f"Error during aggregation: {e}")
+        console.log(traceback.format_exc())
+        return {
+            "statusCode": 500,
+            "error": str(e),
+            "timestamp": datetime.datetime.now(datetime.UTC).isoformat(),
+        }
+
+
+def send_report_notification_handler(event, context):
+    """
+    Send a summary notification using SNS with execution statistics.
+    """
+    console = Console(file=sys.stdout, record=True)
+    console.log("Starting notification report generation")
+
+    try:
+        # Extract aggregation results
+        summary = event.get("summary", {})
+        successful_scrapers = event.get("successful_scrapers", [])
+        failed_scrapers = event.get("failed_scrapers", [])
+        disabled_scrapers = event.get("disabled_scrapers", [])
+        timestamp = event.get(
+            "timestamp", datetime.datetime.now(datetime.UTC).isoformat()
+        )
+
+        # Build notification subject and message
+        subject = f"LGSF Scraper Report: {summary.get('total_ran', 0)} councils - {summary.get('total_failed', 0)} failed"
+
+        message = f"""LGSF Scraper Execution Report
+{"=" * 60}
+Completed: {timestamp}
+
+SUMMARY
+-------
+Total Ran:    {summary.get("total_ran", 0)}
+Succeeded:    {summary.get("total_succeeded", 0)}
+Failed:       {summary.get("total_failed", 0)}
+Disabled:     {summary.get("total_disabled", 0)}
+Success Rate: {summary.get("success_rate", "N/A")}
+"""
+
+        # Add failed scrapers section if any
+        if failed_scrapers:
+            message += f"\n\nFAILED SCRAPERS ({len(failed_scrapers)} total)\n"
+            message += "-" * 60 + "\n"
+            # Limit to first 20 to keep notification concise
+            for failed in failed_scrapers[:20]:
+                council = failed.get("council", "unknown")
+                scraper_type = failed.get("scraper_type", "unknown")
+                error = failed.get("error", "Unknown error")
+                # Truncate long error messages
+                error_msg = error[:150] + "..." if len(error) > 150 else error
+                message += f"\n• {council} ({scraper_type})\n  {error_msg}\n"
+
+            if len(failed_scrapers) > 20:
+                message += f"\n... and {len(failed_scrapers) - 20} more failures\n"
+
+        # Add brief successful scrapers note
+        if successful_scrapers:
+            message += f"\n\nSUCCESSFUL: {len(successful_scrapers)} scrapers completed without errors\n"
+
+        # Add disabled scrapers note if any
+        if disabled_scrapers:
+            message += f"\nDISABLED: {len(disabled_scrapers)} scrapers were skipped\n"
+
+        message += "\n" + "=" * 60 + "\n"
+        message += (
+            "Automated report from LGSF scraper orchestration (AWS Step Functions)\n"
+        )
+
+        # Publish to SNS topic
+        sns_client = boto3.client("sns")
+
+        # Get topic ARN from environment variable
+        topic_arn = os.environ.get("SNS_TOPIC_ARN")
+
+        if not topic_arn:
+            raise ValueError("SNS_TOPIC_ARN environment variable not set")
+
+        console.log(f"Publishing notification to SNS topic: {topic_arn}")
+
+        response = sns_client.publish(
+            TopicArn=topic_arn,
+            Subject=subject,
+            Message=message,
+        )
+
+        console.log(
+            f"Notification published successfully. MessageId: {response['MessageId']}"
+        )
+
+        return {
+            "statusCode": 200,
+            "message": "Notification sent successfully",
+            "messageId": response["MessageId"],
+            "topicArn": topic_arn,
+            "timestamp": datetime.datetime.now(datetime.UTC).isoformat(),
+        }
+
+    except Exception as e:
+        console.log(f"Error sending notification report: {e}")
+        console.log(traceback.format_exc())
+        return {
+            "statusCode": 500,
+            "error": str(e),
+            "timestamp": datetime.datetime.now(datetime.UTC).isoformat(),
         }
