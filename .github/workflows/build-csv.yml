@@ -1,0 +1,35 @@
+name: Build and Save CMS Metadata CSV
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-csv:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Generate CMS metadata CSV
+        run: |
+          uv run manage.py metadata list-cms --csv > cms-metadata.csv
+
+      - name: Upload CSV artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cms-metadata
+          path: cms-metadata.csv
+          retention-days: 90
