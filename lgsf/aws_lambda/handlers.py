@@ -12,6 +12,7 @@ from lgsf.conf import settings
 from lgsf.councillors.commands import Command
 from lgsf.path_utils import load_scraper
 
+# Disable formatting in Rich
 os.environ["TERM"] = "dumb"
 
 
@@ -134,83 +135,88 @@ def scraper_worker_handler(event, context):
                 scraper.run(run_log)
                 console.log(f"Successfully completed scraping for: {council}")
 
-                # Get storage result information if available
-                storage_result = None
-                if hasattr(scraper, "storage_session") and scraper.storage_session:
-                    # Storage session should have been finalized by scraper.run()
-                    # but let's make sure we get the result info
-                    if hasattr(scraper, "_last_storage_result"):
-                        storage_result = scraper._last_storage_result
-
+                # For 200 responses, only return status code - no run log or other text
                 result.update(
                     {
-                        "statusCode": run_log.as_lambda_status_code(),
+                        "statusCode": 200,
                         "status": "completed",
-                        "end_time": run_log.end.isoformat() if run_log.end else None,
-                        "duration": str(run_log.duration) if run_log.duration else None,
-                        "run_log": json.loads(run_log.as_json),
                     }
                 )
-
-                if storage_result:
-                    result["storage_result"] = storage_result
-                    # Extract result paths if available
-                    if (
-                        isinstance(storage_result, dict)
-                        and "files_committed" in storage_result
-                    ):
-                        result["files_committed"] = storage_result["files_committed"]
 
                 return result
             else:
                 console.log(f"Scraper for {council} is disabled")
                 result.update(
                     {
-                        "statusCode": run_log.as_lambda_status_code(),
+                        "statusCode": 200,
                         "status": "disabled",
-                        "end_time": run_log.end.isoformat() if run_log.end else None,
                     }
                 )
                 return result
+        except GitHubRateLimitError as e:
+            # GitHub rate limit error - return 429 status with minimal context
+            console.log(f"GitHub rate limit for {council}: {e}")
+            result.update(
+                {
+                    "statusCode": 429,
+                    "error": "GHRateLimited",
+                    "status": "failed",
+                }
+            )
+            return result
         except Exception as e:
+            # For scraper exceptions, store 500 and a very short exception headline
+            # Extract just the exception type and message, no traceback
             scraper.console.log(e)
             run_log.error = traceback.format_exc()
             # This probably means finalize_storage hasn't been called.
             # Let's do that ourselves then
-            storage_result = scraper.finalize_storage(run_log)
+            try:
+                scraper.finalize_storage(run_log)
+            except Exception:
+                pass  # Ignore finalization errors
 
             console.log(f"Error scraping {council}: {e}")
+
+            # Get short error message - just exception type and first line
+            error_message = str(e).split("\n")[0][:150]
+            exception_type = type(e).__name__
+
             result.update(
                 {
-                    "statusCode": run_log.as_lambda_status_code(),
-                    "error": str(e),
+                    "statusCode": 500,
+                    "error": f"{exception_type}: {error_message}",
                     "status": "failed",
-                    "end_time": run_log.end.isoformat() if run_log.end else None,
-                    "duration": str(run_log.duration) if run_log.duration else None,
-                    "run_log": json.loads(run_log.as_json),
                 }
             )
 
-            if storage_result:
-                result["storage_result"] = storage_result
-
             return result
 
+    except GitHubRateLimitError as e:
+        console.log(f"GitHub rate limit error in scraper_worker_handler: {e}")
+        # Return rate limit error with minimal context
+        return {
+            "council": event.get("council", "unknown"),
+            "scraper_type": event.get("scraper_type", "unknown"),
+            "statusCode": 429,
+            "status": "failed",
+            "error": "GHRateLimited",
+        }
     except Exception as e:
         console.log(f"Unexpected error in scraper_worker_handler: {e}")
         console.log(traceback.format_exc())
+
+        # Get short error message - just exception type and first line
+        error_message = str(e).split("\n")[0][:150]
+        exception_type = type(e).__name__
+
         # Return error information rather than raising to prevent map failure
         return {
             "council": event.get("council", "unknown"),
             "scraper_type": event.get("scraper_type", "unknown"),
             "statusCode": 500,
             "status": "failed",
-            "error": str(e),
-            "error_details": {
-                "original_error": str(e),
-                "traceback": traceback.format_exc(),
-            },
-            "end_time": datetime.datetime.now(datetime.UTC).isoformat(),
+            "error": f"{exception_type}: {error_message}",
         }
 
 
@@ -319,10 +325,12 @@ def aggregation_handler(event, context):
         total_succeeded = 0
         total_failed = 0
         total_disabled = 0
+        total_rate_limited = 0
 
         successful_scrapers = []
         failed_scrapers = []
         disabled_scrapers = []
+        rate_limited_scrapers = []
 
         # Process each result
         for result in processed_results:
@@ -333,6 +341,7 @@ def aggregation_handler(event, context):
             council = result.get("council", "unknown")
             scraper_type = result.get("scraper_type", "unknown")
             status = result.get("status", "unknown")
+            status_code = result.get("statusCode", 200)
 
             total_ran += 1
 
@@ -342,7 +351,16 @@ def aggregation_handler(event, context):
                     {
                         "council": council,
                         "scraper_type": scraper_type,
-                        "duration": result.get("duration"),
+                    }
+                )
+            elif status_code == 429:
+                # GitHub rate limited
+                total_rate_limited += 1
+                rate_limited_scrapers.append(
+                    {
+                        "council": council,
+                        "scraper_type": scraper_type,
+                        "error": result.get("error", "GHRateLimited"),
                     }
                 )
             elif status == "failed":
@@ -352,7 +370,6 @@ def aggregation_handler(event, context):
                         "council": council,
                         "scraper_type": scraper_type,
                         "error": result.get("error", "Unknown error"),
-                        "error_details": result.get("error_details", {}),
                     }
                 )
             elif status == "disabled":
@@ -369,6 +386,7 @@ def aggregation_handler(event, context):
             "total_ran": total_ran,
             "total_succeeded": total_succeeded,
             "total_failed": total_failed,
+            "total_rate_limited": total_rate_limited,
             "total_disabled": total_disabled,
             "success_rate": f"{(total_succeeded / total_ran * 100) if total_ran > 0 else 0:.2f}%",
         }
@@ -381,6 +399,7 @@ def aggregation_handler(event, context):
             "summary": summary,
             "successful_scrapers": successful_scrapers,
             "failed_scrapers": failed_scrapers,
+            "rate_limited_scrapers": rate_limited_scrapers,
             "disabled_scrapers": disabled_scrapers,
         }
 
@@ -406,13 +425,16 @@ def send_report_notification_handler(event, context):
         summary = event.get("summary", {})
         successful_scrapers = event.get("successful_scrapers", [])
         failed_scrapers = event.get("failed_scrapers", [])
+        rate_limited_scrapers = event.get("rate_limited_scrapers", [])
         disabled_scrapers = event.get("disabled_scrapers", [])
         timestamp = event.get(
             "timestamp", datetime.datetime.now(datetime.UTC).isoformat()
         )
 
         # Build notification subject and message
-        subject = f"LGSF Scraper Report: {summary.get('total_ran', 0)} councils - {summary.get('total_failed', 0)} failed"
+        total_failed = summary.get("total_failed", 0)
+        total_rate_limited = summary.get("total_rate_limited", 0)
+        subject = f"LGSF Scraper Report: {summary.get('total_ran', 0)} councils - {total_failed} failed, {total_rate_limited} rate limited"
 
         message = f"""LGSF Scraper Execution Report
 {"=" * 60}
@@ -420,12 +442,29 @@ Completed: {timestamp}
 
 SUMMARY
 -------
-Total Ran:    {summary.get("total_ran", 0)}
-Succeeded:    {summary.get("total_succeeded", 0)}
-Failed:       {summary.get("total_failed", 0)}
-Disabled:     {summary.get("total_disabled", 0)}
-Success Rate: {summary.get("success_rate", "N/A")}
+Total Ran:      {summary.get("total_ran", 0)}
+Succeeded:      {summary.get("total_succeeded", 0)}
+Failed:         {summary.get("total_failed", 0)}
+Rate Limited:   {summary.get("total_rate_limited", 0)}
+Disabled:       {summary.get("total_disabled", 0)}
+Success Rate:   {summary.get("success_rate", "N/A")}
 """
+
+        # Add rate limited scrapers section if any
+        if rate_limited_scrapers:
+            message += (
+                f"\n\nRATE LIMITED SCRAPERS ({len(rate_limited_scrapers)} total)\n"
+            )
+            message += "-" * 60 + "\n"
+            for rate_limited in rate_limited_scrapers[:20]:
+                council = rate_limited.get("council", "unknown")
+                scraper_type = rate_limited.get("scraper_type", "unknown")
+                message += f"• {council} ({scraper_type})\n"
+
+            if len(rate_limited_scrapers) > 20:
+                message += (
+                    f"\n... and {len(rate_limited_scrapers) - 20} more rate limited\n"
+                )
 
         # Add failed scrapers section if any
         if failed_scrapers:
@@ -436,9 +475,8 @@ Success Rate: {summary.get("success_rate", "N/A")}
                 council = failed.get("council", "unknown")
                 scraper_type = failed.get("scraper_type", "unknown")
                 error = failed.get("error", "Unknown error")
-                # Truncate long error messages
-                error_msg = error[:150] + "..." if len(error) > 150 else error
-                message += f"\n• {council} ({scraper_type})\n  {error_msg}\n"
+                # Error is already truncated in the handler
+                message += f"\n• {council} ({scraper_type})\n  {error}\n"
 
             if len(failed_scrapers) > 20:
                 message += f"\n... and {len(failed_scrapers) - 20} more failures\n"

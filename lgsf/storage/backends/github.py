@@ -9,11 +9,111 @@ import uuid
 from pathlib import Path
 from typing import Any, Callable, override
 
+import jwt
 import requests
 
 from lgsf.storage.backends.base import BaseStorage, StorageSession
 
 logger = logging.getLogger(__name__)
+
+
+class GitHubRateLimitError(Exception):
+    """Raised when GitHub rate limit is exhausted and we should fail fast."""
+
+    def __init__(self, message: str, reset_time: int | None = None):
+        super().__init__(message)
+        self.reset_time = reset_time
+
+
+class GitHubAppAuthenticator:
+    """Handles GitHub App authentication and token generation."""
+
+    def __init__(
+        self,
+        app_id: str | None = None,
+        installation_id: str | None = None,
+        private_key: str | None = None,
+    ):
+        """
+        Initialize GitHub App authenticator.
+
+        Args:
+            app_id: GitHub App ID
+            installation_id: GitHub App Installation ID
+            private_key: GitHub App private key (PEM format)
+        """
+        self.app_id = app_id or os.environ.get("GITHUB_APP_ID", "")
+        self.installation_id = installation_id or os.environ.get(
+            "GITHUB_APP_INSTALLATION_ID", ""
+        )
+        self.private_key = private_key or os.environ.get("GITHUB_APP_PRIVATE_KEY", "")
+
+        self._installation_token: str | None = None
+        self._token_expires_at: float | None = None
+
+    def is_configured(self) -> bool:
+        """Check if GitHub App credentials are configured."""
+        return bool(self.app_id and self.installation_id and self.private_key)
+
+    def _generate_jwt(self) -> str:
+        """Generate a JWT for GitHub App authentication."""
+        now = int(time.time())
+        payload = {
+            "iat": now,
+            "exp": now + 600,  # JWT expires in 10 minutes
+            "iss": self.app_id,
+        }
+
+        return jwt.encode(payload, self.private_key, algorithm="RS256")
+
+    def _request_installation_token(self) -> tuple[str, float]:
+        """Request an installation access token from GitHub."""
+        jwt_token = self._generate_jwt()
+
+        headers = {
+            "Authorization": f"Bearer {jwt_token}",
+            "Accept": "application/vnd.github.v3+json",
+            "User-Agent": "LGSF-GitHub-Storage/2.0",
+        }
+
+        response = requests.post(
+            f"https://api.github.com/app/installations/{self.installation_id}/access_tokens",
+            headers=headers,
+        )
+        response.raise_for_status()
+
+        data = response.json()
+        token = data["token"]
+        # Token expires in 1 hour, but we'll refresh 5 minutes early to be safe
+        expires_at = time.time() + 3300
+
+        return token, expires_at
+
+    def get_token(self) -> str:
+        """
+        Get a valid installation token, refreshing if necessary.
+
+        Returns:
+            A valid GitHub App installation token
+        """
+        if not self.is_configured():
+            raise ValueError(
+                "GitHub App not configured. Set GITHUB_APP_ID, "
+                "GITHUB_APP_INSTALLATION_ID, and GITHUB_APP_PRIVATE_KEY"
+            )
+
+        # Check if we have a valid token
+        if self._installation_token and self._token_expires_at:
+            if time.time() < self._token_expires_at:
+                return self._installation_token
+
+        # Request new token
+        logger.info("Requesting new GitHub App installation token")
+        self._installation_token, self._token_expires_at = (
+            self._request_installation_token()
+        )
+
+        return self._installation_token
 
 
 class _GitHubSession(StorageSession):
@@ -32,6 +132,7 @@ class _GitHubSession(StorageSession):
         scraper_object_type: str = "Data",
         run_id: str | None = None,
         disable_change_detection: bool = False,
+        rate_limit_threshold: int = 100,
     ):
         self.organization: str = organization
         self.github_token: str = github_token
@@ -39,6 +140,7 @@ class _GitHubSession(StorageSession):
         self.scraper_object_type: str = scraper_object_type
         self.run_id: str = run_id or self._generate_run_id()
         self.disable_change_detection: bool = disable_change_detection
+        self.rate_limit_threshold: int = rate_limit_threshold
 
         # Repository configuration
         self.owner: str = organization
@@ -58,6 +160,7 @@ class _GitHubSession(StorageSession):
 
         # GitHub API session
         self.session: requests.Session = self._create_api_session()
+        self._check_rate_limit()
         self._ensure_repository_exists()
 
     def _generate_run_id(self) -> str:
@@ -71,10 +174,44 @@ class _GitHubSession(StorageSession):
             {
                 "Authorization": f"token {self.github_token}",
                 "Accept": "application/vnd.github.v3+json",
-                "User-Agent": "LGSF-GitHub-Storage/1.0",
+                "User-Agent": "LGSF-GitHub-Storage/2.0",
             }
         )
         return session
+
+    def _check_rate_limit(self) -> None:
+        """
+        Check GitHub rate limit and fail fast if too low.
+
+        Raises:
+            GitHubRateLimitError: If rate limit is below threshold
+        """
+        try:
+            response = self.session.get("https://api.github.com/rate_limit")
+            if response.status_code == 200:
+                data = response.json()
+                core_limit = data["resources"]["core"]
+                remaining = core_limit["remaining"]
+                limit = core_limit["limit"]
+                reset_time = core_limit["reset"]
+
+                logger.info(
+                    f"GitHub rate limit for {self.council_code}: "
+                    f"{remaining}/{limit} remaining "
+                    f"(resets at {datetime.datetime.fromtimestamp(reset_time)})"
+                )
+
+                if remaining < self.rate_limit_threshold:
+                    reset_dt = datetime.datetime.fromtimestamp(reset_time)
+                    raise GitHubRateLimitError(
+                        f"GitHub rate limit too low: {remaining}/{limit} remaining. "
+                        f"Resets at {reset_dt}. Failing fast to avoid Lambda costs.",
+                        reset_time=reset_time,
+                    )
+        except GitHubRateLimitError:
+            raise
+        except Exception as e:
+            logger.warning(f"Could not check rate limit: {e}. Proceeding anyway.")
 
     def _normalize_path(self, filename: Path) -> str:
         """Normalize file path for cross-platform compatibility."""
@@ -90,7 +227,23 @@ class _GitHubSession(StorageSession):
         """Retry a request function with exponential backoff for network issues."""
         for attempt in range(max_retries):
             try:
-                return func(*args, **kwargs)
+                response = func(*args, **kwargs)
+
+                # Check for rate limit in response headers
+                if "X-RateLimit-Remaining" in response.headers:
+                    remaining = int(response.headers["X-RateLimit-Remaining"])
+                    if remaining < self.rate_limit_threshold:
+                        reset_time = int(response.headers.get("X-RateLimit-Reset", 0))
+                        reset_dt = datetime.datetime.fromtimestamp(reset_time)
+                        raise GitHubRateLimitError(
+                            f"GitHub rate limit exhausted during operation: "
+                            f"{remaining} remaining. Resets at {reset_dt}.",
+                            reset_time=reset_time,
+                        )
+
+                return response
+            except GitHubRateLimitError:
+                raise
             except (
                 requests.exceptions.ConnectionError,
                 requests.exceptions.Timeout,
@@ -109,6 +262,18 @@ class _GitHubSession(StorageSession):
             bool: True if error was handled and caller should continue, False if should raise
         """
         if response.status_code == 403:
+            # Check if it's a rate limit error
+            if "X-RateLimit-Remaining" in response.headers:
+                remaining = int(response.headers["X-RateLimit-Remaining"])
+                if remaining == 0:
+                    reset_time = int(response.headers.get("X-RateLimit-Reset", 0))
+                    reset_dt = datetime.datetime.fromtimestamp(reset_time)
+                    raise GitHubRateLimitError(
+                        f"GitHub rate limit exceeded during {context}. "
+                        f"Resets at {reset_dt}.",
+                        reset_time=reset_time,
+                    )
+
             logger.warning(
                 f"GitHub API access forbidden during {context} for {self.council_code}. "
                 "Check token permissions (needs 'repo' scope)"
@@ -627,7 +792,7 @@ class GitHubStorage(BaseStorage):
     GitHub storage backend with git-based operations and per-run branching.
 
     This storage backend implements the BaseStorage interface using GitHub
-    repositories for council data storage.
+    repositories for council data storage. Requires GitHub App authentication.
     """
 
     def __init__(
@@ -638,6 +803,7 @@ class GitHubStorage(BaseStorage):
         github_token: str | None = None,
         auto_merge: bool = True,
         disable_change_detection: bool = False,
+        rate_limit_threshold: int = 100,
     ):
         """
         Initialize GitHub storage backend.
@@ -646,9 +812,10 @@ class GitHubStorage(BaseStorage):
             council_code: Unique identifier for the council
             scraper_object_type: Type of objects being scraped
             organization: GitHub organization name
-            github_token: GitHub authentication token
+            github_token: GitHub authentication token (deprecated, ignored - GitHub App required)
             auto_merge: If True, automatically merge PRs after creation
             disable_change_detection: If True, skip change detection and always commit
+            rate_limit_threshold: Minimum rate limit before failing fast (default 100)
         """
         super().__init__(council_code)
         self.scraper_object_type: str = scraper_object_type
@@ -662,15 +829,21 @@ class GitHubStorage(BaseStorage):
                 "variable or pass organization parameter."
             )
 
-        self.github_token: str = github_token or os.environ.get("GITHUB_TOKEN", "")
-        if not self.github_token:
+        # GitHub App authentication is required - no fallback to classic token
+        self.github_app = GitHubAppAuthenticator()
+
+        if not self.github_app.is_configured():
             raise ValueError(
-                "GitHub token not provided. Set GITHUB_TOKEN environment variable "
-                "or pass github_token parameter."
+                "GitHub App authentication is required. Set GITHUB_APP_ID, "
+                "GITHUB_APP_INSTALLATION_ID, and GITHUB_APP_PRIVATE_KEY environment variables."
             )
+
+        logger.info(f"Using GitHub App authentication for {council_code}")
+        self.github_token = self.github_app.get_token()
 
         self._active: _GitHubSession | None = None
         self.auto_merge: bool = auto_merge
+        self.rate_limit_threshold: int = rate_limit_threshold
 
         # Check environment variable for disabling change detection
         env_disable_change_detection = os.environ.get(
@@ -700,6 +873,10 @@ class GitHubStorage(BaseStorage):
         if not self.organization or not self.github_token:
             raise ValueError("Organization and GitHub token are required")
 
+        # Refresh GitHub App token if needed
+        if self.github_app.is_configured():
+            self.github_token = self.github_app.get_token()
+
         session = _GitHubSession(
             organization=self.organization,
             github_token=self.github_token,
@@ -707,6 +884,7 @@ class GitHubStorage(BaseStorage):
             scraper_object_type=scraper_type,
             run_id=run_id,
             disable_change_detection=self.disable_change_detection,
+            rate_limit_threshold=self.rate_limit_threshold,
         )
 
         # Check for existing data

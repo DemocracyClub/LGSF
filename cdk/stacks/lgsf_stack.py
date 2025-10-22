@@ -43,10 +43,20 @@ class LgsfStack(cdk.Stack):
         # Common naming prefix
         self.prefix = f"lgsf-{self.dc_environment}"
 
-        # Fetch GitHub credentials from Parameter Store at build time
-        self.github_token = ssm.StringParameter.value_for_string_parameter(
-            self, f"/lgsf/{self.dc_environment}/github/token"
+        # Fetch GitHub App credentials from Parameter Store at build time
+        # GitHub App credentials are required - no fallback to classic token
+        self.github_app_id = ssm.StringParameter.value_for_string_parameter(
+            self, f"/lgsf/{self.dc_environment}/github/app_id"
         )
+        self.github_app_installation_id = (
+            ssm.StringParameter.value_for_string_parameter(
+                self, f"/lgsf/{self.dc_environment}/github/installation_id"
+            )
+        )
+        self.github_app_private_key = ssm.StringParameter.value_for_string_parameter(
+            self, f"/lgsf/{self.dc_environment}/github/app_private_key"
+        )
+
         self.github_organization = ssm.StringParameter.value_for_string_parameter(
             self, f"/lgsf/{self.dc_environment}/github/organization"
         )
@@ -160,6 +170,17 @@ class LgsfStack(cdk.Stack):
     def create_lambda_functions(self) -> None:
         """Create Lambda functions for Step Functions orchestration."""
 
+        # Build common environment variables
+        common_env = {
+            "PYTHONPATH": "/var/task:/opt/python",
+            "DC_ENVIRONMENT": self.dc_environment,
+            "GITHUB_ORGANIZATION": self.github_organization,
+            "LGSF_STORAGE_BACKEND": "github",
+            "GITHUB_APP_ID": self.github_app_id,
+            "GITHUB_APP_INSTALLATION_ID": self.github_app_installation_id,
+            "GITHUB_APP_PRIVATE_KEY": self.github_app_private_key,
+        }
+
         # Council Enumerator Function - discovers all councils to scrape
         self.council_enumerator_function = aws_lambda.Function(
             self,
@@ -174,13 +195,7 @@ class LgsfStack(cdk.Stack):
             timeout=cdk.Duration.minutes(5),
             layers=[self.dependencies_layer],
             role=self.lambda_execution_role,
-            environment={
-                "PYTHONPATH": "/var/task:/opt/python",
-                "DC_ENVIRONMENT": self.dc_environment,
-                "GITHUB_TOKEN": self.github_token,
-                "GITHUB_ORGANIZATION": self.github_organization,
-                "LGSF_STORAGE_BACKEND": "github",
-            },
+            environment=common_env.copy(),
             description="Enumerate councils for parallel scraping",
         )
 
@@ -198,14 +213,8 @@ class LgsfStack(cdk.Stack):
             timeout=cdk.Duration.minutes(15),
             layers=[self.dependencies_layer],
             role=self.lambda_execution_role,
-            reserved_concurrent_executions=5,  # Reserve capacity to prevent TooManyRequests
-            environment={
-                "PYTHONPATH": "/var/task:/opt/python",
-                "DC_ENVIRONMENT": self.dc_environment,
-                "GITHUB_TOKEN": self.github_token,
-                "GITHUB_ORGANIZATION": self.github_organization,
-                "LGSF_STORAGE_BACKEND": "github",
-            },
+            reserved_concurrent_executions=2,  # Reserve capacity to prevent TooManyRequests
+            environment=common_env.copy(),
             description="Process individual council scraper tasks",
         )
 
@@ -223,13 +232,7 @@ class LgsfStack(cdk.Stack):
             timeout=cdk.Duration.minutes(5),
             layers=[self.dependencies_layer],
             role=self.lambda_execution_role,
-            environment={
-                "PYTHONPATH": "/var/task:/opt/python",
-                "DC_ENVIRONMENT": self.dc_environment,
-                "GITHUB_TOKEN": self.github_token,
-                "GITHUB_ORGANIZATION": self.github_organization,
-                "LGSF_STORAGE_BACKEND": "github",
-            },
+            environment=common_env.copy(),
             description="Post-processing tasks after all scrapers complete",
         )
 
@@ -604,7 +607,7 @@ class LgsfStack(cdk.Stack):
         cdk.CfnOutput(
             self,
             "ConfigurationInfo",
-            value=f"Required SSM Parameters: /lgsf/{self.dc_environment}/github/token, /lgsf/{self.dc_environment}/github/organization, /lgsf/{self.dc_environment}/notification/emails (comma-separated)",
+            value=f"Required SSM Parameters: /lgsf/{self.dc_environment}/github/app_id, /lgsf/{self.dc_environment}/github/installation_id, /lgsf/{self.dc_environment}/github/app_private_key, /lgsf/{self.dc_environment}/github/organization, /lgsf/{self.dc_environment}/notification/emails (comma-separated)",
             description="Information about required SSM Parameter Store configuration",
         )
 
