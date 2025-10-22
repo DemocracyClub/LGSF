@@ -17,6 +17,120 @@ from lgsf.storage.backends.github import GitHubRateLimitError
 os.environ["TERM"] = "dumb"
 
 
+def save_to_s3(bucket_name: str, key: str, data: dict, console: Console) -> bool:
+    """
+    Save JSON data to S3.
+
+    Args:
+        bucket_name: S3 bucket name
+        key: S3 object key (path)
+        data: Dictionary to save as JSON
+        console: Rich console for logging
+
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        s3_client = boto3.client("s3")
+        json_data = json.dumps(data, indent=2, default=str)
+
+        s3_client.put_object(
+            Bucket=bucket_name, Key=key, Body=json_data, ContentType="application/json"
+        )
+
+        console.log(f"Successfully saved to S3: s3://{bucket_name}/{key}")
+        return True
+    except Exception as e:
+        console.log(f"Error saving to S3: {e}")
+        console.log(traceback.format_exc())
+        return False
+
+
+def cleanup_old_reports(
+    bucket_name: str, console: Console, keep_count: int = 10
+) -> None:
+    """
+    Clean up old run reports and associated RunLogs, keeping only the most recent ones.
+
+    Args:
+        bucket_name: S3 bucket name
+        console: Rich console for logging
+        keep_count: Number of recent reports to keep (default: 10)
+    """
+    try:
+        s3_client = boto3.client("s3")
+
+        # List all run reports
+        console.log(f"Listing run reports in s3://{bucket_name}/run-reports/")
+        response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix="run-reports/")
+
+        if "Contents" not in response:
+            console.log("No run reports found to clean up")
+            return
+
+        # Sort by last modified date (newest first)
+        reports = sorted(
+            response["Contents"], key=lambda x: x["LastModified"], reverse=True
+        )
+
+        # Skip the most recent N reports
+        reports_to_delete = reports[keep_count:]
+
+        if not reports_to_delete:
+            console.log(f"Only {len(reports)} reports found, no cleanup needed")
+            return
+
+        console.log(
+            f"Found {len(reports)} reports, keeping {keep_count}, deleting {len(reports_to_delete)}"
+        )
+
+        # Extract timestamps from report filenames to find associated RunLogs
+        # Format: run-report-{timestamp}-{execution_id}.json
+        timestamps_to_delete = set()
+        for report in reports_to_delete:
+            key = report["Key"]
+            filename = key.split("/")[-1]  # Get filename from key
+            # Extract timestamp (format: run-report-YYYYMMDD-HHMMSS-{id}.json)
+            parts = filename.replace("run-report-", "").split("-")
+            if len(parts) >= 2:
+                timestamp = f"{parts[0]}-{parts[1]}"  # YYYYMMDD-HHMMSS
+                timestamps_to_delete.add(timestamp)
+
+        # Delete old run reports
+        for report in reports_to_delete:
+            try:
+                s3_client.delete_object(Bucket=bucket_name, Key=report["Key"])
+                console.log(f"Deleted old report: {report['Key']}")
+            except Exception as e:
+                console.log(f"Error deleting {report['Key']}: {e}")
+
+        # Delete associated RunLog directories
+        for timestamp in timestamps_to_delete:
+            runlog_prefix = f"runlogs/{timestamp}/"
+
+            try:
+                # List all objects in this timestamp directory
+                runlog_response = s3_client.list_objects_v2(
+                    Bucket=bucket_name, Prefix=runlog_prefix
+                )
+
+                if "Contents" in runlog_response:
+                    for obj in runlog_response["Contents"]:
+                        s3_client.delete_object(Bucket=bucket_name, Key=obj["Key"])
+                        console.log(f"Deleted old RunLog: {obj['Key']}")
+            except Exception as e:
+                console.log(f"Error deleting RunLogs for {timestamp}: {e}")
+
+        console.log(
+            f"Cleanup complete: deleted {len(reports_to_delete)} old reports and associated RunLogs"
+        )
+
+    except Exception as e:
+        console.log(f"Error during cleanup: {e}")
+        console.log(traceback.format_exc())
+        # Don't raise - cleanup is best-effort and shouldn't fail the execution
+
+
 class ScraperException(Exception):
     """Custom exception for scraper errors with structured data."""
 
@@ -167,6 +281,9 @@ def scraper_worker_handler(event, context):
     console = Console(file=cw_stream, force_terminal=True, record=True, soft_wrap=False)
     run_log = settings.RUN_LOGGER(start=datetime.datetime.now(datetime.UTC))
 
+    # Get S3 bucket name from environment variable
+    s3_bucket = os.environ.get("S3_REPORTS_BUCKET")
+
     try:
         # For Step Functions, the council data comes directly in the event
         # rather than being wrapped in SQS Records
@@ -235,11 +352,36 @@ def scraper_worker_handler(event, context):
         except GitHubRateLimitError as e:
             # GitHub rate limit error - return 429 status with minimal context
             console.log(f"GitHub rate limit for {council}: {e}")
+            run_log.error = str(e)
+            run_log.finish()
+
+            # Save RunLog to S3 for rate limited scrapers
+            runlog_s3_key = None
+            if s3_bucket:
+                timestamp = run_log.start.strftime("%Y%m%d-%H%M%S")
+                runlog_s3_key = f"runlogs/{timestamp}/{council}-{command_name}.json"
+
+                runlog_data = {
+                    "council": council,
+                    "scraper_type": command_name,
+                    "status": "rate_limited",
+                    "start_time": run_log.start.isoformat(),
+                    "end_time": run_log.end.isoformat() if run_log.end else None,
+                    "duration_seconds": run_log.duration.total_seconds()
+                    if run_log.duration
+                    else 0,
+                    "error": run_log.error,
+                    "error_type": "GitHubRateLimitError",
+                }
+
+                save_to_s3(s3_bucket, runlog_s3_key, runlog_data, console)
+
             result.update(
                 {
                     "statusCode": 429,
                     "error": "GHRateLimited",
                     "status": "failed",
+                    "runlog_s3_key": runlog_s3_key,
                 }
             )
             return result
@@ -248,6 +390,8 @@ def scraper_worker_handler(event, context):
             # Extract just the exception type and message, no traceback
             scraper.console.log(e)
             run_log.error = traceback.format_exc()
+            run_log.finish()
+
             # This probably means finalize_storage hasn't been called.
             # Let's do that ourselves then
             try:
@@ -261,11 +405,34 @@ def scraper_worker_handler(event, context):
             error_message = str(e).split("\n")[0][:150]
             exception_type = type(e).__name__
 
+            # Save RunLog to S3 for failed scrapers
+            runlog_s3_key = None
+            if s3_bucket:
+                timestamp = run_log.start.strftime("%Y%m%d-%H%M%S")
+                runlog_s3_key = f"runlogs/{timestamp}/{council}-{command_name}.json"
+
+                runlog_data = {
+                    "council": council,
+                    "scraper_type": command_name,
+                    "status": "failed",
+                    "start_time": run_log.start.isoformat(),
+                    "end_time": run_log.end.isoformat() if run_log.end else None,
+                    "duration_seconds": run_log.duration.total_seconds()
+                    if run_log.duration
+                    else 0,
+                    "error": run_log.error,
+                    "error_type": exception_type,
+                    "error_message": error_message,
+                }
+
+                save_to_s3(s3_bucket, runlog_s3_key, runlog_data, console)
+
             result.update(
                 {
                     "statusCode": 500,
                     "error": f"{exception_type}: {error_message}",
                     "status": "failed",
+                    "runlog_s3_key": runlog_s3_key,
                 }
             )
 
@@ -273,29 +440,73 @@ def scraper_worker_handler(event, context):
 
     except GitHubRateLimitError as e:
         console.log(f"GitHub rate limit error in scraper_worker_handler: {e}")
+
+        council = event.get("council", "unknown")
+        scraper_type = event.get("scraper_type", "unknown")
+
+        # Save minimal RunLog to S3
+        runlog_s3_key = None
+        if s3_bucket:
+            timestamp = datetime.datetime.now(datetime.UTC).strftime("%Y%m%d-%H%M%S")
+            runlog_s3_key = f"runlogs/{timestamp}/{council}-{scraper_type}.json"
+
+            runlog_data = {
+                "council": council,
+                "scraper_type": scraper_type,
+                "status": "rate_limited",
+                "start_time": datetime.datetime.now(datetime.UTC).isoformat(),
+                "error": str(e),
+                "error_type": "GitHubRateLimitError",
+            }
+
+            save_to_s3(s3_bucket, runlog_s3_key, runlog_data, console)
+
         # Return rate limit error with minimal context
         return {
-            "council": event.get("council", "unknown"),
-            "scraper_type": event.get("scraper_type", "unknown"),
+            "council": council,
+            "scraper_type": scraper_type,
             "statusCode": 429,
             "status": "failed",
             "error": "GHRateLimited",
+            "runlog_s3_key": runlog_s3_key,
         }
     except Exception as e:
         console.log(f"Unexpected error in scraper_worker_handler: {e}")
         console.log(traceback.format_exc())
 
+        council = event.get("council", "unknown")
+        scraper_type = event.get("scraper_type", "unknown")
+
         # Get short error message - just exception type and first line
         error_message = str(e).split("\n")[0][:150]
         exception_type = type(e).__name__
 
+        # Save minimal RunLog to S3
+        runlog_s3_key = None
+        if s3_bucket:
+            timestamp = datetime.datetime.now(datetime.UTC).strftime("%Y%m%d-%H%M%S")
+            runlog_s3_key = f"runlogs/{timestamp}/{council}-{scraper_type}.json"
+
+            runlog_data = {
+                "council": council,
+                "scraper_type": scraper_type,
+                "status": "failed",
+                "start_time": datetime.datetime.now(datetime.UTC).isoformat(),
+                "error": traceback.format_exc(),
+                "error_type": exception_type,
+                "error_message": error_message,
+            }
+
+            save_to_s3(s3_bucket, runlog_s3_key, runlog_data, console)
+
         # Return error information rather than raising to prevent map failure
         return {
-            "council": event.get("council", "unknown"),
-            "scraper_type": event.get("scraper_type", "unknown"),
+            "council": council,
+            "scraper_type": scraper_type,
             "statusCode": 500,
             "status": "failed",
             "error": f"{exception_type}: {error_message}",
+            "runlog_s3_key": runlog_s3_key,
         }
 
 
@@ -380,9 +591,14 @@ def aggregation_handler(event, context):
     """
     Aggregate results from the distributed map execution.
     Collects statistics about successes, failures, and disabled scrapers.
+    Saves a comprehensive run report to S3.
     """
     console = Console(file=sys.stdout, record=True)
     console.log("Starting result aggregation")
+
+    # Get S3 bucket name and execution ID from environment
+    s3_bucket = os.environ.get("S3_REPORTS_BUCKET")
+    execution_id = context.aws_request_id if context else "unknown"
 
     try:
         # Extract scraper results from the distributed map output
@@ -472,14 +688,70 @@ def aggregation_handler(event, context):
 
         console.log(f"Aggregation summary: {summary}")
 
+        # Build the complete report data structure
+        timestamp = datetime.datetime.now(datetime.UTC)
+        report_data = {
+            "execution_id": execution_id,
+            "timestamp": timestamp.isoformat(),
+            "summary": summary,
+            "scrapers": [],
+        }
+
+        # Build detailed scraper list with all information
+        for result in processed_results:
+            if not isinstance(result, dict):
+                continue
+
+            scraper_entry = {
+                "council": result.get("council", "unknown"),
+                "scraper_type": result.get("scraper_type", "unknown"),
+                "status": result.get("status", "unknown"),
+                "status_code": result.get("statusCode", 200),
+                "start_time": result.get("start_time"),
+            }
+
+            # Add error information if present
+            if result.get("error"):
+                scraper_entry["error"] = result.get("error")
+
+            # Add link to detailed RunLog if available
+            if result.get("runlog_s3_key"):
+                scraper_entry["runlog_s3_key"] = result.get("runlog_s3_key")
+                scraper_entry["runlog_s3_url"] = (
+                    f"s3://{s3_bucket}/{result.get('runlog_s3_key')}"
+                )
+
+            report_data["scrapers"].append(scraper_entry)
+
+        # Save comprehensive run report to S3
+        report_s3_key = None
+        if s3_bucket:
+            timestamp_str = timestamp.strftime("%Y%m%d-%H%M%S")
+            report_s3_key = (
+                f"run-reports/run-report-{timestamp_str}-{execution_id[:8]}.json"
+            )
+
+            if save_to_s3(s3_bucket, report_s3_key, report_data, console):
+                console.log(f"Run report saved to S3: s3://{s3_bucket}/{report_s3_key}")
+
+                # Clean up old reports, keeping only the last 10
+                console.log("Starting cleanup of old reports...")
+                cleanup_old_reports(s3_bucket, console, keep_count=10)
+            else:
+                console.log("Failed to save run report to S3")
+
         return {
             "statusCode": 200,
-            "timestamp": datetime.datetime.now(datetime.UTC).isoformat(),
+            "timestamp": timestamp.isoformat(),
             "summary": summary,
             "successful_scrapers": successful_scrapers,
             "failed_scrapers": failed_scrapers,
             "rate_limited_scrapers": rate_limited_scrapers,
             "disabled_scrapers": disabled_scrapers,
+            "report_s3_key": report_s3_key,
+            "report_s3_url": f"s3://{s3_bucket}/{report_s3_key}"
+            if report_s3_key and s3_bucket
+            else None,
         }
 
     except Exception as e:

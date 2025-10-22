@@ -66,6 +66,11 @@ class LgsfStack(cdk.Stack):
             self, f"/lgsf/{self.dc_environment}/notification/emails"
         )
 
+        # Fetch S3 bucket name from Parameter Store at build time
+        self.s3_reports_bucket = ssm.StringParameter.value_for_string_parameter(
+            self, f"/lgsf/{self.dc_environment}/s3/reports_bucket"
+        )
+
         # Create resources
         self.create_dependencies_layer()
         self.create_sns_topic()
@@ -167,6 +172,24 @@ class LgsfStack(cdk.Stack):
             )
         )
 
+        # Add S3 permissions for saving run reports and RunLogs
+        self.lambda_execution_role.add_to_policy(
+            aws_iam.PolicyStatement(
+                effect=aws_iam.Effect.ALLOW,
+                actions=[
+                    "s3:PutObject",
+                    "s3:PutObjectAcl",
+                    "s3:GetObject",
+                    "s3:ListBucket",
+                    "s3:DeleteObject",  # For cleanup of old reports
+                ],
+                resources=[
+                    f"arn:aws:s3:::{self.s3_reports_bucket}",
+                    f"arn:aws:s3:::{self.s3_reports_bucket}/*",
+                ],
+            )
+        )
+
     def create_lambda_functions(self) -> None:
         """Create Lambda functions for Step Functions orchestration."""
 
@@ -179,6 +202,7 @@ class LgsfStack(cdk.Stack):
             "GITHUB_APP_ID": self.github_app_id,
             "GITHUB_APP_INSTALLATION_ID": self.github_app_installation_id,
             "GITHUB_APP_PRIVATE_KEY": self.github_app_private_key,
+            "S3_REPORTS_BUCKET": self.s3_reports_bucket,
         }
 
         # Council Enumerator Function - discovers all councils to scrape
@@ -253,6 +277,7 @@ class LgsfStack(cdk.Stack):
             environment={
                 "PYTHONPATH": "/var/task:/opt/python",
                 "DC_ENVIRONMENT": self.dc_environment,
+                "S3_REPORTS_BUCKET": self.s3_reports_bucket,
             },
             description="Aggregate scraper execution results",
         )
@@ -276,6 +301,7 @@ class LgsfStack(cdk.Stack):
                 "DC_ENVIRONMENT": self.dc_environment,
                 "SNS_TOPIC_ARN": self.scraper_notification_topic.topic_arn,
                 "NOTIFICATION_EMAILS": self.notification_emails,
+                "S3_REPORTS_BUCKET": self.s3_reports_bucket,
             },
             description="Send execution report notification via SNS",
         )
@@ -493,7 +519,9 @@ class LgsfStack(cdk.Stack):
             )
 
     def create_event_rules(self) -> None:
-        """Create EventBridge rules for scheduled execution."""
+        """Create EventBridge rules for schedule
+
+        d execution."""
 
         # Daily schedule rule for step function execution
         self.scraper_orchestration_rule = events.Rule(
