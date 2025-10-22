@@ -296,7 +296,7 @@ class LgsfStack(cdk.Stack):
             self,
             "ParallelScrapers",
             items_path="$.councils",
-            max_concurrency=5,  # Increased concurrency for distributed map
+            max_concurrency=2,  # Limit concurrency to avoid Lambda throttling
             result_path="$.scraper_results",  # Store results in job data
             label="CouncilScraping",  # Base name for scraper executions
             tolerated_failure_percentage=100,  # Allow all scrapers to fail without failing the map
@@ -321,8 +321,8 @@ class LgsfStack(cdk.Stack):
                 "scraper_type.$": "$.scraper_type",
                 "status": "failed",
                 "statusCode": 500,
-                "error.$": "$.Error",
-                "cause.$": "$.Cause",
+                "error.$": "$.error_info.Error",
+                "cause.$": "$.error_info.Cause",
             },
         )
 
