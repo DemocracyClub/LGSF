@@ -166,29 +166,23 @@ def council_enumerator_handler(event, context):
     try:
         # Extract input parameters from event
         council_ids_param = event.get("council_ids", "")
-        all_councils_param = event.get("all_councils", True)
 
-        # Parse council IDs if provided
-        specific_councils = []
+        # Build the Command based on input
         if council_ids_param:
-            # Split by comma and strip whitespace
-            specific_councils = [
-                c.strip() for c in council_ids_param.split(",") if c.strip()
-            ]
-            console.log(f"Running specific councils: {specific_councils}")
-
-        # Determine whether to run all councils or specific ones
-        if specific_councils:
-            # Run specific councils
-            all_councils = False
-            councils_to_process = specific_councils
+            # Run specific councils - Command already handles comma-separated values
+            console.log(f"Running specific councils: {council_ids_param}")
+            councillors_command = Command(
+                argv=["", "--council", council_ids_param], stdout=sys.stdout
+            )
+            councillors_command.options = {
+                "all_councils": False,
+                "council": council_ids_param,
+                "exclude_missing": True,
+                "exclude_disabled": True,
+                "tags": None,
+            }
         else:
             # Run all councils (default behavior)
-            all_councils = True
-            councils_to_process = None
-
-        # Build the Command options
-        if all_councils:
             console.log("Running all councils (excluding disabled)")
             councillors_command = Command(
                 argv=["", "--all-councils"], stdout=sys.stdout
@@ -197,47 +191,12 @@ def council_enumerator_handler(event, context):
                 "all_councils": True,
                 "exclude_missing": True,
                 "exclude_disabled": True,
-            }
-        else:
-            # For specific councils, we'll build a command for each
-            console.log(f"Running {len(councils_to_process)} specific council(s)")
-            councillors_command = Command(
-                argv=["", "--council", councils_to_process[0]], stdout=sys.stdout
-            )
-            councillors_command.options = {
-                "all_councils": False,
-                "council": councils_to_process[0],
-                "exclude_missing": True,
-                "exclude_disabled": True,
+                "council": None,
+                "tags": None,
             }
 
+        # Get councils from the command - it handles all the parsing logic
         councils = councillors_command.councils_to_run
-
-        # If we have multiple specific councils, we need to filter to just those
-        if specific_councils and len(specific_councils) > 1:
-            # Filter councils to only include the ones requested
-            councils = [c for c in councils if c.council_id in specific_councils]
-
-            # Add any councils that weren't found in the initial command
-            found_ids = {c.council_id for c in councils}
-            for council_id in specific_councils:
-                if council_id not in found_ids:
-                    # Try to get this council specifically
-                    try:
-                        temp_command = Command(
-                            argv=["", "--council", council_id], stdout=sys.stdout
-                        )
-                        temp_command.options = {
-                            "all_councils": False,
-                            "council": council_id,
-                            "exclude_missing": True,
-                            "exclude_disabled": True,
-                        }
-                        councils.extend(temp_command.councils_to_run)
-                    except Exception as e:
-                        console.log(
-                            f"Warning: Could not load council {council_id}: {e}"
-                        )
 
         # Convert councils to a format suitable for Step Functions Map state
         council_list = []
@@ -257,7 +216,7 @@ def council_enumerator_handler(event, context):
             "total_councils": len(council_list),
             "input_params": {
                 "council_ids": council_ids_param if council_ids_param else "all",
-                "all_councils": all_councils,
+                "all_councils": not bool(council_ids_param),
             },
         }
 
