@@ -33,3 +33,10 @@ jobs:
           name: cms-metadata
           path: cms-metadata.csv
           retention-days: 90
+      - name: Trigger dashboard rebuild
+        if: success()
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.DASHBOARD_DISPATCH_TOKEN }}
+          repository: DemocracyClub/lgsf-dashboard
+          event-type: csv-updated
