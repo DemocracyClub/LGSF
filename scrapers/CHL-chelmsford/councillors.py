@@ -4,29 +4,21 @@ from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 
 from lgsf.councillors import SkipCouncillorException
-from lgsf.councillors.scrapers import HTMLCouncillorScraper
+from lgsf.councillors.scrapers import HTMLCouncillorScraper, \
+    PagedHTMLCouncillorScraper
 
 
-class Scraper(HTMLCouncillorScraper):
-    def get_councillors(self):
-        url = self.base_url
-        soup = self.get_page(url)
-        drc = soup.find("input", {"name": "drc"})["value"]
-        tgt = soup.find("input", {"name": "tgt"})["value"]
-        next_page = 1
-        while next_page:
-            results = self.http_client.post(
-                "https://www.chelmsford.gov.uk/api/directories/search",
-                data={"drc": drc, "tgt": tgt, "page": next_page},
-            )
-            page_soup = BeautifulSoup(results.text, "html5lib")
-            if page_soup.find(text="No records found"):
-                break
-            next_page += 1
-            for row in page_soup.select("tbody tr"):
-                yield row
+class Scraper(PagedHTMLCouncillorScraper):
+    list_page = {
+        "container_css_selector": "table.directories-table__table",
+        "councillor_css_selector": "tr",
+        "next_page_css_selector": "ul.paging li:last-child",
+    }
 
     def get_single_councillor(self, councillor_html):
+        if councillor_html.find_all('th'):
+            raise SkipCouncillorException
+        print(councillor_html)
         url = urljoin(self.base_url, councillor_html.a["href"])
         soup = self.get_page(url)
         name = soup.h1.get_text(strip=True).replace("Councillor ", "")
