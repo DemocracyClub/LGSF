@@ -2,9 +2,6 @@ import os
 from typing import Optional
 
 from lgsf.storage.backends.base import BaseStorage
-from lgsf.storage.backends.codecommit import CodeCommitStorage
-from lgsf.storage.backends.github import GitHubStorage
-from lgsf.storage.backends.local import LocalFilesystemStorage
 
 
 def detect_storage_backend_from_environment(options: dict) -> str:
@@ -26,14 +23,6 @@ def detect_storage_backend_from_environment(options: dict) -> str:
     if backend_from_env:
         return backend_from_env.lower()
 
-    # Legacy: check for AWS Lambda mode (backward compatibility)
-    if options.get("aws_lambda"):
-        return "codecommit"
-
-    # Check for other environment indicators
-    if os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
-        return "codecommit"
-
     # Default to local storage
     return "local"
 
@@ -54,7 +43,9 @@ def get_storage_backend(
                      from environment and options.
         options: Scraper options dictionary for backend detection.
         **kwargs: Additional backend-specific parameters:
-                 - scraper_object_type: For codecommit backend, the type of scraper data
+                 - scraper_object_type: For github backend, the type of scraper data
+                 - organization: For github backend, the organization name
+                 - github_token: For github backend, the authentication token
 
     Returns:
         An instance of the requested storage backend tied to the specified council.
@@ -71,18 +62,17 @@ def get_storage_backend(
     backend_type = backend_type.lower()
 
     if backend_type == "local":
+        from lgsf.storage.backends.local import LocalFilesystemStorage
+
         return LocalFilesystemStorage(council_code=council_code)
-    elif backend_type == "codecommit":
-        scraper_object_type = kwargs.get("scraper_object_type", "Data")
-        return CodeCommitStorage(
-            council_code=council_code, scraper_object_type=scraper_object_type
-        )
     elif backend_type == "github":
         scraper_object_type = kwargs.get("scraper_object_type", "Data")
+        from lgsf.storage.backends.github import GitHubStorage
+
         return GitHubStorage(
             council_code=council_code,
             scraper_object_type=scraper_object_type,
-            repository_url=kwargs.get("repository_url"),
+            organization=kwargs.get("organization"),
             github_token=kwargs.get("github_token"),
         )
     else:
@@ -91,7 +81,7 @@ def get_storage_backend(
 
 def get_available_backends() -> list[str]:
     """Return a list of available storage backend types."""
-    return ["local", "codecommit", "github"]
+    return ["local", "github"]
 
 
 if __name__ == "__main__":

@@ -24,7 +24,7 @@ class RunLog:
     status_code: int = RunStatus.OK.value
 
     def finish(self):
-        self.end = datetime.datetime.utcnow()
+        self.end = datetime.datetime.now(datetime.UTC)
         self.duration = self.end - self.start
         if self.error:
             self.status_code = RunStatus.ERROR.value
@@ -36,6 +36,11 @@ class RunLog:
     @property
     def as_json(self) -> str:
         return json.dumps(self.as_dict, default=str)
+
+    def as_lambda_status_code(self):
+        if self.status_code == RunStatus.ERROR.value or self.error:
+            return 500
+        return 200
 
     @property
     def as_rich_table(self):

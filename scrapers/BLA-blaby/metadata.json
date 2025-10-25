@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "https://w3.blaby.gov.uk/decision-making",
+            "base_url": "https://democracy.blaby.gov.uk",
             "cms_type": "ModernGov"
         }
     }

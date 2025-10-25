@@ -7,6 +7,7 @@ import httpx
 import requests
 from dateutil import parser
 
+from ..metadata.models import CouncilMetadata
 from ..storage.backends import get_storage_backend
 from .checks import ScraperChecker
 
@@ -21,18 +22,25 @@ class ScraperBase(metaclass=abc.ABCMeta):
     http_lib = "httpx"
     verify_requests = True
     timeout = 10
+    service_name = None
+    scraper_object_type = None
 
     def __init__(self, options, console):
         self.options = options
         self.console = console
         self.check()
 
-        # Get storage backend based on options and environment
-        scraper_object_type = getattr(self, "scraper_object_type", "Data")
+        self.council_id = self.options["council"]
+
+        self.council_metadata = CouncilMetadata.for_council(self.council_id)
+        self.base_url = self.council_metadata.get_service_metadata(
+            self.service_name
+        ).base_url
+
         self.storage_backend = get_storage_backend(
-            council_code=self.options["council"],
+            council_code=self.council_id,
             options=self.options,
-            scraper_object_type=scraper_object_type,
+            scraper_object_type=self.scraper_object_type,
         )
         self.storage_session = self.storage_backend.start_session()
         if self.http_lib == "requests":
@@ -59,6 +67,8 @@ class ScraperBase(metaclass=abc.ABCMeta):
         return response
 
     def check(self):
+        assert self.service_name, "Scrapers must set a service_name"
+        assert self.scraper_object_type, "Scrapers must set a scraper object type"
         checker = ScraperChecker(self.__class__)
         checker.run_checks()
 
@@ -97,9 +107,19 @@ class ScraperBase(metaclass=abc.ABCMeta):
     def _set_last_run(self):
         timestamp = datetime.datetime.now().isoformat()
 
-        # Use existing session if available, otherwise create a new one
+        # Use existing session if available and still open, otherwise create a new one
         if self.storage_session:
-            self.storage_session.write(self._last_run_file_name(), timestamp)
+            try:
+                self.storage_session.write(self._last_run_file_name(), timestamp)
+            except RuntimeError as e:
+                if "Storage session is closed" in str(e):
+                    # Session is closed, create a new one
+                    with self.storage_backend.session(
+                        "Updating last run timestamp"
+                    ) as session:
+                        session.write(self._last_run_file_name(), timestamp)
+                else:
+                    raise
         else:
             with self.storage_backend.session("Updating last run timestamp") as session:
                 session.write(self._last_run_file_name(), timestamp)
@@ -148,7 +168,10 @@ class ScraperBase(metaclass=abc.ABCMeta):
         self._set_last_run()
         # End session if still active
         if self.storage_session:
-            self.storage_backend.end_session(self.storage_session, "Scraping completed")
+            self.storage_backend.end_session(
+                self.storage_session,
+                f"Scraping {self.service_name} for {self.options['council']} completed",
+            )
             self.storage_session = None
 
     def _save_file(self, dir_name, file_name, content):
@@ -193,6 +216,9 @@ class ScraperBase(metaclass=abc.ABCMeta):
 
         Args:
             run_log: Optional run log for recording operations
+
+        Returns:
+            Storage result from the backend, or None if no session was active
         """
         if self.storage_session:
             # Ensure the run log has console output if supported
@@ -205,8 +231,14 @@ class ScraperBase(metaclass=abc.ABCMeta):
                     run_log.log = self.console.export_text()
 
             # End session with run log for backend-specific finalization
-            commit_message = "Scraping completed"
-            self.storage_backend.end_session(
+            commit_message = f"Updated {self.options['council']}"
+            storage_result = self.storage_backend.end_session(
                 self.storage_session, commit_message, run_log=run_log
             )
             self.storage_session = None
+
+            # Store result for later access
+            self._last_storage_result = storage_result
+            return storage_result
+
+        return None

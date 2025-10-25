@@ -4,6 +4,7 @@ data
 .pytest_cache
 *.sqlite
 .aws-sam
+cdk.out/
 lambda-layers/DependenciesLayer/requirements.txt
 
 # Byte-compiled / optimized / DLL files

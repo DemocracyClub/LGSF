@@ -79,13 +79,18 @@ class Council:
 
     @property
     def current(self):
-        if self.metadata.get("end_date") and parse(self.metadata["end_date"]) < today():
-            # This council has a known end data, and that date is in the past
+        # Check for dates in everyelectiion_data first (new format)
+        everyelectiion_data = self.metadata.get("everyelectiion_data", {})
+        end_date = everyelectiion_data.get("end_date") or self.metadata.get("end_date")
+        start_date = everyelectiion_data.get("start_date") or self.metadata.get(
+            "start_date"
+        )
+
+        if end_date and parse(end_date) < today():
+            # This council has a known end date, and that date is in the past
             return False
-        if (
-            self.metadata.get("start_date")
-            and parse(self.metadata["start_date"]) > today()
-        ):
+        if start_date and parse(start_date) > today():
+            # This council has a start date in the future
             return False
         return True
 
@@ -198,6 +203,10 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
         )
 
         self.add_default_arguments(self.parser)
+
+        # Allow subclasses to add AWS support via mixin
+        if hasattr(self, "add_aws_argument"):
+            self.add_aws_argument(self.parser)
 
         if hasattr(self, "add_arguments"):
             self.add_arguments(self.parser)
@@ -313,7 +322,7 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
                     progress.refresh()
 
     def _run_single(self, scraper):
-        run_log = settings.RUN_LOGGER(start=datetime.datetime.utcnow())
+        run_log = settings.RUN_LOGGER(start=datetime.datetime.now(datetime.UTC))
         try:
             scraper.run(run_log)
         except KeyboardInterrupt:
@@ -370,6 +379,10 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
 
         if options["list_failing"]:
             return self.output_failing()
+
+        # Check if AWS invocation is requested via mixin
+        if hasattr(self, "should_invoke_aws") and self.should_invoke_aws(options):
+            return self.handle_aws_invocation(options)
 
         self.output_status()
         self.normalise_codes()

@@ -1,0 +1,89 @@
+# CDK output directory - this is the main culprit causing recursive bundling
+cdk.out/
+*.out
+
+# Version control
+.git/
+.gitignore
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.env
+
+# Testing
+.pytest_cache/
+.coverage
+.tox/
+.nox/
+htmlcov/
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Build and distribution
+build/
+dist/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Documentation
+docs/_build/
+site/
+
+# Temporary and cache files
+.cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Data and logs
+data/
+*.log
+*.sqlite
+*.db
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# CDK specific
+node_modules/
+cdk.context.json
+
+# SAM specific
+.aws-sam/
+
+# Project specific directories that shouldn't be in Lambda
+.circleci/
+.github/
+.ropeproject/
+.ruff_cache/
+samconfig.toml.d/
+
+# Config files that shouldn't be bundled
+*.toml
+*.yaml
+*.yml
+Makefile
+LICENSE
+README.md
+*.md
