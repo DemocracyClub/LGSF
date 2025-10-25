@@ -204,6 +204,10 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
 
         self.add_default_arguments(self.parser)
 
+        # Allow subclasses to add AWS support via mixin
+        if hasattr(self, "add_aws_argument"):
+            self.add_aws_argument(self.parser)
+
         if hasattr(self, "add_arguments"):
             self.add_arguments(self.parser)
 
@@ -375,6 +379,10 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
 
         if options["list_failing"]:
             return self.output_failing()
+
+        # Check if AWS invocation is requested via mixin
+        if hasattr(self, "should_invoke_aws") and self.should_invoke_aws(options):
+            return self.handle_aws_invocation(options)
 
         self.output_status()
         self.normalise_codes()
