@@ -83,6 +83,8 @@ jobs:
       - checkout
       - attach_workspace:
           at: ~/repo/
+      - setup_remote_docker:
+          docker_layer_caching: true
       - restore_cache:
           keys:
             - v3-dependencies-{{ checksum "uv.lock" }}
@@ -122,6 +124,8 @@ jobs:
       - checkout
       - attach_workspace:
           at: ~/repo/
+      - setup_remote_docker:
+          docker_layer_caching: true
       - restore_cache:
           keys:
             - v3-dependencies-{{ checksum "uv.lock" }}

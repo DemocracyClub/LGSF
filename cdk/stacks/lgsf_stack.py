@@ -10,6 +10,7 @@ from aws_cdk import aws_stepfunctions as sfn
 from aws_cdk import aws_stepfunctions_tasks as tasks
 from constructs import Construct
 
+
 EXCLUDE_FILES = [
     "cdk.out",
     ".venv",
@@ -104,6 +105,11 @@ class LgsfStack(cdk.Stack):
             compatible_runtimes=[aws_lambda.Runtime.PYTHON_3_12],
             description="Dependencies layer for LGSF Lambda functions",
             removal_policy=cdk.RemovalPolicy.DESTROY,
+            bundling=aws_lambda_python.BundlingOptions(
+                # Fix CircleCI remote Docker permission issues
+                # Run Docker container as root to avoid rsync permission errors
+                bundling_file_access=cdk.BundlingFileAccess.VOLUME_COPY,
+            ),
         )
 
     def create_sns_topic(self) -> None:
