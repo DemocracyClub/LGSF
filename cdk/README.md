@@ -10,7 +10,6 @@ The CDK deployment creates the following AWS resources:
   - Queue Builder Function (scheduled daily)
   - Scraper Worker Function (triggered by SQS)
 - **SQS Queue**: For distributing scraper tasks
-- **CodeCommit Repository**: For storing scraped councillor data
 - **Lambda Layer**: For Python dependencies
 - **IAM Roles**: With necessary permissions for Lambda execution
 - **EventBridge Rule**: For daily scheduling
@@ -18,7 +17,7 @@ The CDK deployment creates the following AWS resources:
 ## Architecture
 
 ```
-EventBridge (daily) -> Queue Builder Lambda -> SQS Queue -> Scraper Worker Lambda -> CodeCommit Repository
+EventBridge (daily) -> Queue Builder Lambda -> SQS Queue -> Scraper Worker Lambda -> GitHub/Local Storage
 ```
 
 ## Prerequisites
@@ -125,7 +124,6 @@ This CDK deployment replaces the original SAM template (`sam-template.yaml`) wit
 | `DependenciesLayer` | `DependenciesLayer` | Lambda layer for Python dependencies |
 | `QueueBuilderFunction` | `QueueBuilderFunction` | Scheduled Lambda function |
 | `SQSScraperQueue` | `ScraperQueue` | SQS queue with DLQ |
-| `CouncillorsRepo` | `CouncillorsRepo` | CodeCommit repository |
 | `ScraperWorkerFunction` | `ScraperWorkerFunction` | SQS-triggered Lambda function |
 | Schedule Event | EventBridge Rule | Daily scheduling |
 
@@ -173,7 +171,6 @@ After deployment, the following outputs are available:
 - `QueueBuilderFunctionArn`: ARN of the queue builder Lambda
 - `ScraperWorkerFunctionArn`: ARN of the scraper worker Lambda  
 - `ScraperQueueUrl`: URL of the SQS queue
-- `CouncillorsRepoCloneUrl`: CodeCommit repository clone URL
 - `LambdaExecutionRoleArn`: ARN of the Lambda execution role
 
 ## Security
