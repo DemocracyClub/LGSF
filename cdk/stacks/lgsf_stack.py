@@ -435,6 +435,9 @@ class LgsfStack(cdk.Stack):
         self.step_function = sfn.StateMachine(
             self,
             "LGSFScraperOrchestration",
+            state_machine_name=self.get_resource_name(
+                "stepfn", "scraper-orchestration"
+            ),
             definition_body=sfn.DefinitionBody.from_chainable(definition),
             role=self.step_function_role,  # Assign execution role
             timeout=cdk.Duration.hours(

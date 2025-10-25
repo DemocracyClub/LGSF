@@ -198,6 +198,13 @@ def council_enumerator_handler(event, context):
         # Get councils from the command - it handles all the parsing logic
         councils = councillors_command.councils_to_run
 
+        # Filter to only current councils (unless specific councils were requested)
+        if not council_ids_param:
+            # For automated runs, only scrape current councils
+            console.log("Filtering to current councils only for automated run")
+            councils = [c for c in councils if c.current]
+            console.log(f"Filtered to {len(councils)} current councils")
+
         # Convert councils to a format suitable for Step Functions Map state
         council_list = []
         for council in councils:
