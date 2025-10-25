@@ -9,102 +9,163 @@
 version: 2.1
 
 jobs:
-
   install_and_update_dependencies:
     docker:
-    - image: cimg/python:3.12
+      - image: cimg/python:3.12-node
     working_directory: ~/repo
     steps:
-    - checkout
-    - restore_cache:
-        keys:
-        - v3-dependencies-{{ checksum "uv.lock" }}
-    - run:
-        name: Install UV
-        command: .circleci/install-uv.sh
-    - run: make lambda-layers/DependenciesLayer/requirements.txt
-    - persist_to_workspace:
-        root: ~/repo/
-        paths: [ lambda-layers/DependenciesLayer/requirements.txt ]
-    - save_cache:
-        when: on_success
-        paths:
-          - $HOME/.cache/uv
-        key: v3-dependencies-{{ checksum "uv.lock" }}
+      - checkout
+      - restore_cache:
+          keys:
+            - v3-dependencies-{{ checksum "uv.lock" }}
+      - run:
+          name: Install UV
+          command: .circleci/install-uv.sh
+      - run: make lambda-layers/DependenciesLayer/requirements.txt
+      - persist_to_workspace:
+          root: ~/repo/
+          paths: [lambda-layers/DependenciesLayer/requirements.txt]
+      - save_cache:
+          when: on_success
+          paths:
+            - $HOME/.cache/uv
+          key: v3-dependencies-{{ checksum "uv.lock" }}
 
-  sam_build:
+  lint:
     docker:
-    - image: public.ecr.aws/sam/build-python3.12:latest
+      - image: cimg/python:3.12
     working_directory: ~/repo
     steps:
-    - checkout
-    - attach_workspace:
-        at: ~/repo/
-    - run: pip install --upgrade pip
-    - run: pip install -r lambda-layers/DependenciesLayer/requirements.txt
-    - run: sam build  --template sam-template.yaml
-    - persist_to_workspace:
-        root: ~/repo/
-        paths: [ .aws-sam/build/ ]
+      - checkout
+      - restore_cache:
+          keys:
+            - v3-dependencies-{{ checksum "uv.lock" }}
+      - run:
+          name: Install UV
+          command: .circleci/install-uv.sh
+      - run:
+          name: Install dependencies
+          command: uv sync
+      - run:
+          name: Run ruff check
+          command: uv run ruff check .
+      - run:
+          name: Run ruff format check
+          command: uv run ruff format --check .
 
-  sam_deploy:
+  test:
     docker:
-    - image: cimg/python:3.12
+      - image: cimg/python:3.12
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v3-dependencies-{{ checksum "uv.lock" }}
+      - run:
+          name: Install UV
+          command: .circleci/install-uv.sh
+      - run:
+          name: Install dependencies
+          command: uv sync
+      - run:
+          name: Run pytest
+          command: uv run pytest
+
+  cdk_synth:
+    docker:
+      - image: cimg/python:3.12-node
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - attach_workspace:
+          at: ~/repo/
+      - restore_cache:
+          keys:
+            - v3-dependencies-{{ checksum "uv.lock" }}
+            - v1-node-{{ checksum "package.json" }}
+      - run:
+          name: Install UV
+          command: .circleci/install-uv.sh
+      - run:
+          name: Install Python dependencies
+          command: uv sync
+      - run:
+          name: Install Node.js dependencies
+          command: npm install
+      - run:
+          name: CDK synth
+          command: npx cdk synth
+      - save_cache:
+          when: on_success
+          paths:
+            - node_modules
+          key: v1-node-{{ checksum "package.json" }}
+      - persist_to_workspace:
+          root: ~/repo/
+          paths: [cdk.out/]
+
+  cdk_deploy:
+    docker:
+      - image: cimg/python:3.12-node
     working_directory: ~/repo/
     parameters:
       dc-environment:
         type: enum
-        enum: [ development, staging, production ]
+        enum: [development, staging, production]
     environment:
-      SAM_CONFIG_FILE: samconfig.toml.d/ci-<<parameters.dc-environment>>.toml
-      SAM_LAMBDA_CONFIG_ENV: <<parameters.dc-environment>>
+      DC_ENVIRONMENT: <<parameters.dc-environment>>
     steps:
-    - checkout
-    - attach_workspace:
-        at: ~/repo/
-    - restore_cache:
-        keys:
-        - v3-dependencies-{{ checksum "uv.lock" }}
-
-    - run:
-        name: Install UV
-        command: .circleci/install-uv.sh
-    - run: uv sync
-    - run: printenv SAM_CONFIG_FILE SAM_LAMBDA_CONFIG_ENV
-    - run: printenv AWS_ACCESS_KEY_ID | md5sum
-    - run:
-        name: "sam deploy"
-        command: |
-          uv run --with aws-sam-cli sam deploy \
-          --debug \
-          --config-env $SAM_LAMBDA_CONFIG_ENV \
-          --config-file ~/repo/${SAM_CONFIG_FILE} \
-          --template-file ~/repo/.aws-sam/build/template.yaml
-
+      - checkout
+      - attach_workspace:
+          at: ~/repo/
+      - restore_cache:
+          keys:
+            - v3-dependencies-{{ checksum "uv.lock" }}
+            - v1-node-{{ checksum "package.json" }}
+      - run:
+          name: Install UV
+          command: .circleci/install-uv.sh
+      - run:
+          name: Install Python dependencies
+          command: uv sync
+      - run:
+          name: Install Node.js dependencies
+          command: npm install
+      - run:
+          name: CDK deploy
+          command: npx cdk deploy --require-approval never --all
 
 workflows:
   version: 2
   test_build_deploy:
     jobs:
+      - install_and_update_dependencies
 
-    - install_and_update_dependencies
+      - lint:
+          requires:
+            - install_and_update_dependencies
 
-    - sam_build:
-        requires:
-        - install_and_update_dependencies # DependenciesLayer build needs lambda-layers/DependenciesLayer/requirements.txt
+      - test:
+          requires:
+            - install_and_update_dependencies
 
-    # This deployment tracks the tip of the main branch in Github. It is not intended
-    # to block staging (hence production) deployments: staging is the testing ground for
-    # production. This deployment is intended to give developers a target in their main
-    # AWS account that they can debug against, read its logs, etc, without having to escalate
-    # their access to the staging account. This deployment should not be modified manually,
-    # but only through commits which also reach staging and then production.
-    # This deployment doesn't wait on the `test` job to succeed.
-    - sam_deploy:
-        name: sam_deploy_development
-        dc-environment: development
-        requires:
-        - install_and_update_dependencies # SAM CLI is in the dev package set
-        - sam_build                       # deploy needs .aws-sam/build/
-        context: [ deployment-development-lgsf ]
-        filters: { branches: { only: [ main, master ] } }
+      - cdk_synth:
+          requires:
+            - install_and_update_dependencies
+            - lint
+            - test
+
+      # This deployment tracks the tip of the master branch in Github. It is not intended
+      # to block staging (hence production) deployments: staging is the testing ground for
+      # production. This deployment is intended to give developers a target in their main
+      # AWS account that they can debug against, read its logs, etc, without having to escalate
+      # their access to the staging account. This deployment should not be modified manually,
+      # but only through commits which also reach staging and then production.
+      - cdk_deploy:
+          name: cdk_deploy_development
+          dc-environment: development
+          requires:
+            - cdk_synth
+          context: [deployment-development-lgsf]
+          filters: { branches: { only: [main, master] } }

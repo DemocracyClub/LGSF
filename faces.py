@@ -109,7 +109,7 @@ for file_name in glob.glob("./data/**/face_data/*.json"):
         "email": json_data["councillor_json"]["email"],
         "url": json_data["councillor_json"]["url"],
         "photo_url": json_data["councillor_json"]["photo_url"],
-        "gender_from_name": gender_from_name(json_data["councillor_json"]["raw_name"]),
+        # "gender_from_name": gender_from_name(json_data["councillor_json"]["raw_name"]),  # Function not defined
         "gender_from_photo": face["Gender"]["Value"],
         "age_low": face["AgeRange"]["Low"],
         "age_high": face["AgeRange"]["High"],

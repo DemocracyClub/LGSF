@@ -255,7 +255,7 @@ class StepFunctionInvoker:
             report_data = json.loads(report_response["Body"].read())
             return report_data
 
-        except Exception as e:
+        except Exception:
             # Report doesn't exist yet or other error
             return None
 

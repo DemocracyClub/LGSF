@@ -106,10 +106,6 @@ class BaseCouncillorScraper(ScraperBase):
 class HTMLCouncillorScraper(BaseCouncillorScraper):
     class_tags = ["html"]
 
-    @abc.abstractmethod
-    def get_councillors(self):
-        pass
-
     def get_page(self, url):
         page = self.get(url, extra_headers=self.extra_headers).text
         return BeautifulSoup(page, "html5lib")
@@ -142,10 +138,6 @@ class PagedHTMLCouncillorScraper(HTMLCouncillorScraper):
             )
         except Exception:
             return None
-
-    @abc.abstractmethod
-    def get_councillors(self):
-        pass
 
     def get_councillors(self):
         url = self.base_url

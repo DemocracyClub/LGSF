@@ -1,11 +1,9 @@
 import re
 from urllib.parse import urljoin
 
-from bs4 import BeautifulSoup
 
 from lgsf.councillors import SkipCouncillorException
-from lgsf.councillors.scrapers import HTMLCouncillorScraper, \
-    PagedHTMLCouncillorScraper
+from lgsf.councillors.scrapers import PagedHTMLCouncillorScraper
 
 
 class Scraper(PagedHTMLCouncillorScraper):
@@ -16,7 +14,7 @@ class Scraper(PagedHTMLCouncillorScraper):
     }
 
     def get_single_councillor(self, councillor_html):
-        if councillor_html.find_all('th'):
+        if councillor_html.find_all("th"):
             raise SkipCouncillorException
         print(councillor_html)
         url = urljoin(self.base_url, councillor_html.a["href"])

@@ -440,7 +440,7 @@ class _GitHubSession(StorageSession):
                 # Branch already exists or conflict - generate new ID and retry
                 try:
                     return self._get_branch_sha(self.branch_name)
-                except:
+                except Exception:
                     self.run_id = self._generate_run_id()
                     self._branch_name = None
                     return self._create_branch()

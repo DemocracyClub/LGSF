@@ -39,3 +39,7 @@ cdk = [
 [tool.uv]
 package = false
 required-version = "==0.8.*"
+
+[tool.pytest.ini_options]
+testpaths = ["lgsf", "scrapers"]
+norecursedirs = ["cdk.out", "node_modules", ".venv", ".git"]
