@@ -73,6 +73,12 @@ jobs:
     docker:
       - image: cimg/python:3.12-node
     working_directory: ~/repo
+    parameters:
+      dc-environment:
+        type: enum
+        enum: [development, staging, production]
+    environment:
+      DC_ENVIRONMENT: <<parameters.dc-environment>>
     steps:
       - checkout
       - attach_workspace:
@@ -86,13 +92,13 @@ jobs:
           command: .circleci/install-uv.sh
       - run:
           name: Install Python dependencies
-          command: uv sync
+          command: uv sync --group cdk
       - run:
           name: Install Node.js dependencies
           command: npm install
       - run:
           name: CDK synth
-          command: npx cdk synth
+          command: uv run npx cdk synth
       - save_cache:
           when: on_success
           paths:
@@ -125,13 +131,13 @@ jobs:
           command: .circleci/install-uv.sh
       - run:
           name: Install Python dependencies
-          command: uv sync
+          command: uv sync --group cdk
       - run:
           name: Install Node.js dependencies
           command: npm install
       - run:
           name: CDK deploy
-          command: npx cdk deploy --require-approval never --all
+          command: uv run npx cdk deploy --require-approval never --all
 
 workflows:
   version: 2
@@ -145,13 +151,14 @@ workflows:
 
       - test:
           requires:
-            - install_and_update_dependencies
+            - lint
 
       - cdk_synth:
+          name: cdk_synth_development
+          dc-environment: development
           requires:
-            - install_and_update_dependencies
-            - lint
             - test
+          filters: { branches: { only: [main, master] } }
 
       # This deployment tracks the tip of the master branch in Github. It is not intended
       # to block staging (hence production) deployments: staging is the testing ground for
@@ -163,6 +170,6 @@ workflows:
           name: cdk_deploy_development
           dc-environment: development
           requires:
-            - cdk_synth
+            - cdk_synth_development
           context: [deployment-development-lgsf]
           filters: { branches: { only: [main, master] } }
