@@ -1,21 +1,21 @@
 {
-    "everyelectiion_data": {
-        "common_name": "East Staffordshire",
-        "created": "1974-04-01T00:00:00Z",
-        "election_name": "East Staffordshire local election",
-        "official_identifier": "EST",
-        "official_name": "East Staffordshire Borough Council",
-        "organisation_subtype": "NMD",
-        "organisation_type": "local-authority",
-        "slug": "east-staffordshire",
-        "start_date": "1974-04-01",
-        "territory_code": "ENG",
-        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/EST/1974-04-01/"
-    },
-    "services": {
-        "councillors": {
-            "base_url": "http://eaststaffsbc.gov.uk/council-democracy/councillors",
-            "cms_type": "Custom HTML"
-        }
+  "everyelectiion_data": {
+    "common_name": "East Staffordshire",
+    "created": "1974-04-01T00:00:00Z",
+    "election_name": "East Staffordshire local election",
+    "official_identifier": "EST",
+    "official_name": "East Staffordshire Borough Council",
+    "organisation_subtype": "NMD",
+    "organisation_type": "local-authority",
+    "slug": "east-staffordshire",
+    "start_date": "1974-04-01",
+    "territory_code": "ENG",
+    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/EST/1974-04-01/"
+  },
+  "services": {
+    "councillors": {
+      "base_url": "https://www.eaststaffsbc.gov.uk/council-democracy/councillors",
+      "cms_type": "Custom HTML"
     }
+  }
 }

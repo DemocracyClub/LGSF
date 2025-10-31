@@ -1,21 +1,21 @@
 {
-    "everyelectiion_data": {
-        "common_name": "Na h-Eileanan an Iar",
-        "created": "1996-04-01T00:00:00Z",
-        "election_name": "Na h-Eileanan an Iar local election",
-        "official_identifier": "ELS",
-        "official_name": "Comhairle nan Eilean Siar",
-        "organisation_subtype": "CA",
-        "organisation_type": "local-authority",
-        "slug": "na-h-eileanan-an-iar",
-        "start_date": "1996-04-01",
-        "territory_code": "SCT",
-        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/ELS/1996-04-01/"
-    },
-    "services": {
-        "councillors": {
-            "base_url": "https://cne-siar.gov.uk/home/your-council/council-members/",
-            "cms_type": "Custom HTML"
-        }
+  "everyelectiion_data": {
+    "common_name": "Na h-Eileanan an Iar",
+    "created": "1996-04-01T00:00:00Z",
+    "election_name": "Na h-Eileanan an Iar local election",
+    "official_identifier": "ELS",
+    "official_name": "Comhairle nan Eilean Siar",
+    "organisation_subtype": "CA",
+    "organisation_type": "local-authority",
+    "slug": "na-h-eileanan-an-iar",
+    "start_date": "1996-04-01",
+    "territory_code": "SCT",
+    "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/ELS/1996-04-01/"
+  },
+  "services": {
+    "councillors": {
+      "base_url": "https://www.cne-siar.gov.uk/council-and-committees/wards-and-councillors/councillors",
+      "cms_type": "Custom HTML"
     }
+  }
 }

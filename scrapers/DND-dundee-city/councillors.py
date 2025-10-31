@@ -18,10 +18,21 @@ class Scraper(HTMLCouncillorScraper):
             raise SkipCouncillorException
         url = urljoin(self.base_url, link["href"])
         soup = self.get_page(url)
-        heading = soup.h1.string.split("-")
-        name = heading[-1]
 
-        division = heading[1]
+        # H1 format: "Ward 4 - Coldside - Heather Anderson"
+        # H2 has just the name
+        h2 = soup.find("h2")
+        if h2 and h2.strong:
+            name = h2.strong.get_text(strip=True)
+        else:
+            # Fallback to old method if H2 not found
+            heading = soup.h1.get_text(strip=True).split("-")
+            name = heading[-1].strip()
+
+        # Extract ward from H1
+        h1_parts = soup.h1.get_text(strip=True).split("-")
+        division = h1_parts[1].strip() if len(h1_parts) > 1 else ""
+
         party = councillor_html.find_all("td")[-1].string
         councillor = self.add_councillor(
             url, identifier=url, name=name, party=party, division=division
@@ -30,5 +41,10 @@ class Scraper(HTMLCouncillorScraper):
         if email_el:
             councillor.email = email_el[0].get_text(strip=True)
 
-        councillor.photo_url = soup.select_one("img.file-image ")["src"]
+        photo = soup.select_one("img.file-image")
+        if not photo:
+            # Try alternative selector for councillor images
+            photo = soup.select_one('img[alt*="Councillor"]')
+        if photo and photo.get("src"):
+            councillor.photo_url = photo["src"]
         return councillor
