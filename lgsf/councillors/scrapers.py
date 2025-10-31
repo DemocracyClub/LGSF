@@ -88,19 +88,18 @@ class BaseCouncillorScraper(ScraperBase):
         self.save_json(councillor_obj)
 
     def report(self):
-        if self.options.get("verbose"):
-            if len(self.councillors) < 10:
-                raise ValueError(
-                    "Not many councillors found ({})".format(len(self.councillors))
-                )
-            if self.new_data:
-                self.console.log(
-                    f"Found {len(self.councillors)} councillors with some new data"
-                )
-            else:
-                self.console.log(
-                    f"Found {len(self.councillors)} councillors but no new data"
-                )
+        if len(self.councillors) < 10:
+            raise ValueError(
+                "Not many councillors found ({})".format(len(self.councillors))
+            )
+        if self.new_data:
+            self.console.log(
+                f"Found {len(self.councillors)} councillors with some new data"
+            )
+        else:
+            self.console.log(
+                f"Found {len(self.councillors)} councillors but no new data"
+            )
 
 
 class HTMLCouncillorScraper(BaseCouncillorScraper):
