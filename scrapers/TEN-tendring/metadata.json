@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "http://tdcdemocracy.tendringdc.gov.uk",
+            "base_url": "https://tdcdemocracy.tendringdc.gov.uk",
             "cms_type": "ModernGov"
         }
     }

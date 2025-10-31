@@ -1,33 +1,42 @@
-from urllib.parse import urljoin
-
-from lgsf.councillors import SkipCouncillorException
-from lgsf.councillors.scrapers import HTMLCouncillorScraper
+from lgsf.councillors.scrapers import JSONCouncillorScraper
 
 
-class Scraper(HTMLCouncillorScraper):
-    list_page = {
-        "container_css_selector": ".er-filter-grid",
-        "councillor_css_selector": ".er-filter-row",
-    }
+class Scraper(JSONCouncillorScraper):
+    def get_councillors(self):
+        """Override to return JSON entries directly"""
+        json_data = self.get(self.base_url).json()
+        return json_data.get("searchEntries", [])
 
-    def get_single_councillor(self, councillor_html):
-        url = councillor_html.select_one("a")
-        if not url:
-            raise SkipCouncillorException("Header row")
-        url = urljoin(self.base_url, url["href"].strip())
-        soup = self.get_page(url).select_one("#entry")
-        name = soup.h1.get_text(strip=True).replace("Councillor ", "")
-        name = " ".join(name.split(" ")[1::-1]).replace(",", "")
+    def get_single_councillor(self, councillor_json):
+        """Parse a single councillor from JSON"""
+        search_data = councillor_json.get("search_data", {})
 
-        division = soup.find("span", text="Ward").find_next("div").get_text(strip=True)
-        party = (
-            soup.find("span", text="Political Party")
-            .find_next("div")
-            .get_text(strip=True)
-        )
+        # Extract name from nested structure
+        name_data = search_data.get("name", [{}])[0]
+        first_name = name_data.get("firstName", "")
+        last_name = name_data.get("lastName", "")
+        name = f"{first_name} {last_name}".strip()
+
+        # Extract ward (division)
+        division = search_data.get("ward", "")
+
+        # Extract party (use political_group as fallback)
+        party = search_data.get("party", "") or search_data.get("political_group", "")
+
+        # Build URL from alias
+        alias = councillor_json.get("alias", "")
+        url = f"https://www.eastriding.gov.uk/council/councillors-and-committees/your-councillors/{alias}"
+
+        # Create councillor
         councillor = self.add_councillor(
-            url, identifier=url, party=party, division=division, name=name
+            url, identifier=alias, party=party, division=division, name=name
         )
-        councillor.email = soup.select("a[href^=mailto]")[0].get_text(strip=True)
-        councillor.photo_url = soup.select_one("img")["src"]
+
+        # Extract photo URL
+        image_data = search_data.get("image", [{}])
+        if image_data:
+            file_path = image_data[0].get("file_path", "")
+            if file_path:
+                councillor.photo_url = f"https://www.eastriding.gov.uk{file_path}"
+
         return councillor

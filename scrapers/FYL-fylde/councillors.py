@@ -10,9 +10,20 @@ class Scraper(CMISCouncillorScraper):
         url = list_page_html.a["href"]
         page = self.get(url).text
         soup = BeautifulSoup(page, "html5lib")
-        return (
-            soup.find(text=re.compile("Political Party"))
-            .parent.get_text(strip=True)
-            .replace("Political Party:", "")
-            .strip()
-        )
+
+        # Try to find "Political Party:" in the profile text
+        political_party_text = soup.find(text=re.compile("Political Party"))
+        if political_party_text:
+            return (
+                political_party_text.parent.get_text(strip=True)
+                .replace("Political Party:", "")
+                .strip()
+            )
+
+        # Fallback: get party from the "Value Party" div
+        party_div = soup.find("div", {"class": "Value Party"})
+        if party_div:
+            return party_div.get_text(strip=True)
+
+        # If neither found, return empty string
+        return ""

@@ -1,3 +1,5 @@
+import re
+
 from lgsf.councillors import SkipCouncillorException
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
@@ -34,7 +36,28 @@ class Scraper(HTMLCouncillorScraper):
             url, identifier=url, name=name, party=party, division=division
         )
 
-        councillor.email = soup.select("a[href^=mailto]")[0].get_text(strip=True)
+        # Try to find email - scope to main content area to avoid spurious matches
+        # Use .a-body--default to skip cookie notice which also has .a-body class
+        content_area = soup.select_one(".a-body--default") or soup
+        mailto_links = content_area.select("a[href^=mailto]")
+        if mailto_links:
+            # Extract from href attribute instead of text to avoid "(opens new window)" etc
+            href = mailto_links[0].get("href", "")
+            councillor.email = href.replace("mailto:", "").split("?")[0]
+        else:
+            # Search for email pattern in the page text
+            page_text = content_area.get_text()
+            # Use a more precise regex that stops at word boundaries like "Tel" after "gov.uk"
+            email_match = re.search(
+                r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}?(?=[A-Z][a-z]|[^A-Za-z0-9.@]|$)",
+                page_text,
+            )
+            if email_match:
+                councillor.email = email_match.group(0)
 
-        councillor.photo_url = soup.select_one(".a-relimage img")["src"]
+        # Try to find photo URL
+        photo_img = soup.select_one(".a-relimage img")
+        if photo_img:
+            councillor.photo_url = photo_img["src"]
+
         return councillor

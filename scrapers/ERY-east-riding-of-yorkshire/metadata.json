@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "https://www.eastriding.gov.uk/council/councillors-and-members-of-parliament/find-a-councillor/",
+            "base_url": "https://www.eastriding.gov.uk/?option=com_erycdirectory&task=entrydata.fetchsearchentries&format=json&directory_id=43&order_by_column=alias",
             "cms_type": "Custom HTML"
         }
     }
