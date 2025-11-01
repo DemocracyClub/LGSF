@@ -56,7 +56,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
                 emulation=rnet.Emulation.Firefox133,
                 allow_redirects=True,
                 max_redirects=10,
-                verify=self.verify_requests
+                verify=self.verify_requests,
             )
 
     def get(self, url, extra_headers=None):
@@ -70,7 +70,9 @@ class ScraperBase(metaclass=abc.ABCMeta):
         # Don't change headers for rnet, as it does it for us
         if self.http_lib == "rnet":
             # See: https://github.com/0x676e67/rnet/issues/405
-            response = self.http_client.get(url.replace(" ", "%20"), timeout=self.timeout)
+            response = self.http_client.get(
+                url.replace(" ", "%20"), timeout=self.timeout
+            )
         else:
             headers = {"User-Agent": "Scraper/DemocracyClub", "Accept": "*/*"}
 
