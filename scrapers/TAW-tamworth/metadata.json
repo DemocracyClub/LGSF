@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "http://democracy.tamworth.gov.uk",
+            "base_url": "https://tamworth.moderngov.co.uk",
             "cms_type": "ModernGov"
         }
     }

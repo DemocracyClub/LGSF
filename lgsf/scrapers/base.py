@@ -67,9 +67,10 @@ class ScraperBase(metaclass=abc.ABCMeta):
         if self.options.get("verbose"):
             self.console.log(f"Scraping from {url}")
 
+        # Don't change headers for rnet, as it does it for us
         if self.http_lib == "rnet":
-            # Don't change headers for rnet, as it does it for us
-            response = self.http_client.get(url, timeout=self.timeout)
+            # See: https://github.com/0x676e67/rnet/issues/405
+            response = self.http_client.get(url.replace(" ", "%20"), timeout=self.timeout)
         else:
             headers = {"User-Agent": "Scraper/DemocracyClub", "Accept": "*/*"}
 
