@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "https://mycouncil.surreycc.gov.uk",
+            "base_url": "https://mycouncil.surreycc.gov.uk/",
             "cms_type": "ModernGov"
         }
     }
