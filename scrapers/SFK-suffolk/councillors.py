@@ -26,8 +26,8 @@ class Scraper(HTMLCouncillorScraper):
             party=party,
             division=division,
         )
-        req = self.get(url)
-        soup = BeautifulSoup(req.text, "lxml")
+        text = self.get_text(url)
+        soup = BeautifulSoup(text, "lxml")
         councillor.email = soup.select_one("a[href^=mailto]")["href"].replace(
             "mailto:", ""
         )

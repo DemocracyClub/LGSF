@@ -14,8 +14,8 @@ class Scraper(HTMLCouncillorScraper):
 
     def get_single_councillor(self, councillor_html):
         url = urljoin(self.base_url, councillor_html.findAll("a")[0]["href"])
-        req = self.get(url)
-        soup = BeautifulSoup(req.text, "lxml")
+        text = self.get_text(url)
+        soup = BeautifulSoup(text, "lxml")
         name = soup.h1.get_text(strip=True)
         division = soup.select_one(".field--name-field-ward").get_text(strip=True)
         party = soup.select_one(".field--name-field-party-new").get_text(strip=True)

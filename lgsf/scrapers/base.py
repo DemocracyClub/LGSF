@@ -6,6 +6,7 @@ from pathlib import Path
 import httpx
 import requests
 from dateutil import parser
+import rnet
 
 from ..metadata.models import CouncilMetadata
 from ..storage.backends import get_storage_backend
@@ -19,7 +20,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
 
     disabled = False
     extra_headers = {}
-    http_lib = "httpx"
+    http_lib = "rnet"
     verify_requests = True
     timeout = 10
     service_name = None
@@ -46,9 +47,16 @@ class ScraperBase(metaclass=abc.ABCMeta):
         if self.http_lib == "requests":
             self.http_client = requests.Session()
             self.http_client.verify = self.verify_requests
-        else:
+        elif self.http_lib == "httpx":
             self.http_client = httpx.Client(
                 verify=self.verify_requests, follow_redirects=True
+            )
+        else:
+            self.http_client = rnet.blocking.Client(
+                emulation=rnet.Emulation.Firefox133,
+                allow_redirects=True,
+                max_redirects=10,
+                verify=self.verify_requests
             )
 
     def get(self, url, extra_headers=None):
@@ -58,13 +66,32 @@ class ScraperBase(metaclass=abc.ABCMeta):
 
         if self.options.get("verbose"):
             self.console.log(f"Scraping from {url}")
-        headers = {"User-Agent": "Scraper/DemocracyClub", "Accept": "*/*"}
 
-        if extra_headers:
-            headers.update(extra_headers)
-        response = self.http_client.get(url, headers=headers, timeout=self.timeout)
+        if self.http_lib == "rnet":
+            # Don't change headers for rnet, as it does it for us
+            response = self.http_client.get(url, timeout=self.timeout)
+        else:
+            headers = {"User-Agent": "Scraper/DemocracyClub", "Accept": "*/*"}
+
+            if extra_headers:
+                headers.update(extra_headers)
+            response = self.http_client.get(url, headers=headers, timeout=self.timeout)
+
         response.raise_for_status()
         return response
+
+    def get_text(self, url, extra_headers=None):
+        """
+        Wraps self.get and always returns the response text.
+
+        This is needed because requests and https h
+        ave response.text, rnet has response.text() (callable)
+        """
+        response = self.get(url, extra_headers=extra_headers)
+        text = response.text
+        if callable(text):
+            text = text()
+        return text
 
     def check(self):
         assert self.service_name, "Scrapers must set a service_name"

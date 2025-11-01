@@ -106,7 +106,7 @@ class HTMLCouncillorScraper(BaseCouncillorScraper):
     class_tags = ["html"]
 
     def get_page(self, url):
-        page = self.get(url, extra_headers=self.extra_headers).text
+        page = self.get_text(url, extra_headers=self.extra_headers)
         return BeautifulSoup(page, "html5lib")
 
     def get_list_container(self):
@@ -174,11 +174,10 @@ class ModGovCouncillorScraper(BaseCouncillorScraper):
         return "{}/mgWebService.asmx/GetCouncillorsByWard".format(self.base_url)
 
     def get_councillors(self):
-        req = self.get(
+        text = self.get_text(
             self.format_councillor_api_url(), extra_headers=self.extra_headers
         )
-        req.raise_for_status()
-        soup = BeautifulSoup(req.text, features="xml")
+        soup = BeautifulSoup(text, features="xml")
         return soup.findAll("ward")
 
     def get_single_councillor(self, ward, councillor_xml):
@@ -231,11 +230,11 @@ class CMISCouncillorScraper(BaseCouncillorScraper):
     class_tags = ["cmis"]
 
     def get_councillors(self):
-        req = self.get(
+        text = self.get_text(
             self.base_url,
             extra_headers=self.extra_headers,
         )
-        soup = BeautifulSoup(req.text, "lxml")
+        soup = BeautifulSoup(text, "lxml")
         return soup.findAll("div", {"class": self.person_block_class_name})
 
     def get_party_name(self, list_page_html):
@@ -263,8 +262,8 @@ class CMISCouncillorScraper(BaseCouncillorScraper):
             division=division,
         )
 
-        req = self.get(url)
-        soup = BeautifulSoup(req.text, "lxml")
+        text = self.get_text(url)
+        soup = BeautifulSoup(text, "lxml")
         with contextlib.suppress(IndexError):
             councillor.email = soup.select(".Email")[0].getText(strip=True)
         return councillor

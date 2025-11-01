@@ -17,8 +17,8 @@ class Scraper(PagedHTMLCouncillorScraper):
 
     def get_single_councillor(self, councillor_html):
         url = urljoin(self.base_url, councillor_html.findAll("a")[0]["href"])
-        req = self.get(url)
-        soup = BeautifulSoup(req.text, "lxml")
+        text = self.get_text(url)
+        soup = BeautifulSoup(text, "lxml")
         name = soup.select_one("h1.lgd-page-title-block__title").get_text(strip=True)
         if name == "Vacant":
             raise SkipCouncillorException("Vacant")

@@ -8,8 +8,8 @@ from lgsf.councillors.scrapers import CMISCouncillorScraper
 class Scraper(CMISCouncillorScraper):
     def get_from_profile_page(self, profile_url):
         # Get the real profile page
-        req = self.get(profile_url)
-        soup = BeautifulSoup(req.text, "lxml")
+        text = self.get_text(profile_url)
+        soup = BeautifulSoup(text, "lxml")
 
         identifier = profile_url.split("/councillors/")[1].split("/")[0]
         name = soup.find("h2", {"class": "listing__heading"}).getText(strip=True)
@@ -36,8 +36,8 @@ class Scraper(CMISCouncillorScraper):
         url = list_page_html.a["href"]
 
         # Get the CMIS page for this person
-        req = self.get(url)
-        soup = BeautifulSoup(req.text, "lxml")
+        text = self.get_text(url)
+        soup = BeautifulSoup(text, "lxml")
         try:
             profile_url = soup.select(".Biog")[0].a["href"].strip()
             councillor = self.get_from_profile_page(profile_url)
