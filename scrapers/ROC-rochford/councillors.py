@@ -1,5 +1,5 @@
-from lgsf.councillors.scrapers import CMISCouncillorScraper
+from lgsf.councillors.scrapers import ModGovCouncillorScraper
 
 
-class Scraper(CMISCouncillorScraper):
+class Scraper(ModGovCouncillorScraper):
     pass

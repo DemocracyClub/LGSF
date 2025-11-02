@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "http://committees.oldham.gov.uk",
+            "base_url": "https://committees.oldham.gov.uk",
             "cms_type": "ModernGov"
         }
     }

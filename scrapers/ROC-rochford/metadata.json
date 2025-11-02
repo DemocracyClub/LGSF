@@ -14,8 +14,8 @@
     },
     "services": {
         "councillors": {
-            "base_url": "https://rochford.cmis.uk.com/rochford/Members/tabid/62/ScreenMode/Alphabetical/Default.aspx",
-            "cms_type": "CMIS"
+            "base_url": "https://rochford.moderngov.co.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

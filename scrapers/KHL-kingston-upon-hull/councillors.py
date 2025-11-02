@@ -2,4 +2,4 @@ from lgsf.councillors.scrapers import CMISCouncillorScraper
 
 
 class Scraper(CMISCouncillorScraper):
-    division_text = "Constituency:"
+    verify_requests = False
