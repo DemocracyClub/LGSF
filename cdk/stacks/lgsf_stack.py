@@ -238,6 +238,7 @@ class LgsfStack(cdk.Stack):
                 ".",
                 exclude=EXCLUDE_FILES,
             ),
+            memory_size=512,
             handler="lgsf.aws_lambda.handlers.scraper_worker_handler",
             runtime=aws_lambda.Runtime.PYTHON_3_12,
             timeout=cdk.Duration.minutes(15),
