@@ -251,6 +251,22 @@ class ScraperBase(metaclass=abc.ABCMeta):
             Storage result from the backend, or None if no session was active
         """
         if self.storage_session:
+            # Check if there are any staged files before finalizing
+            # This prevents empty commits when scrapers fail or have no changes
+            has_staged_files = False
+            if hasattr(self.storage_session, "_staged"):
+                has_staged_files = bool(self.storage_session._staged)
+
+            if not has_staged_files:
+                self.console.log(
+                    f"[yellow]No files staged for {self.options['council']}, "
+                    "skipping commit[/yellow]"
+                )
+                # Clean up session without committing
+                self.storage_backend._reset_session_state(self.storage_session)
+                self.storage_session = None
+                return {"skipped": True, "reason": "no files staged"}
+
             # Ensure the run log has console output if supported
             if (
                 run_log
