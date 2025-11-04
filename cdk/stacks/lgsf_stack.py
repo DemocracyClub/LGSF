@@ -10,7 +10,6 @@ from aws_cdk import aws_stepfunctions as sfn
 from aws_cdk import aws_stepfunctions_tasks as tasks
 from constructs import Construct
 
-
 EXCLUDE_FILES = [
     "cdk.out",
     ".venv",
@@ -244,7 +243,7 @@ class LgsfStack(cdk.Stack):
             timeout=cdk.Duration.minutes(15),
             layers=[self.dependencies_layer],
             role=self.lambda_execution_role,
-            reserved_concurrent_executions=2,  # Reserve capacity to prevent TooManyRequests
+            reserved_concurrent_executions=2,
             environment=common_env.copy(),
             description="Process individual council scraper tasks",
         )
@@ -329,7 +328,7 @@ class LgsfStack(cdk.Stack):
             self,
             "ParallelScrapers",
             items_path="$.councils",
-            max_concurrency=2,  # Limit concurrency to avoid Lambda throttling
+            max_concurrency=2,
             result_path="$.scraper_results",  # Store results in job data
             label="CouncilScraping",  # Base name for scraper executions
             tolerated_failure_percentage=100,  # Allow all scrapers to fail without failing the map
