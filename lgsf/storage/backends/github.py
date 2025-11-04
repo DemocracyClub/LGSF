@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import boto3
 import datetime
+import hashlib
 import json
 import logging
 import os
@@ -603,8 +604,74 @@ class _GitHubSession(StorageSession):
         except Exception as e:
             return {"error": str(e), "cleaned_up": 0}
 
-    def _collect_existing_files(self, path: str, default_branch: str) -> None:
-        """Recursively collect all files in the scraper type folder."""
+    def _collect_existing_files_via_tree(
+        self, default_branch: str, path_prefix: str
+    ) -> None:
+        """
+        Collect all files using Git Tree API - much more efficient than recursive Contents API.
+
+        This uses a single API call to get the entire tree instead of recursively
+        fetching directory contents. Saves significant API calls for repos with many files.
+        """
+        try:
+            # Get the commit SHA for the default branch
+            ref_response = self.session.get(
+                f"{self.api_base_url}/git/refs/heads/{default_branch}"
+            )
+
+            if ref_response.status_code != 200:
+                logger.warning(
+                    f"Could not get branch ref for {default_branch}: "
+                    f"status {ref_response.status_code}"
+                )
+                return
+
+            commit_sha = ref_response.json()["object"]["sha"]
+
+            # Get the tree recursively (one API call gets everything!)
+            tree_response = self.session.get(
+                f"{self.api_base_url}/git/trees/{commit_sha}",
+                params={"recursive": "1"},  # Get entire tree in one call
+            )
+
+            if tree_response.status_code != 200:
+                logger.warning(
+                    f"Could not get tree for commit {commit_sha}: "
+                    f"status {tree_response.status_code}"
+                )
+                return
+
+            tree_data = tree_response.json()
+
+            # Filter files that are in our scraper type folder
+            for item in tree_data.get("tree", []):
+                if item["type"] == "blob":  # It's a file
+                    file_path = item["path"]
+                    # Only include files in the target folder
+                    if (
+                        file_path.startswith(path_prefix + "/")
+                        or file_path == path_prefix
+                    ):
+                        self._existing_files.append(file_path)
+                        # Cache the blob SHA for efficient change detection
+                        if "sha" in item:
+                            self._etag_cache[file_path] = ("", item["sha"])
+
+            logger.info(
+                f"Collected {len(self._existing_files)} existing files via Git Tree API "
+                f"(saved ~{len(self._existing_files) // 10} API calls)"
+            )
+
+        except requests.exceptions.HTTPError as e:
+            logger.warning(f"Error using Git Tree API, falling back: {e}")
+            # Fallback to old method if Tree API fails
+            self._collect_existing_files_legacy(path_prefix, default_branch)
+        except Exception as e:
+            logger.warning(f"Unexpected error in Git Tree API: {e}")
+            self._collect_existing_files_legacy(path_prefix, default_branch)
+
+    def _collect_existing_files_legacy(self, path: str, default_branch: str) -> None:
+        """Legacy recursive collection using Contents API - kept as fallback."""
         try:
             # Prepare headers for conditional request using ETag cache
             headers = {}
@@ -657,7 +724,7 @@ class _GitHubSession(StorageSession):
                         if file_cache_key not in self._etag_cache:
                             self._etag_cache[file_cache_key] = ("", item["sha"])
                 elif item["type"] == "dir":
-                    self._collect_existing_files(item["path"], default_branch)
+                    self._collect_existing_files_legacy(item["path"], default_branch)
         except requests.exceptions.HTTPError:
             pass
 
@@ -668,7 +735,8 @@ class _GitHubSession(StorageSession):
             folder_path = self.scraper_object_type
             self._existing_files = []
 
-            self._collect_existing_files(folder_path, default_branch)
+            # Use efficient Git Tree API instead of recursive Contents API
+            self._collect_existing_files_via_tree(default_branch, folder_path)
 
             return {
                 "existing_files_found": len(self._existing_files),
@@ -841,22 +909,28 @@ class _GitHubSession(StorageSession):
 
         return result
 
+    def _compute_blob_sha(self, content: bytes) -> str:
+        """
+        Compute the Git blob SHA for content, matching GitHub's algorithm.
+
+        Git stores blobs with a header: "blob <size>\0<content>"
+        SHA-1 hash of this gives the blob SHA that GitHub uses.
+        """
+        header = f"blob {len(content)}\0".encode("utf-8")
+        blob_data = header + content
+        return hashlib.sha1(blob_data).hexdigest()
+
     def _detect_changes(self) -> bool:
         """
         Detect if there are any actual changes between staged files and existing files.
 
         Returns True if changes detected, False if no changes.
         If we can't access the repository, we assume changes exist.
+
+        OPTIMIZED: Uses SHA comparison instead of fetching file contents.
+        This saves massive API calls since we already have SHAs from Git Tree API.
         """
         try:
-            repo_response = self.session.get(self.api_base_url)
-
-            if self._handle_api_error(repo_response, "change detection"):
-                return True
-
-            repo_response.raise_for_status()
-            default_branch = repo_response.json()["default_branch"]
-
             logger.info(
                 f"Change detection for {self.council_code}/{self.scraper_object_type}: "
                 f"{len(self._staged)} staged files, {len(self._existing_files)} existing files"
@@ -872,56 +946,57 @@ class _GitHubSession(StorageSession):
                 return True
 
             # Check if any staged files are new or have different content
+            # OPTIMIZATION: Use SHA comparison instead of fetching file contents
             files_checked = 0
+            sha_comparisons = 0
 
             for file_path, staged_content in self._staged.items():
                 try:
-                    # Prepare headers for conditional request
-                    headers = {}
-                    cached_etag = None
-                    cached_sha = None
+                    # Check if this file exists in the repository
+                    if file_path not in self._existing_files:
+                        logger.info(f"Changes detected: new file {file_path}")
+                        return True
 
-                    # Use ETag from cache if available
+                    # We have the blob SHA from Git Tree API (_collect_existing_files_via_tree)
                     if file_path in self._etag_cache:
-                        cached_etag, cached_sha = self._etag_cache[file_path]
-                        headers["If-None-Match"] = cached_etag
-                        logger.debug(
-                            f"Using cached ETag for {file_path}: {cached_etag}"
-                        )
+                        _, existing_blob_sha = self._etag_cache[file_path]
+
+                        if existing_blob_sha:
+                            # Compute blob SHA for staged content
+                            staged_blob_sha = self._compute_blob_sha(staged_content)
+
+                            # Compare SHAs - NO API CALL NEEDED!
+                            if staged_blob_sha != existing_blob_sha:
+                                logger.info(
+                                    f"Changes detected: modified file {file_path} "
+                                    f"(SHA changed: {existing_blob_sha[:8]}... -> {staged_blob_sha[:8]}...)"
+                                )
+                                return True
+
+                            sha_comparisons += 1
+                            files_checked += 1
+                            logger.debug(f"File unchanged (SHA match): {file_path}")
+                            continue
+
+                    # Fallback: If we don't have SHA cached, we need to fetch the file
+                    # This shouldn't happen often if Git Tree API worked
+                    logger.debug(f"No cached SHA for {file_path}, fetching content")
+                    repo_response = self.session.get(self.api_base_url)
+                    if self._handle_api_error(repo_response, "change detection"):
+                        return True
+                    repo_response.raise_for_status()
+                    default_branch = repo_response.json()["default_branch"]
 
                     response = self.session.get(
                         f"{self.api_base_url}/contents/{file_path}",
                         params={"ref": default_branch},
-                        headers=headers,
                     )
 
-                    if self._handle_api_error(response, f"file check for {file_path}"):
-                        return True
-
-                    if response.status_code == 304:
-                        # Not Modified - content hasn't changed (FREE request!)
-                        self._rate_limit_savings += 1
-                        logger.debug(f"File unchanged (304): {file_path}")
-
-                        # Content is the same as cached, compare with staged
-                        # We need to fetch the actual content to compare
-                        # But we can skip if we trust our cache
-                        # For safety, assume no change if 304
-                        files_checked += 1
-                        continue
-                    elif response.status_code == 404:
+                    if response.status_code == 404:
                         logger.info(f"Changes detected: new file {file_path}")
                         return True
                     elif response.status_code == 200:
                         existing_file_data = response.json()
-
-                        # Store ETag for future requests
-                        if "etag" in response.headers:
-                            etag = response.headers["etag"]
-                            file_sha = existing_file_data.get("sha", "")
-                            self._etag_cache[file_path] = (etag, file_sha)
-                            logger.debug(f"Cached ETag for {file_path}: {etag}")
-
                         existing_content = base64.b64decode(
                             existing_file_data["content"]
                         )
@@ -951,14 +1026,16 @@ class _GitHubSession(StorageSession):
 
             logger.info(
                 f"No changes detected: all {files_checked}/{len(self._staged)} "
-                "staged files match existing content"
+                f"staged files match existing content "
+                f"({sha_comparisons} via SHA comparison, {files_checked - sha_comparisons} via API)"
             )
 
-            # Log rate limit savings from ETags
-            if self._rate_limit_savings > 0:
+            # Log API call savings from SHA comparison
+            if sha_comparisons > 0:
                 logger.info(
-                    f"Rate limit savings: {self._rate_limit_savings} requests saved via ETags (304 responses)"
+                    f"Rate limit savings: {sha_comparisons} API calls saved via SHA comparison"
                 )
+                self._rate_limit_savings += sha_comparisons
 
             return False
 
