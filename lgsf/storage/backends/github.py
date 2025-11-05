@@ -185,15 +185,15 @@ class _GitHubSession(StorageSession):
         # Otherwise, we need to check and potentially create the repository
         if etag_cache_existed:
             self._repository_exists_checked = True
-            logger.debug(
+            logger.info(
                 f"ETag cache found in S3 for {self.council_code}, "
-                "assuming repository exists"
+                "skipping repository existence check (optimization)"
             )
         else:
             self._repository_exists_checked = False
-            logger.debug(
+            logger.info(
                 f"No ETag cache in S3 for {self.council_code}, "
-                "will check repository existence"
+                "will check repository existence on first commit"
             )
 
     def _generate_run_id(self) -> str:
