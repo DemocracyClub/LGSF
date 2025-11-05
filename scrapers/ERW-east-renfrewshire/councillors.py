@@ -4,6 +4,12 @@ from urllib.parse import urljoin
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
+def decode_cfemail(hexstr: str) -> str:
+    data = bytes.fromhex(hexstr)
+    key = data[0]
+    return bytes(b ^ key for b in data[1:]).decode("utf-8")
+
+
 class Scraper(HTMLCouncillorScraper):
     list_page = {
         "container_css_selector": "main .a-body",
@@ -40,8 +46,8 @@ class Scraper(HTMLCouncillorScraper):
             party=party,
             division=ward,
         )
-
-        councillor.email = soup.select_one("td a[href^=mailto]").get_text(strip=True)
+        councillor.email = decode_cfemail(
+            soup.select_one("td a span.__cf_email__")["data-cfemail"])
         councillor.photo_url = urljoin(
             self.base_url,
             soup.select_one(".a-relimage img")["src"],
