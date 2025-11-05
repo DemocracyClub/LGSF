@@ -170,6 +170,9 @@ class _GitHubSession(StorageSession):
         # This will fail the Lambda early if Git layer is missing
         self._check_git_available()
 
+        # Configure Git identity for commits
+        self._configure_git_identity()
+
     def _generate_run_id(self) -> str:
         """Generate a unique run ID."""
         return f"{str(uuid.uuid4())[:8]}-{int(time.time() * 1000) % 10000:04d}"
@@ -197,6 +200,31 @@ class _GitHubSession(StorageSession):
     def api_base_url(self) -> str:
         """Returns GitHub API base URL for this repository"""
         return f"https://api.github.com/repos/{self.owner}/{self.repo}"
+
+    def _configure_git_identity(self) -> None:
+        """
+        Configure Git user identity for commits.
+
+        Git requires user.name and user.email to be set before making commits.
+        In Lambda, we can't use --global (no HOME), so we set environment variables
+        that Git will use for all operations.
+        """
+        try:
+            # Set environment variables for Git identity
+            # These work even without a HOME directory
+            os.environ["GIT_AUTHOR_NAME"] = "LGSF Bot"
+            os.environ["GIT_AUTHOR_EMAIL"] = "lgsf-bot@democracyclub.org.uk"
+            os.environ["GIT_COMMITTER_NAME"] = "LGSF Bot"
+            os.environ["GIT_COMMITTER_EMAIL"] = "lgsf-bot@democracyclub.org.uk"
+
+            logger.info(
+                "Git identity configured via environment variables: LGSF Bot <lgsf-bot@democracyclub.org.uk>"
+            )
+        except Exception as e:
+            logger.error(f"Failed to configure git identity: {e}")
+            raise RuntimeError(
+                f"CRITICAL: Failed to configure git user identity: {e}"
+            ) from e
 
     def _check_git_available(self) -> None:
         """
