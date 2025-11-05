@@ -1,16 +1,14 @@
 from __future__ import annotations
 
-import base64
-import boto3
 import datetime
-import hashlib
-import json
 import logging
 import os
+import shutil
+import subprocess
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Callable, override
+from typing import Any, override
 
 import jwt
 import requests
@@ -76,12 +74,13 @@ class GitHubAppAuthenticator:
         headers = {
             "Authorization": f"Bearer {jwt_token}",
             "Accept": "application/vnd.github.v3+json",
-            "User-Agent": "LGSF-GitHub-Storage/2.0",
+            "User-Agent": "LGSF-GitHub-Storage/3.0",
         }
 
         response = requests.post(
             f"https://api.github.com/app/installations/{self.installation_id}/access_tokens",
             headers=headers,
+            timeout=30,
         )
         response.raise_for_status()
 
@@ -121,10 +120,10 @@ class GitHubAppAuthenticator:
 
 class _GitHubSession(StorageSession):
     """
-    GitHub session implementation for GitHub repositories.
+    GitHub session implementation using local Git operations.
 
-    This session implementation stages all file operations in memory and creates
-    a single commit with all changes when the session is committed.
+    This session implementation stages all file operations in memory and uses
+    Git CLI commands to perform all operations locally, minimizing API calls.
     """
 
     def __init__(
@@ -134,16 +133,12 @@ class _GitHubSession(StorageSession):
         council_code: str,
         scraper_object_type: str = "Data",
         run_id: str | None = None,
-        disable_change_detection: bool = False,
-        rate_limit_threshold: int = 100,
     ):
         self.organization: str = organization
         self.github_token: str = github_token
         self.council_code: str = council_code
         self.scraper_object_type: str = scraper_object_type
         self.run_id: str = run_id or self._generate_run_id()
-        self.disable_change_detection: bool = disable_change_detection
-        self.rate_limit_threshold: int = rate_limit_threshold
 
         # Repository configuration
         self.owner: str = organization
@@ -153,48 +148,27 @@ class _GitHubSession(StorageSession):
         # Session state
         self._staged: dict[str, bytes] = {}
         self._closed: bool = False
-        self._existing_files: list[str] = []
-        self._preparation_result: dict[str, Any] | None = None
 
-        # ETag cache for conditional requests (reduces rate limit usage)
-        # Maps file path to tuple of (etag, sha)
-        self._etag_cache: dict[str, tuple[str, str]] = {}
-        self._rate_limit_savings: int = 0  # Track 304 responses
+        # Local Git repository path (in Lambda's /tmp)
+        self.local_repo_path: str = f"/tmp/lgsf-repos/{self.council_code}"
 
-        # S3 configuration for persistent ETag cache
-        self._s3_bucket = os.environ.get("S3_REPORTS_BUCKET")
-        self._s3_client = boto3.client("s3") if self._s3_bucket else None
+        # Remote URL with authentication
+        self.remote_url: str = (
+            f"https://x-access-token:{self.github_token}@github.com/"
+            f"{self.owner}/{self.repo}.git"
+        )
 
         # Branch management
         self.today: str = datetime.datetime.now().strftime("%Y-%m-%d")
         self._branch_name: str | None = None
-        self._base_sha: str | None = None
+        self._default_branch: str = "main"
 
-        # GitHub API session
+        # GitHub API session (only for repo creation and PR/merge)
         self.session: requests.Session = self._create_api_session()
 
-        # OPTIMIZATION: Use S3 ETag cache presence as repository existence indicator
-        # If we successfully loaded an ETag cache, the repository must exist
-        # This saves 1 API call per scraper for existing repositories
-        self._default_branch = "main"  # Hardcoded - all repos use "main"
-
-        # Load ETag cache from S3 before doing any API calls
-        etag_cache_existed = self._load_etag_cache_from_s3()
-
-        # Smart repository check: If ETag cache exists in S3, repository exists
-        # Otherwise, we need to check and potentially create the repository
-        if etag_cache_existed:
-            self._repository_exists_checked = True
-            logger.info(
-                f"ETag cache found in S3 for {self.council_code}, "
-                "skipping repository existence check (optimization)"
-            )
-        else:
-            self._repository_exists_checked = False
-            logger.info(
-                f"No ETag cache in S3 for {self.council_code}, "
-                "will check repository existence on first commit"
-            )
+        # CRITICAL: Check that Git is available immediately
+        # This will fail the Lambda early if Git layer is missing
+        self._check_git_available()
 
     def _generate_run_id(self) -> str:
         """Generate a unique run ID."""
@@ -207,210 +181,10 @@ class _GitHubSession(StorageSession):
             {
                 "Authorization": f"token {self.github_token}",
                 "Accept": "application/vnd.github.v3+json",
-                "User-Agent": "LGSF-GitHub-Storage/2.0",
+                "User-Agent": "LGSF-GitHub-Storage/3.0",
             }
         )
         return session
-
-    def _log_rate_limit_status(self) -> None:
-        """
-        Log current GitHub rate limit status without blocking execution.
-
-        This allows scrapers to proceed even with low rate limits, since
-        ETags (304 responses) don't count against the limit.
-        """
-        try:
-            response = self.session.get("https://api.github.com/rate_limit")
-            if response.status_code == 200:
-                data = response.json()
-                core_limit = data["resources"]["core"]
-                remaining = core_limit["remaining"]
-                limit = core_limit["limit"]
-                reset_time = core_limit["reset"]
-
-                logger.info(
-                    f"GitHub rate limit for {self.council_code}: "
-                    f"{remaining}/{limit} remaining "
-                    f"(resets at {datetime.datetime.fromtimestamp(reset_time)})"
-                )
-
-                # Warn but don't fail - let ETags save us!
-                if remaining < self.rate_limit_threshold:
-                    reset_dt = datetime.datetime.fromtimestamp(reset_time)
-                    logger.warning(
-                        f"GitHub rate limit low: {remaining}/{limit} remaining. "
-                        f"Resets at {reset_dt}. Proceeding with ETag optimization."
-                    )
-        except Exception as e:
-            logger.warning(f"Could not check rate limit: {e}. Proceeding anyway.")
-
-    def _get_etag_cache_s3_key(self) -> str:
-        """Generate S3 key for ETag cache."""
-        return f"etag-cache/{self.council_code}/{self.scraper_object_type}.json"
-
-    def _load_etag_cache_from_s3(self) -> bool:
-        """
-        Load ETag cache from S3 to enable conditional requests across Lambda invocations.
-
-        Returns:
-            bool: True if ETag cache was found and loaded, False otherwise
-        """
-        if not self._s3_client or not self._s3_bucket:
-            logger.debug("S3 not configured, skipping ETag cache load")
-            return False
-
-        try:
-            s3_key = self._get_etag_cache_s3_key()
-            logger.info(f"Loading ETag cache from S3: s3://{self._s3_bucket}/{s3_key}")
-
-            response = self._s3_client.get_object(Bucket=self._s3_bucket, Key=s3_key)
-
-            cache_data = json.loads(response["Body"].read().decode("utf-8"))
-
-            # Load ETags from cache
-            etags_dict = cache_data.get("etags", {})
-            for file_path, etag_data in etags_dict.items():
-                etag = etag_data.get("etag", "")
-                sha = etag_data.get("sha", "")
-                if etag or sha:
-                    self._etag_cache[file_path] = (etag, sha)
-
-            last_updated = cache_data.get("last_updated", "unknown")
-            logger.info(
-                f"Loaded {len(self._etag_cache)} ETags from cache "
-                f"(last updated: {last_updated})"
-            )
-
-            # ETag cache exists, so repository must exist
-            return True
-
-        except self._s3_client.exceptions.NoSuchKey:
-            logger.info(
-                f"No existing ETag cache found in S3 for {self.council_code}/{self.scraper_object_type}"
-            )
-            return False
-        except Exception as e:
-            # ETag cache is critical for rate limit management - fail hard
-            logger.error(f"Failed to load ETag cache from S3: {e}")
-            raise
-
-    def _save_etag_cache_to_s3(self) -> None:
-        """Save ETag cache to S3 for use in future Lambda invocations."""
-        if not self._s3_client or not self._s3_bucket:
-            logger.debug("S3 not configured, skipping ETag cache save")
-            return
-
-        if not self._etag_cache:
-            logger.debug("ETag cache is empty, nothing to save")
-            return
-
-        try:
-            s3_key = self._get_etag_cache_s3_key()
-
-            # Build cache data structure
-            etags_dict = {}
-            for file_path, (etag, sha) in self._etag_cache.items():
-                etags_dict[file_path] = {"etag": etag, "sha": sha}
-
-            cache_data = {
-                "council_code": self.council_code,
-                "scraper_type": self.scraper_object_type,
-                "last_updated": datetime.datetime.now(datetime.UTC).isoformat(),
-                "etag_count": len(etags_dict),
-                "rate_limit_savings": self._rate_limit_savings,
-                "etags": etags_dict,
-            }
-
-            # Save to S3
-            self._s3_client.put_object(
-                Bucket=self._s3_bucket,
-                Key=s3_key,
-                Body=json.dumps(cache_data, indent=2),
-                ContentType="application/json",
-            )
-
-            logger.info(
-                f"Saved {len(etags_dict)} ETags to S3: s3://{self._s3_bucket}/{s3_key}"
-            )
-
-        except Exception as e:
-            # ETag cache is critical for rate limit management - fail hard
-            logger.error(f"Failed to save ETag cache to S3: {e}")
-            raise
-
-    def _normalize_path(self, filename: Path) -> str:
-        """Normalize file path for cross-platform compatibility."""
-        return str(filename).replace("\\", "/")
-
-    def _retry_request(
-        self,
-        func: Callable[..., requests.Response],
-        max_retries: int = 3,
-        *args: Any,
-        **kwargs: Any,
-    ) -> requests.Response:
-        """Retry a request function with exponential backoff for network issues."""
-        for attempt in range(max_retries):
-            try:
-                response = func(*args, **kwargs)
-
-                # Check for rate limit in response headers
-                if "X-RateLimit-Remaining" in response.headers:
-                    remaining = int(response.headers["X-RateLimit-Remaining"])
-                    if remaining < self.rate_limit_threshold:
-                        reset_time = int(response.headers.get("X-RateLimit-Reset", 0))
-                        reset_dt = datetime.datetime.fromtimestamp(reset_time)
-                        raise GitHubRateLimitError(
-                            f"GitHub rate limit exhausted during operation: "
-                            f"{remaining} remaining. Resets at {reset_dt}.",
-                            reset_time=reset_time,
-                        )
-
-                return response
-            except GitHubRateLimitError:
-                raise
-            except (
-                requests.exceptions.ConnectionError,
-                requests.exceptions.Timeout,
-            ):
-                if attempt < max_retries - 1:
-                    time.sleep(2**attempt)
-                    continue
-                raise
-        raise RuntimeError("Should not reach here")
-
-    def _handle_api_error(self, response: requests.Response, context: str) -> bool:
-        """
-        Handle common GitHub API errors with helpful messages.
-
-        Returns:
-            bool: True if error was handled and caller should continue, False if should raise
-        """
-        if response.status_code == 403:
-            # Check if it's a rate limit error
-            if "X-RateLimit-Remaining" in response.headers:
-                remaining = int(response.headers["X-RateLimit-Remaining"])
-                if remaining == 0:
-                    reset_time = int(response.headers.get("X-RateLimit-Reset", 0))
-                    reset_dt = datetime.datetime.fromtimestamp(reset_time)
-                    raise GitHubRateLimitError(
-                        f"GitHub rate limit exceeded during {context}. "
-                        f"Resets at {reset_dt}.",
-                        reset_time=reset_time,
-                    )
-
-            logger.warning(
-                f"GitHub API access forbidden during {context} for {self.council_code}. "
-                "Check token permissions (needs 'repo' scope)"
-            )
-            return True
-        elif response.status_code == 404:
-            logger.warning(
-                f"Resource not found during {context} for {self.council_code}"
-            )
-            return True
-
-        return False
 
     @property
     def branch_name(self) -> str:
@@ -424,44 +198,115 @@ class _GitHubSession(StorageSession):
         """Returns GitHub API base URL for this repository"""
         return f"https://api.github.com/repos/{self.owner}/{self.repo}"
 
-    def _ensure_repository_exists(self) -> None:
-        """Ensure the council's repository exists, create it if it doesn't."""
-        if self._repository_exists_checked:
-            return
+    def _check_git_available(self) -> None:
+        """
+        Check if git command is available.
+
+        This is called during session initialization to fail fast if Git is not available.
+        Without Git, the backend cannot function, so we raise immediately.
+        """
+        try:
+            result = subprocess.run(
+                ["git", "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            if result.returncode == 0:
+                logger.info(f"Git is available: {result.stdout.strip()}")
+            else:
+                logger.error(
+                    f"Git command failed with exit code {result.returncode}. "
+                    f"Stdout: {result.stdout}, Stderr: {result.stderr}"
+                )
+                raise RuntimeError(
+                    f"CRITICAL: Git command not working properly. Exit code: {result.returncode}. "
+                    "The Git Lambda layer may not be properly configured."
+                )
+        except FileNotFoundError as e:
+            logger.error(
+                "Git command not found in PATH. The Git Lambda layer is not attached or not working."
+            )
+            raise RuntimeError(
+                "CRITICAL: Git command not found. The Git Lambda layer is not attached to this Lambda function. "
+                "Check CDK stack configuration and ensure the Git layer is properly deployed. "
+                "Expected layer ARN: arn:aws:lambda:{region}:553035198032:layer:git-lambda2:8"
+            ) from e
+        except subprocess.TimeoutExpired as e:
+            logger.error("Git version check timed out after 5 seconds")
+            raise RuntimeError(
+                "CRITICAL: Git version check timed out. Git may be installed but not functioning properly."
+            ) from e
+        except Exception as e:
+            logger.error(f"Unexpected error checking git availability: {e}")
+            raise RuntimeError(
+                f"CRITICAL: Failed to verify git availability: {e}"
+            ) from e
+
+    def _run_git_command(
+        self,
+        args: list[str],
+        check: bool = True,
+        capture_output: bool = True,
+        cwd: str | None = None,
+    ) -> subprocess.CompletedProcess:
+        """
+        Run a git command with proper error handling.
+
+        Args:
+            args: Git command arguments (e.g., ['status', '--short'])
+            check: Whether to raise on non-zero exit code
+            capture_output: Whether to capture stdout/stderr
+            cwd: Working directory (defaults to local_repo_path)
+
+        Returns:
+            CompletedProcess object with stdout, stderr, and returncode
+        """
+        cmd = ["git"] + args
+        working_dir = cwd or self.local_repo_path
+
+        logger.debug(f"Running git command: {' '.join(cmd)} in {working_dir}")
 
         try:
-            response = self.session.get(self.api_base_url)
-
-            if response.status_code == 200:
-                self._repository_exists_checked = True
-                return
-            elif response.status_code == 404:
-                self._create_repository()
-                self._repository_exists_checked = True
-            elif response.status_code == 403:
-                # Rate limited - log but don't fail
-                # We'll assume the repo exists and let the actual commit fail if it doesn't
-                logger.warning(
-                    f"Cannot check if repository exists for {self.council_code} "
-                    f"(403 Forbidden - likely rate limited). Assuming it exists."
-                )
-                self._repository_exists_checked = True
-                return
-            else:
-                response.raise_for_status()
-        except requests.exceptions.HTTPError as e:
-            if e.response and e.response.status_code == 403:
-                # Rate limited - assume repo exists
-                logger.warning(
-                    f"Cannot check if repository exists for {self.council_code} "
-                    f"(403 Forbidden - likely rate limited). Assuming it exists."
-                )
-                self._repository_exists_checked = True
-                return
+            result = subprocess.run(
+                cmd,
+                cwd=working_dir,
+                check=check,
+                capture_output=capture_output,
+                text=True,
+                timeout=300,  # 5 minute timeout for git operations
+            )
+            return result
+        except FileNotFoundError:
+            raise RuntimeError(
+                "Git command not found. The Git Lambda layer may not be properly configured. "
+                "Ensure the Git Lambda layer is attached to this function."
+            )
+        except subprocess.CalledProcessError as e:
+            logger.error(
+                f"Git command failed: {' '.join(cmd)}\n"
+                f"Exit code: {e.returncode}\n"
+                f"Stdout: {e.stdout}\n"
+                f"Stderr: {e.stderr}"
+            )
+            raise
+        except subprocess.TimeoutExpired:
+            logger.error(f"Git command timed out after 300s: {' '.join(cmd)}")
             raise
 
+    def _repo_exists_on_github(self) -> bool:
+        """Check if repository exists on GitHub using API."""
+        try:
+            response = self.session.get(self.api_base_url, timeout=30)
+            return response.status_code == 200
+        except Exception as e:
+            logger.warning(f"Error checking if repo exists: {e}")
+            return False
+
     def _create_repository(self) -> None:
-        """Create a new repository for this council."""
+        """Create a new repository on GitHub using API."""
+        logger.info(f"Creating new repository: {self.owner}/{self.repo}")
+
         create_data = {
             "name": self.repo,
             "description": f"Data storage for council {self.council_code}",
@@ -469,369 +314,275 @@ class _GitHubSession(StorageSession):
             "has_issues": False,
             "has_projects": False,
             "has_wiki": False,
-            "auto_init": True,
+            "auto_init": True,  # Initialize with README to create main branch
         }
 
         response = self.session.post(
-            f"https://api.github.com/orgs/{self.owner}/repos", json=create_data
+            f"https://api.github.com/orgs/{self.owner}/repos",
+            json=create_data,
+            timeout=30,
         )
 
         if response.status_code == 201:
-            time.sleep(5)  # Wait for repository initialization
+            logger.info(f"Repository created successfully: {self.repository_url}")
+            # Wait for GitHub to fully initialize the repository
+            # Poll until we can see the main branch
+            max_wait = 30  # seconds
+            wait_interval = 2  # seconds
+            elapsed = 0
+
+            while elapsed < max_wait:
+                time.sleep(wait_interval)
+                elapsed += wait_interval
+
+                # Check if main branch exists
+                try:
+                    ref_response = self.session.get(
+                        f"{self.api_base_url}/git/refs/heads/{self._default_branch}",
+                        timeout=10,
+                    )
+                    if ref_response.status_code == 200:
+                        logger.info(
+                            f"Repository fully initialized after {elapsed} seconds"
+                        )
+                        return
+                except Exception:
+                    pass
+
+                logger.debug(
+                    f"Waiting for repository initialization... ({elapsed}s elapsed)"
+                )
+
+            logger.warning(
+                f"Repository initialization taking longer than expected ({max_wait}s), "
+                "proceeding anyway..."
+            )
+        elif response.status_code == 422:
+            # Repository might already exist
+            logger.info(f"Repository might already exist: {self.owner}/{self.repo}")
         else:
             response.raise_for_status()
 
-    def _get_default_branch_name(self) -> str:
-        """Get the name of the default branch."""
-        # OPTIMIZATION: Default branch is always "main", no API call needed
-        return self._default_branch
+    def _initialize_empty_repo(self) -> None:
+        """
+        Initialize an empty local repository when the remote exists but has no commits.
 
-    def _is_repository_empty(self) -> bool:
-        """Check if the repository is empty (no commits)"""
-        try:
-            response = self.session.get(self.api_base_url)
-            response.raise_for_status()
-            return response.json().get("size", 0) == 0
-        except Exception:
-            return True
+        This handles the case where a repository was created on GitHub but is empty
+        (no initial commit or main branch).
+        """
+        logger.info(f"Initializing empty repository locally: {self.local_repo_path}")
 
-    def _create_initial_commit(self) -> str:
-        """Create initial commit with README.md."""
-        readme_content = (
-            "# LGSF Data Repository\n\n"
-            "This repository contains scraped data from the "
-            "Local Government Scraper Framework (LGSF)."
+        # Create directory
+        os.makedirs(self.local_repo_path, exist_ok=True)
+
+        # Initialize git repo
+        self._run_git_command(["init"], cwd=self.local_repo_path)
+
+        # Set remote
+        self._run_git_command(
+            ["remote", "add", "origin", self.remote_url],
+            cwd=self.local_repo_path,
         )
 
-        # Create blob
-        blob_data = {"content": readme_content, "encoding": "utf-8"}
-        blob_response = self._retry_request(
-            self.session.post, 3, f"{self.api_base_url}/git/blobs", json=blob_data
-        )
-
-        if blob_response.status_code != 201:
-            if self._handle_api_error(blob_response, "blob creation"):
-                logger.warning("Failed to create initial commit blob, but continuing")
-            else:
-                blob_response.raise_for_status()
-
-        blob_sha = blob_response.json()["sha"]
-
-        # Create tree
-        tree_data = {
-            "tree": [
-                {"path": "README.md", "mode": "100644", "type": "blob", "sha": blob_sha}
-            ]
-        }
-        tree_response = self._retry_request(
-            self.session.post, 3, f"{self.api_base_url}/git/trees", json=tree_data
-        )
-        tree_response.raise_for_status()
-        tree_sha = tree_response.json()["sha"]
-
-        # Create commit
-        commit_data = {
-            "message": "Initial commit - LGSF data repository",
-            "tree": tree_sha,
-            "parents": [],
-        }
-        commit_response = self._retry_request(
-            self.session.post, 3, f"{self.api_base_url}/git/commits", json=commit_data
-        )
-        commit_response.raise_for_status()
-        commit_sha = commit_response.json()["sha"]
-
-        # Create main branch reference
-        ref_data = {"ref": "refs/heads/main", "sha": commit_sha}
-        ref_response = self._retry_request(
-            self.session.post, 3, f"{self.api_base_url}/git/refs", json=ref_data
-        )
-        ref_response.raise_for_status()
-
-        return commit_sha
-
-    def _get_branch_sha(self, branch_name: str) -> str:
-        """Get the SHA of a specific branch."""
-        url = f"{self.api_base_url}/git/refs/heads/{branch_name}"
-        response = self.session.get(url)
-
-        if response.status_code == 409 and self._is_repository_empty():
-            self._create_initial_commit()
-            response = self.session.get(url)
-
-        response.raise_for_status()
-        return response.json()["object"]["sha"]
-
-    def _create_branch(self) -> str:
-        """Create a new branch from the default branch and return its SHA."""
-        default_branch = self._get_default_branch_name()
-        default_branch_sha = self._get_branch_sha(default_branch)
-
-        create_ref_data = {
-            "ref": f"refs/heads/{self.branch_name}",
-            "sha": default_branch_sha,
-        }
-
-        try:
-            response = self.session.post(
-                f"{self.api_base_url}/git/refs", json=create_ref_data
+        # Create initial README
+        readme_path = os.path.join(self.local_repo_path, "README.md")
+        with open(readme_path, "w") as f:
+            f.write(
+                f"# {self.repo}\n\n"
+                f"Data repository for {self.council_code}\n\n"
+                "This repository contains scraped data from the "
+                "Local Government Scraper Framework (LGSF).\n"
             )
-            response.raise_for_status()
-            return default_branch_sha
-        except requests.exceptions.HTTPError as e:
-            if e.response.status_code == 403:
-                logger.warning(
-                    "Insufficient permissions to create branch, using default branch"
-                )
-                self._branch_name = default_branch
-                return default_branch_sha
-            elif e.response.status_code == 422:
-                # Branch already exists or conflict - generate new ID and retry
+
+        # Stage, commit, and push initial commit
+        self._run_git_command(["add", "README.md"], cwd=self.local_repo_path)
+        self._run_git_command(
+            ["commit", "-m", "Initial commit"],
+            cwd=self.local_repo_path,
+        )
+
+        # Create main branch and push
+        self._run_git_command(
+            ["branch", "-M", self._default_branch],
+            cwd=self.local_repo_path,
+        )
+        self._run_git_command(
+            ["push", "-u", "origin", self._default_branch],
+            cwd=self.local_repo_path,
+        )
+
+        logger.info("Empty repository initialized with main branch")
+
+    def _ensure_local_repo(self) -> None:
+        """
+        Ensure local repository exists and is up to date.
+
+        This will:
+        1. Clone the repo if it doesn't exist locally
+        2. Pull latest changes if it does exist
+        3. Create the repo on GitHub if it doesn't exist there
+        """
+        if not os.path.exists(self.local_repo_path):
+            # Need to clone - first ensure repo exists on GitHub
+            repo_exists = self._repo_exists_on_github()
+            if not repo_exists:
+                self._create_repository()
+                repo_exists = True
+
+            # Clone repository (shallow clone for speed)
+            logger.info(f"Cloning repository: {self.repository_url}")
+            os.makedirs(os.path.dirname(self.local_repo_path), exist_ok=True)
+
+            # Retry clone up to 3 times (in case repo was just created)
+            max_retries = 3
+            clone_succeeded = False
+
+            for attempt in range(max_retries):
                 try:
-                    return self._get_branch_sha(self.branch_name)
-                except Exception:
-                    self.run_id = self._generate_run_id()
-                    self._branch_name = None
-                    return self._create_branch()
-            raise
-
-    def _ensure_branch_exists(self) -> str:
-        """Ensure the branch exists and return its base SHA."""
-        if self._base_sha:
-            return self._base_sha
-
-        # Ensure repository exists before trying to create branches
-        self._ensure_repository_exists()
-
-        try:
-            self._base_sha = self._get_branch_sha(self.branch_name)
-        except requests.exceptions.HTTPError as e:
-            if e.response.status_code == 404:
-                self._base_sha = self._create_branch()
-            elif e.response.status_code == 409:
-                self.run_id = self._generate_run_id()
-                self._branch_name = None
-                self._base_sha = self._create_branch()
-            else:
-                raise
-
-        return self._base_sha
-
-    def _cleanup_old_branches(self) -> dict[str, Any]:
-        """Clean up old branches created by this council's scrapers."""
-        try:
-            response = self.session.get(f"{self.api_base_url}/git/refs/heads")
-            response.raise_for_status()
-
-            branches = response.json()
-            if not isinstance(branches, list):
-                return {"cleaned_up": 0}
-
-            council_prefix = f"{self.council_code}-"
-            current_branch = self.branch_name
-            cleanup_count = 0
-
-            for branch in branches:
-                branch_name = branch["ref"].replace("refs/heads/", "")
-
-                if (
-                    not branch_name.startswith(council_prefix)
-                    or branch_name == current_branch
-                ):
-                    continue
-
-                try:
-                    delete_response = self.session.delete(
-                        f"{self.api_base_url}/git/refs/heads/{branch_name}"
+                    self._run_git_command(
+                        [
+                            "clone",
+                            "--depth",
+                            "1",  # Shallow clone - only latest commit
+                            "--single-branch",
+                            "--branch",
+                            self._default_branch,
+                            self.remote_url,
+                            self.local_repo_path,
+                        ],
+                        cwd=os.path.dirname(self.local_repo_path),
                     )
-                    if delete_response.status_code in [200, 204]:
-                        cleanup_count += 1
-                except Exception:
+                    logger.info(f"Repository cloned to {self.local_repo_path}")
+                    clone_succeeded = True
+                    break
+                except subprocess.CalledProcessError as e:
+                    # Check if it's an empty repository error
+                    error_msg = e.stderr if e.stderr else e.stdout if e.stdout else ""
+                    is_empty_repo = (
+                        "does not have any commits yet" in error_msg
+                        or "Could not find remote branch" in error_msg
+                        or "Remote branch main not found" in error_msg
+                    )
+
+                    # Only initialize empty repos if we JUST created them (repo_exists was False)
+                    if is_empty_repo and not repo_exists:
+                        logger.warning(
+                            f"Newly created repository has no main branch yet. "
+                            f"Initializing it locally. Error: {error_msg[:200]}"
+                        )
+                        # Initialize empty repo locally
+                        self._initialize_empty_repo()
+                        clone_succeeded = True
+                        break
+                    elif attempt < max_retries - 1:
+                        # Repository might not be fully initialized yet
+                        logger.warning(
+                            f"Clone attempt {attempt + 1} failed, retrying in 5 seconds... "
+                            f"Error: {error_msg[:200]}"
+                        )
+                        time.sleep(5)
+                    else:
+                        # Final attempt failed - provide detailed error
+                        logger.error(
+                            f"Failed to clone repository after {max_retries} attempts. "
+                            f"Repository: {self.repository_url}. "
+                            f"Repo existed before clone: {repo_exists}. "
+                            f"Error: {error_msg}"
+                        )
+                        # Raise with more context
+                        raise RuntimeError(
+                            f"Git clone failed for existing repository {self.repository_url}. "
+                            f"This likely means Git is not available or authentication failed. "
+                            f"Error: {error_msg[:500]}"
+                        ) from e
+
+            if not clone_succeeded:
+                raise RuntimeError(
+                    f"Failed to clone or initialize repository: {self.repository_url}"
+                )
+        else:
+            # Repository exists locally - pull latest changes
+            logger.info(f"Repository already exists locally: {self.local_repo_path}")
+            try:
+                # Fetch latest from remote
+                self._run_git_command(["fetch", "origin", self._default_branch])
+
+                # Reset to remote main (discard any local changes)
+                self._run_git_command(
+                    ["reset", "--hard", f"origin/{self._default_branch}"]
+                )
+
+                logger.info("Local repository updated to latest main")
+            except subprocess.CalledProcessError as e:
+                # If pull fails, try to re-clone
+                logger.warning(
+                    f"Failed to update local repo, re-cloning: {e.stderr[:200] if e.stderr else 'unknown'}"
+                )
+                shutil.rmtree(self.local_repo_path)
+                self._ensure_local_repo()
+
+    def _create_and_checkout_branch(self) -> None:
+        """Create a new branch from main and check it out."""
+        logger.info(f"Creating and checking out branch: {self.branch_name}")
+
+        # Ensure we're on main first
+        self._run_git_command(["checkout", self._default_branch])
+
+        # Create and checkout new branch
+        self._run_git_command(["checkout", "-b", self.branch_name])
+
+        logger.info(f"Now on branch: {self.branch_name}")
+
+    def _has_uncommitted_changes(self) -> bool:
+        """Check if there are uncommitted changes in the working directory."""
+        result = self._run_git_command(
+            ["diff", "--cached", "--quiet"], check=False, capture_output=True
+        )
+        return result.returncode != 0
+
+    def _has_changes_from_main(self) -> bool:
+        """Check if current branch has changes compared to main."""
+        result = self._run_git_command(
+            ["diff", "--quiet", f"origin/{self._default_branch}"],
+            check=False,
+            capture_output=True,
+        )
+        return result.returncode != 0
+
+    def _get_file_count_stats(self) -> dict[str, int]:
+        """Get statistics about file changes."""
+        # Get diff stats
+        result = self._run_git_command(
+            ["diff", "--cached", "--numstat"], capture_output=True
+        )
+
+        lines = result.stdout.strip().split("\n")
+        if not lines or not lines[0]:
+            return {"files_added": 0, "files_modified": 0, "files_deleted": 0}
+
+        files_added = 0
+        files_modified = 0
+        files_deleted = 0
+
+        for line in lines:
+            parts = line.split("\t")
+            if len(parts) >= 3:
+                added, deleted = parts[0], parts[1]
+                if added == "-" and deleted == "-":
+                    # Binary file
                     continue
+                if added != "0" and deleted == "0":
+                    files_added += 1
+                elif added == "0" and deleted != "0":
+                    files_deleted += 1
+                else:
+                    files_modified += 1
 
-            return {"cleaned_up": cleanup_count}
-
-        except Exception as e:
-            return {"error": str(e), "cleaned_up": 0}
-
-    def _collect_existing_files_via_tree(
-        self, default_branch: str, path_prefix: str
-    ) -> None:
-        """
-        Collect all files using Git Tree API - much more efficient than recursive Contents API.
-
-        This uses a single API call to get the entire tree instead of recursively
-        fetching directory contents. Saves significant API calls for repos with many files.
-        """
-        try:
-            # Get the commit SHA for the default branch
-            ref_response = self.session.get(
-                f"{self.api_base_url}/git/refs/heads/{default_branch}"
-            )
-
-            if ref_response.status_code == 403:
-                logger.warning(
-                    f"Rate limited while getting branch ref for {default_branch}. "
-                    f"Cannot collect existing files."
-                )
-                raise requests.exceptions.HTTPError(
-                    "403 Forbidden", response=ref_response
-                )
-
-            if ref_response.status_code != 200:
-                logger.warning(
-                    f"Could not get branch ref for {default_branch}: "
-                    f"status {ref_response.status_code}"
-                )
-                return
-
-            commit_sha = ref_response.json()["object"]["sha"]
-
-            # Get the tree recursively (one API call gets everything!)
-            tree_response = self.session.get(
-                f"{self.api_base_url}/git/trees/{commit_sha}",
-                params={"recursive": "1"},  # Get entire tree in one call
-            )
-
-            if tree_response.status_code == 403:
-                logger.warning(
-                    f"Rate limited while getting tree for commit {commit_sha}. "
-                    f"Cannot collect existing files."
-                )
-                raise requests.exceptions.HTTPError(
-                    "403 Forbidden", response=tree_response
-                )
-
-            if tree_response.status_code != 200:
-                logger.warning(
-                    f"Could not get tree for commit {commit_sha}: "
-                    f"status {tree_response.status_code}"
-                )
-                return
-
-            tree_data = tree_response.json()
-
-            # Filter files that are in our scraper type folder
-            for item in tree_data.get("tree", []):
-                if item["type"] == "blob":  # It's a file
-                    file_path = item["path"]
-                    # Only include files in the target folder
-                    if (
-                        file_path.startswith(path_prefix + "/")
-                        or file_path == path_prefix
-                    ):
-                        self._existing_files.append(file_path)
-                        # Cache the blob SHA for efficient change detection
-                        if "sha" in item:
-                            self._etag_cache[file_path] = ("", item["sha"])
-
-            logger.info(
-                f"Collected {len(self._existing_files)} existing files via Git Tree API "
-                f"(saved ~{len(self._existing_files) // 10} API calls)"
-            )
-
-        except requests.exceptions.HTTPError as e:
-            logger.warning(f"Error using Git Tree API, falling back: {e}")
-            # Fallback to old method if Tree API fails
-            self._collect_existing_files_legacy(path_prefix, default_branch)
-        except Exception as e:
-            logger.warning(f"Unexpected error in Git Tree API: {e}")
-            self._collect_existing_files_legacy(path_prefix, default_branch)
-
-    def _collect_existing_files_legacy(self, path: str, default_branch: str) -> None:
-        """Legacy recursive collection using Contents API - kept as fallback."""
-        try:
-            # Prepare headers for conditional request using ETag cache
-            headers = {}
-            cache_key = f"contents:{path}:{default_branch}"
-
-            if cache_key in self._etag_cache:
-                cached_etag, _ = self._etag_cache[cache_key]
-                headers["If-None-Match"] = cached_etag
-                logger.debug(f"Using cached ETag for directory listing: {path}")
-
-            response = self.session.get(
-                f"{self.api_base_url}/contents/{path}",
-                params={"ref": default_branch},
-                headers=headers,
-            )
-
-            if response.status_code == 304:
-                # Directory contents haven't changed, but we still need to process them
-                # For now, we'll skip this optimization and let it fetch
-                # In a production system, we'd cache the actual file list too
-                self._rate_limit_savings += 1
-                logger.debug(f"Directory listing unchanged (304): {path}")
-                # Fall through to re-fetch without If-None-Match
-                response = self.session.get(
-                    f"{self.api_base_url}/contents/{path}",
-                    params={"ref": default_branch},
-                )
-
-            if response.status_code != 200:
-                return
-
-            # Store ETag for future requests
-            if "etag" in response.headers:
-                etag = response.headers["etag"]
-                self._etag_cache[cache_key] = (etag, "")
-                logger.debug(f"Cached ETag for directory: {path}")
-
-            items = response.json()
-            if not isinstance(items, list):
-                items = [items]
-
-            for item in items:
-                if item["type"] == "file":
-                    self._existing_files.append(item["path"])
-                    # Also cache the file's ETag for later use in change detection
-                    if "sha" in item:
-                        file_cache_key = item["path"]
-                        # Store a placeholder ETag - we'll get the real one if we need to check the file
-                        # For now, store the SHA as a reference
-                        if file_cache_key not in self._etag_cache:
-                            self._etag_cache[file_cache_key] = ("", item["sha"])
-                elif item["type"] == "dir":
-                    self._collect_existing_files_legacy(item["path"], default_branch)
-        except requests.exceptions.HTTPError:
-            pass
-
-    def _delete_existing_data_if_needed(self) -> dict[str, Any]:
-        """Get information about existing data that will be replaced."""
-        try:
-            default_branch = self._get_default_branch_name()
-            folder_path = self.scraper_object_type
-            self._existing_files = []
-
-            # Use efficient Git Tree API instead of recursive Contents API
-            self._collect_existing_files_via_tree(default_branch, folder_path)
-
-            return {
-                "existing_files_found": len(self._existing_files),
-                "files_to_replace": self._existing_files,
-            }
-
-        except requests.exceptions.HTTPError as e:
-            # Handle rate limiting gracefully - allow scraper to continue
-            if e.response and e.response.status_code == 403:
-                logger.warning(
-                    f"Cannot collect existing files for {self.council_code} "
-                    f"(403 Forbidden - likely rate limited). Will skip change detection."
-                )
-                self._existing_files = []
-                # Disable change detection if we can't collect files
-                self.disable_change_detection = True
-                return {
-                    "error": "rate_limited",
-                    "existing_files_found": 0,
-                    "will_proceed": True,
-                    "change_detection_disabled": True,
-                }
-            self._existing_files = []
-            return {"error": str(e), "will_proceed": True}
-        except Exception as e:
-            self._existing_files = []
-            return {"error": str(e), "will_proceed": True}
+        return {
+            "files_added": files_added,
+            "files_modified": files_modified,
+            "files_deleted": files_deleted,
+        }
 
     @override
     def write(self, filename: Path, content: str) -> None:
@@ -840,7 +591,7 @@ class _GitHubSession(StorageSession):
         if filename.is_absolute():
             raise ValueError("filename must be relative")
 
-        key = self._normalize_path(filename)
+        key = str(filename).replace("\\", "/")
         self._staged[key] = content.encode("utf-8")
 
     @override
@@ -850,7 +601,7 @@ class _GitHubSession(StorageSession):
         if filename.is_absolute():
             raise ValueError("filename must be relative")
 
-        key = self._normalize_path(filename)
+        key = str(filename).replace("\\", "/")
         self._staged[key] = content
 
     @override
@@ -865,23 +616,21 @@ class _GitHubSession(StorageSession):
         if filename.is_absolute():
             raise ValueError("filename must be relative")
 
-        key = self._normalize_path(filename)
+        key = str(filename).replace("\\", "/")
 
         # Check staged files first
         if key in self._staged:
             content = self._staged[key]
             return content.decode("utf-8") if mode == "r" else content
 
-        # Try to read from repository
-        try:
-            response = self.session.get(f"{self.api_base_url}/contents/{key}")
-            if response.status_code == 200:
-                file_data = response.json()
-                content = base64.b64decode(file_data["content"])
-                return content.decode("utf-8") if mode == "r" else content
-            raise FileNotFoundError(f"File not found: {filename}")
-        except requests.exceptions.HTTPError:
-            raise FileNotFoundError(f"File not found: {filename}")
+        # Try to read from local repository
+        file_path = os.path.join(self.local_repo_path, key)
+        if os.path.exists(file_path):
+            with open(file_path, "rb") as f:
+                content = f.read()
+            return content.decode("utf-8") if mode == "r" else content
+
+        raise FileNotFoundError(f"File not found: {filename}")
 
     def _assert_open(self) -> None:
         """Assert that the session is still open."""
@@ -889,260 +638,191 @@ class _GitHubSession(StorageSession):
             raise RuntimeError("Storage session is closed")
 
     def _commit_files(self, commit_message: str) -> dict[str, Any]:
-        """Commit all staged files to the GitHub repository."""
+        """
+        Commit all staged files to the local Git repository.
+
+        This performs all operations locally using Git CLI:
+        1. Ensure local repo is ready
+        2. Create new branch
+        3. Delete all files in scraper folder
+        4. Write new files
+        5. Stage and commit
+        6. Check for changes
+        7. Push to remote
+        8. Create PR and merge
+        """
         if not self._staged:
             return {"skipped": True, "reason": "no files to commit"}
 
-        if not self.disable_change_detection and not self._detect_changes():
-            return {"skipped": True, "reason": "no changes detected"}
-
-        if self.disable_change_detection:
-            logger.info(
-                f"Change detection disabled - proceeding with commit for "
-                f"{self.council_code}/{self.scraper_object_type}"
-            )
-
-        self._ensure_branch_exists()
-
-        # Get current tree SHA
-        current_commit_response = self.session.get(
-            f"{self.api_base_url}/git/commits/{self._base_sha}"
-        )
-        current_commit_response.raise_for_status()
-        current_tree_sha = current_commit_response.json()["tree"]["sha"]
-
-        # Create blobs for all staged files
-        blobs = {}
-        for file_path, content in self._staged.items():
-            blob_data = {
-                "content": base64.b64encode(content).decode("ascii"),
-                "encoding": "base64",
-            }
-            blob_response = self._retry_request(
-                self.session.post, 3, f"{self.api_base_url}/git/blobs", json=blob_data
-            )
-            blob_response.raise_for_status()
-            blobs[file_path] = blob_response.json()["sha"]
-
-        # Create new tree with staged files and deletions
-        tree_items = []
-
-        # Add all staged files
-        for file_path, blob_sha in blobs.items():
-            tree_items.append(
-                {"path": file_path, "mode": "100644", "type": "blob", "sha": blob_sha}
-            )
-
-        # Delete existing files that aren't being updated
-        for existing_file_path in self._existing_files:
-            if existing_file_path not in self._staged:
-                tree_items.append(
-                    {
-                        "path": existing_file_path,
-                        "mode": "100644",
-                        "type": "blob",
-                        "sha": None,
-                    }
-                )
-
-        tree_data = {"base_tree": current_tree_sha, "tree": tree_items}
-        tree_response = self._retry_request(
-            self.session.post, 3, f"{self.api_base_url}/git/trees", json=tree_data
-        )
-        tree_response.raise_for_status()
-        new_tree_sha = tree_response.json()["sha"]
-
-        # Create commit
-        commit_data = {
-            "message": commit_message,
-            "tree": new_tree_sha,
-            "parents": [self._base_sha],
-        }
-        commit_response = self._retry_request(
-            self.session.post, 3, f"{self.api_base_url}/git/commits", json=commit_data
-        )
-        commit_response.raise_for_status()
-        new_commit_sha = commit_response.json()["sha"]
-
-        # Update branch reference
-        update_ref_data = {"sha": new_commit_sha, "force": False}
-        update_response = self._retry_request(
-            self.session.patch,
-            3,
-            f"{self.api_base_url}/git/refs/heads/{self.branch_name}",
-            json=update_ref_data,
-        )
-        update_response.raise_for_status()
-
-        # Calculate deletion count
-        deleted_count = sum(
-            1 for path in self._existing_files if path not in self._staged
-        )
-
-        result = {
-            "files_committed": len(self._staged),
-            "files_deleted": deleted_count,
-            "commit_sha": new_commit_sha,
-            "branch": self.branch_name,
-        }
-
-        # Include rate limit savings if any
-        if self._rate_limit_savings > 0:
-            result["rate_limit_savings"] = self._rate_limit_savings
-            logger.info(
-                f"Total rate limit savings: {self._rate_limit_savings} requests saved via ETags"
-            )
-
-        return result
-
-    def _compute_blob_sha(self, content: bytes) -> str:
-        """
-        Compute the Git blob SHA for content, matching GitHub's algorithm.
-
-        Git stores blobs with a header: "blob <size>\0<content>"
-        SHA-1 hash of this gives the blob SHA that GitHub uses.
-        """
-        header = f"blob {len(content)}\0".encode("utf-8")
-        blob_data = header + content
-        return hashlib.sha1(blob_data).hexdigest()
-
-    def _detect_changes(self) -> bool:
-        """
-        Detect if there are any actual changes between staged files and existing files.
-
-        Returns True if changes detected, False if no changes.
-        If we can't access the repository, we assume changes exist.
-
-        OPTIMIZED: Uses SHA comparison instead of fetching file contents.
-        This saves massive API calls since we already have SHAs from Git Tree API.
-        """
         try:
-            logger.info(
-                f"Change detection for {self.council_code}/{self.scraper_object_type}: "
-                f"{len(self._staged)} staged files, {len(self._existing_files)} existing files"
-            )
+            # Ensure local repository exists and is up to date
+            self._ensure_local_repo()
 
-            # Check if any files will be deleted
-            files_to_delete = [
-                path for path in self._existing_files if path not in self._staged
-            ]
+            # Create and checkout new branch
+            self._create_and_checkout_branch()
 
-            if files_to_delete:
-                logger.info(f"Changes detected: {len(files_to_delete)} files to delete")
-                return True
+            # Delete all existing files in the scraper object type folder
+            scraper_dir = os.path.join(self.local_repo_path, self.scraper_object_type)
+            if os.path.exists(scraper_dir):
+                logger.info(f"Deleting existing files in {self.scraper_object_type}/")
+                shutil.rmtree(scraper_dir)
 
-            # Check if any staged files are new or have different content
-            # OPTIMIZATION: Use SHA comparison instead of fetching file contents
-            files_checked = 0
-            sha_comparisons = 0
+            # Create directory
+            os.makedirs(scraper_dir, exist_ok=True)
 
-            for file_path, staged_content in self._staged.items():
-                try:
-                    # Check if this file exists in the repository
-                    if file_path not in self._existing_files:
-                        logger.info(f"Changes detected: new file {file_path}")
-                        return True
+            # Write all staged files to disk
+            logger.info(f"Writing {len(self._staged)} files to local repository")
+            for file_path, content in self._staged.items():
+                full_path = os.path.join(self.local_repo_path, file_path)
+                os.makedirs(os.path.dirname(full_path), exist_ok=True)
+                with open(full_path, "wb") as f:
+                    f.write(content)
 
-                    # We have the blob SHA from Git Tree API (_collect_existing_files_via_tree)
-                    if file_path in self._etag_cache:
-                        _, existing_blob_sha = self._etag_cache[file_path]
+            # Stage all changes (including deletions)
+            self._run_git_command(["add", "-A", "."])
 
-                        if existing_blob_sha:
-                            # Compute blob SHA for staged content
-                            staged_blob_sha = self._compute_blob_sha(staged_content)
+            # Check if there are any changes
+            if not self._has_uncommitted_changes():
+                logger.info("No changes detected (git diff is empty)")
+                return {"skipped": True, "reason": "no changes detected"}
 
-                            # Compare SHAs - NO API CALL NEEDED!
-                            if staged_blob_sha != existing_blob_sha:
-                                logger.info(
-                                    f"Changes detected: modified file {file_path} "
-                                    f"(SHA changed: {existing_blob_sha[:8]}... -> {staged_blob_sha[:8]}...)"
-                                )
-                                return True
+            # Get file statistics before committing
+            stats = self._get_file_count_stats()
 
-                            sha_comparisons += 1
-                            files_checked += 1
-                            logger.debug(f"File unchanged (SHA match): {file_path}")
-                            continue
+            # Commit changes
+            logger.info(f"Committing changes: {commit_message}")
+            self._run_git_command(["commit", "-m", commit_message])
 
-                    # Fallback: If we don't have SHA cached, we need to fetch the file
-                    # This shouldn't happen often if Git Tree API worked
-                    logger.debug(f"No cached SHA for {file_path}, fetching content")
-                    repo_response = self.session.get(self.api_base_url)
-                    if self._handle_api_error(repo_response, "change detection"):
-                        return True
-                    repo_response.raise_for_status()
-                    default_branch = repo_response.json()["default_branch"]
+            # Double-check: compare with remote main
+            if not self._has_changes_from_main():
+                logger.info("No changes compared to remote main")
+                return {"skipped": True, "reason": "no changes from main"}
 
-                    response = self.session.get(
-                        f"{self.api_base_url}/contents/{file_path}",
-                        params={"ref": default_branch},
-                    )
+            # Push branch to remote
+            logger.info(f"Pushing branch {self.branch_name} to remote")
+            self._run_git_command(["push", "origin", self.branch_name])
 
-                    if response.status_code == 404:
-                        logger.info(f"Changes detected: new file {file_path}")
-                        return True
-                    elif response.status_code == 200:
-                        existing_file_data = response.json()
-                        existing_content = base64.b64decode(
-                            existing_file_data["content"]
-                        )
+            logger.info(f"Successfully pushed branch: {self.branch_name}")
 
-                        if existing_content != staged_content:
-                            logger.info(f"Changes detected: modified file {file_path}")
-                            return True
+            return {
+                "success": True,
+                "branch": self.branch_name,
+                "files_committed": len(self._staged),
+                "files_added": stats["files_added"],
+                "files_modified": stats["files_modified"],
+                "files_deleted": stats["files_deleted"],
+            }
 
-                        files_checked += 1
-                    else:
-                        logger.warning(
-                            f"Unable to check file {file_path} "
-                            f"(HTTP {response.status_code}) - assuming changes exist"
-                        )
-                        return True
-
-                except requests.exceptions.RequestException as e:
-                    logger.warning(
-                        f"Network error checking file {file_path}: {e} - assuming changes exist"
-                    )
-                    return True
-                except Exception as e:
-                    logger.warning(
-                        f"Error checking file {file_path}: {e} - assuming changes exist"
-                    )
-                    return True
-
-            logger.info(
-                f"No changes detected: all {files_checked}/{len(self._staged)} "
-                f"staged files match existing content "
-                f"({sha_comparisons} via SHA comparison, {files_checked - sha_comparisons} via API)"
-            )
-
-            # Log API call savings from SHA comparison
-            if sha_comparisons > 0:
-                logger.info(
-                    f"Rate limit savings: {sha_comparisons} API calls saved via SHA comparison"
-                )
-                self._rate_limit_savings += sha_comparisons
-
-            return False
-
-        except requests.exceptions.RequestException as e:
-            logger.warning(
-                f"Network error during change detection: {e} - assuming changes exist"
-            )
-            return True
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Git operation failed: {e}")
+            raise
         except Exception as e:
-            logger.warning(
-                f"Error during change detection: {e} - assuming changes exist"
+            logger.error(f"Unexpected error during commit: {e}")
+            raise
+
+    def _create_pull_request(self, commit_result: dict[str, Any]) -> dict[str, Any]:
+        """Create a pull request and merge it using GitHub API."""
+        try:
+            # Create pull request
+            pr_data = {
+                "title": f"Update {self.council_code} data ({self.today})",
+                "head": self.branch_name,
+                "base": self._default_branch,
+                "body": (
+                    f"Automated update of {self.council_code} scraper data for {self.today}\n\n"
+                    f"**Changes:**\n"
+                    f"- Files committed: {commit_result.get('files_committed', 0)}\n"
+                    f"- Files added: {commit_result.get('files_added', 0)}\n"
+                    f"- Files modified: {commit_result.get('files_modified', 0)}\n"
+                    f"- Files deleted: {commit_result.get('files_deleted', 0)}"
+                ),
+            }
+
+            logger.info(
+                f"Creating pull request: {self.branch_name} -> {self._default_branch}"
             )
-            return True
+            pr_response = self.session.post(
+                f"{self.api_base_url}/pulls", json=pr_data, timeout=30
+            )
+            pr_response.raise_for_status()
+            pr_data_result = pr_response.json()
+            pr_number = pr_data_result["number"]
+            pr_url = pr_data_result["html_url"]
+
+            logger.info(f"Pull request created: {pr_url}")
+
+            # Merge pull request
+            merge_data = {
+                "commit_title": f"Merge {self.council_code} data ({self.today})",
+                "commit_message": f"Automated merge of {self.council_code} data",
+                "merge_method": "merge",  # Use merge commit (not squash or rebase)
+            }
+
+            logger.info(f"Merging pull request #{pr_number}")
+            merge_response = self.session.put(
+                f"{self.api_base_url}/pulls/{pr_number}/merge",
+                json=merge_data,
+                timeout=30,
+            )
+            merge_response.raise_for_status()
+
+            logger.info("Pull request merged successfully")
+
+            return {
+                "success": True,
+                "pr_number": pr_number,
+                "pr_url": pr_url,
+                "merged": True,
+            }
+
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"Failed to create/merge PR: {e}")
+            if e.response is not None:
+                logger.error(f"Response: {e.response.text}")
+            return {
+                "success": False,
+                "error": str(e),
+                "response": e.response.text if e.response else None,
+            }
+        except Exception as e:
+            logger.error(f"Unexpected error creating/merging PR: {e}")
+            return {"success": False, "error": str(e)}
+
+    def _delete_remote_branch(self) -> dict[str, Any]:
+        """Delete the branch from remote repository."""
+        try:
+            logger.info(f"Deleting remote branch: {self.branch_name}")
+            delete_url = f"{self.api_base_url}/git/refs/heads/{self.branch_name}"
+            response = self.session.delete(delete_url, timeout=30)
+            response.raise_for_status()
+
+            logger.info(f"Branch deleted successfully: {self.branch_name}")
+            return {"success": True, "branch": self.branch_name}
+
+        except requests.exceptions.HTTPError as e:
+            logger.warning(f"Failed to delete branch {self.branch_name}: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "branch": self.branch_name,
+            }
+
+    def _cleanup_local_repo(self) -> None:
+        """Clean up local repository directory."""
+        try:
+            if os.path.exists(self.local_repo_path):
+                logger.info(f"Cleaning up local repository: {self.local_repo_path}")
+                shutil.rmtree(self.local_repo_path)
+        except Exception as e:
+            logger.warning(f"Failed to clean up local repository: {e}")
 
 
 class GitHubStorage(BaseStorage):
     """
-    GitHub storage backend with git-based operations and per-run branching.
+    GitHub storage backend using Git CLI for operations.
 
-    This storage backend implements the BaseStorage interface using GitHub
-    repositories for council data storage. Requires GitHub App authentication.
+    This storage backend implements the BaseStorage interface using local Git
+    operations to minimize API calls and avoid rate limiting issues.
     """
 
     def __init__(
@@ -1152,8 +832,6 @@ class GitHubStorage(BaseStorage):
         organization: str | None = None,
         github_token: str | None = None,
         auto_merge: bool = True,
-        disable_change_detection: bool = False,
-        rate_limit_threshold: int = 100,
     ):
         """
         Initialize GitHub storage backend.
@@ -1163,9 +841,7 @@ class GitHubStorage(BaseStorage):
             scraper_object_type: Type of objects being scraped
             organization: GitHub organization name
             github_token: GitHub authentication token (deprecated, ignored - GitHub App required)
-            auto_merge: If True, automatically merge PRs after creation
-            disable_change_detection: If True, skip change detection and always commit
-            rate_limit_threshold: Minimum rate limit before failing fast (default 100)
+            auto_merge: If True, automatically merge PRs after creation (always True in this version)
         """
         super().__init__(council_code)
         self.scraper_object_type: str = scraper_object_type
@@ -1179,7 +855,7 @@ class GitHubStorage(BaseStorage):
                 "variable or pass organization parameter."
             )
 
-        # GitHub App authentication is required - no fallback to classic token
+        # GitHub App authentication is required
         self.github_app = GitHubAppAuthenticator()
 
         if not self.github_app.is_configured():
@@ -1192,22 +868,7 @@ class GitHubStorage(BaseStorage):
         self.github_token = self.github_app.get_token()
 
         self._active: _GitHubSession | None = None
-        self.auto_merge: bool = auto_merge
-        self.rate_limit_threshold: int = rate_limit_threshold
-
-        # Check environment variable for disabling change detection
-        env_disable_change_detection = os.environ.get(
-            "LGSF_DISABLE_CHANGE_DETECTION", ""
-        ).lower() in ("true", "1", "yes")
-        self.disable_change_detection: bool = (
-            disable_change_detection or env_disable_change_detection
-        )
-
-        if self.disable_change_detection:
-            logger.info(
-                "Change detection disabled via configuration or "
-                "LGSF_DISABLE_CHANGE_DETECTION environment variable"
-            )
+        self.auto_merge: bool = auto_merge  # Always True in this version
 
     @override
     def _start_session(self, **kwargs: Any) -> StorageSession:
@@ -1233,14 +894,7 @@ class GitHubStorage(BaseStorage):
             council_code=self.council_code,
             scraper_object_type=scraper_type,
             run_id=run_id,
-            disable_change_detection=self.disable_change_detection,
-            rate_limit_threshold=self.rate_limit_threshold,
         )
-
-        # Check for existing data
-        delete_result = session._delete_existing_data_if_needed()
-        if delete_result.get("existing_files_found", 0) > 0:
-            session._preparation_result = delete_result
 
         self._active = session
         return session
@@ -1263,7 +917,7 @@ class GitHubStorage(BaseStorage):
             raise ValueError("commit_message cannot be empty")
 
         try:
-            # Commit the staged files
+            # Commit and push the staged files
             commit_result = session._commit_files(commit_message.strip())
 
             if commit_result.get("skipped"):
@@ -1276,130 +930,28 @@ class GitHubStorage(BaseStorage):
 
             finalization_result = commit_result.copy()
 
-            if kwargs.get("skip_merge", False):
-                return finalization_result
+            # Create PR and merge (always done, unless skip_merge is set)
+            if not kwargs.get("skip_merge", False):
+                pr_result = session._create_pull_request(commit_result)
+                finalization_result["pull_request"] = pr_result
 
-            # Create PR and optionally merge
-            pr_result = self._create_pull_request(
-                session, max_retries=kwargs.get("max_merge_retries", 3)
-            )
-            finalization_result["pull_request"] = pr_result
-
-            # Clean up branch if PR was merged
-            if pr_result.get("success") and pr_result.get("merged", False):
-                cleanup_result = self._delete_branch(session)
-                finalization_result["branch_cleanup"] = cleanup_result
-
-                old_branches_cleanup = session._cleanup_old_branches()
-                finalization_result["old_branches_cleanup"] = old_branches_cleanup
-            elif pr_result.get("success") and not pr_result.get("merged", True):
-                finalization_result["branch_cleanup"] = {"skipped": "pr_not_merged"}
-                finalization_result["old_branches_cleanup"] = {
-                    "skipped": "pr_not_merged"
-                }
-            else:
-                finalization_result["branch_cleanup"] = {
-                    "skipped": "pr_creation_failed"
-                }
-                finalization_result["old_branches_cleanup"] = {
-                    "skipped": "pr_creation_failed"
-                }
+                # Clean up remote branch if PR was merged
+                if pr_result.get("success") and pr_result.get("merged", False):
+                    branch_cleanup = session._delete_remote_branch()
+                    finalization_result["branch_cleanup"] = branch_cleanup
+                else:
+                    finalization_result["branch_cleanup"] = {"skipped": "pr_not_merged"}
 
             return finalization_result
 
         finally:
+            # Always clean up local repository and reset session
+            session._cleanup_local_repo()
             self._reset_session_state(session)
 
     @override
     def _reset_session_state(self, session: StorageSession | None) -> None:
-        """Reset session state and save ETag cache to S3."""
+        """Reset session state."""
         if isinstance(session, _GitHubSession):
-            # Save ETag cache before closing session
-            # Don't catch exceptions - let them propagate so we know if etag caching is broken
-            session._save_etag_cache_to_s3()
-
             session._closed = True
         self._active = None
-
-    def _create_pull_request(
-        self, session: _GitHubSession, max_retries: int = 3
-    ) -> dict[str, Any]:
-        """Create a pull request and optionally merge it to the main branch."""
-        for attempt in range(max_retries + 1):
-            try:
-                default_branch = session._get_default_branch_name()
-
-                # Create pull request
-                pr_data = {
-                    "title": f"Merge {session.council_code} data ({session.today})",
-                    "head": session.branch_name,
-                    "base": default_branch,
-                    "body": f"Automated merge of {session.council_code} scraper data for {session.today}",
-                }
-
-                pr_response = session.session.post(
-                    f"{session.api_base_url}/pulls", json=pr_data
-                )
-                pr_response.raise_for_status()
-                pr_data_result = pr_response.json()
-                pr_number = pr_data_result["number"]
-                pr_url = pr_data_result["html_url"]
-
-                # Only merge if auto_merge is enabled
-                if self.auto_merge:
-                    merge_data = {
-                        "commit_title": f"Merge {session.council_code} data ({session.today})",
-                        "merge_method": "merge",
-                    }
-
-                    merge_response = session.session.put(
-                        f"{session.api_base_url}/pulls/{pr_number}/merge",
-                        json=merge_data,
-                    )
-                    merge_response.raise_for_status()
-
-                    return {
-                        "success": True,
-                        "pr_number": pr_number,
-                        "pr_url": pr_url,
-                        "merged": True,
-                        "attempt": attempt + 1,
-                    }
-                else:
-                    return {
-                        "success": True,
-                        "pr_number": pr_number,
-                        "pr_url": pr_url,
-                        "merged": False,
-                        "attempt": attempt + 1,
-                    }
-
-            except requests.exceptions.HTTPError as e:
-                if (
-                    e.response
-                    and e.response.status_code == 409
-                    and attempt < max_retries
-                    and self.auto_merge
-                ):
-                    time.sleep(2**attempt)  # Exponential backoff
-                    continue
-                else:
-                    return {"success": False, "error": str(e), "attempt": attempt + 1}
-
-        return {
-            "success": False,
-            "error": "Maximum merge retries exceeded",
-            "attempts": max_retries + 1,
-        }
-
-    def _delete_branch(self, session: _GitHubSession) -> dict[str, Any]:
-        """Delete the session's branch after successful merge."""
-        try:
-            delete_url = f"{session.api_base_url}/git/refs/heads/{session.branch_name}"
-            response = session.session.delete(delete_url)
-            response.raise_for_status()
-
-            return {"success": True, "branch": session.branch_name}
-
-        except requests.exceptions.HTTPError as e:
-            return {"success": False, "error": str(e), "branch": session.branch_name}

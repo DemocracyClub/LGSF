@@ -111,6 +111,17 @@ class LgsfStack(cdk.Stack):
             ),
         )
 
+        # Git Lambda layer for git CLI operations
+        # Using community-maintained layer from lambci/git-lambda-layer
+        # https://github.com/lambci/git-lambda-layer
+        # ARN pattern: arn:aws:lambda:<region>:553035198032:layer:git-lambda2:8
+        region = cdk.Stack.of(self).region
+        self.git_layer = aws_lambda.LayerVersion.from_layer_version_arn(
+            self,
+            "GitLayer",
+            f"arn:aws:lambda:{region}:553035198032:layer:git-lambda2:8",
+        )
+
     def create_sns_topic(self) -> None:
         """Create SNS topic for scraper execution notifications."""
 
@@ -241,10 +252,13 @@ class LgsfStack(cdk.Stack):
             handler="lgsf.aws_lambda.handlers.scraper_worker_handler",
             runtime=aws_lambda.Runtime.PYTHON_3_12,
             timeout=cdk.Duration.minutes(15),
-            layers=[self.dependencies_layer],
+            layers=[self.dependencies_layer, self.git_layer],
             role=self.lambda_execution_role,
             reserved_concurrent_executions=2,
             environment=common_env.copy(),
+            ephemeral_storage_size=cdk.Size.mebibytes(
+                1024
+            ),  # Increase /tmp to 1GB for git repos
             description="Process individual council scraper tasks",
         )
 
