@@ -180,6 +180,7 @@ def council_enumerator_handler(event, context):
                 "exclude_missing": True,
                 "exclude_disabled": True,
                 "tags": None,
+                "verbose": True,
             }
         else:
             # Run all councils (default behavior)
@@ -193,6 +194,7 @@ def council_enumerator_handler(event, context):
                 "exclude_disabled": True,
                 "council": None,
                 "tags": None,
+                "verbose": True,
             }
 
         # Get councils from the command - it handles all the parsing logic

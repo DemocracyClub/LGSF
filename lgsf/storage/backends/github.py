@@ -173,14 +173,28 @@ class _GitHubSession(StorageSession):
         # GitHub API session
         self.session: requests.Session = self._create_api_session()
 
-        # Load ETag cache from S3 before doing any API calls
-        self._load_etag_cache_from_s3()
+        # OPTIMIZATION: Use S3 ETag cache presence as repository existence indicator
+        # If we successfully loaded an ETag cache, the repository must exist
+        # This saves 1 API call per scraper for existing repositories
+        self._default_branch = "main"  # Hardcoded - all repos use "main"
 
-        # Note: Rate limit check moved to be less aggressive - we want to allow
-        # scrapers to attempt work even at low limits because ETags (304 responses)
-        # don't count against the rate limit. Only check after attempting work.
-        self._log_rate_limit_status()
-        self._ensure_repository_exists()
+        # Load ETag cache from S3 before doing any API calls
+        etag_cache_existed = self._load_etag_cache_from_s3()
+
+        # Smart repository check: If ETag cache exists in S3, repository exists
+        # Otherwise, we need to check and potentially create the repository
+        if etag_cache_existed:
+            self._repository_exists_checked = True
+            logger.debug(
+                f"ETag cache found in S3 for {self.council_code}, "
+                "assuming repository exists"
+            )
+        else:
+            self._repository_exists_checked = False
+            logger.debug(
+                f"No ETag cache in S3 for {self.council_code}, "
+                "will check repository existence"
+            )
 
     def _generate_run_id(self) -> str:
         """Generate a unique run ID."""
@@ -234,11 +248,16 @@ class _GitHubSession(StorageSession):
         """Generate S3 key for ETag cache."""
         return f"etag-cache/{self.council_code}/{self.scraper_object_type}.json"
 
-    def _load_etag_cache_from_s3(self) -> None:
-        """Load ETag cache from S3 to enable conditional requests across Lambda invocations."""
+    def _load_etag_cache_from_s3(self) -> bool:
+        """
+        Load ETag cache from S3 to enable conditional requests across Lambda invocations.
+
+        Returns:
+            bool: True if ETag cache was found and loaded, False otherwise
+        """
         if not self._s3_client or not self._s3_bucket:
             logger.debug("S3 not configured, skipping ETag cache load")
-            return
+            return False
 
         try:
             s3_key = self._get_etag_cache_s3_key()
@@ -262,10 +281,14 @@ class _GitHubSession(StorageSession):
                 f"(last updated: {last_updated})"
             )
 
+            # ETag cache exists, so repository must exist
+            return True
+
         except self._s3_client.exceptions.NoSuchKey:
             logger.info(
                 f"No existing ETag cache found in S3 for {self.council_code}/{self.scraper_object_type}"
             )
+            return False
         except Exception as e:
             # ETag cache is critical for rate limit management - fail hard
             logger.error(f"Failed to load ETag cache from S3: {e}")
@@ -403,14 +426,39 @@ class _GitHubSession(StorageSession):
 
     def _ensure_repository_exists(self) -> None:
         """Ensure the council's repository exists, create it if it doesn't."""
-        response = self.session.get(self.api_base_url)
-
-        if response.status_code == 200:
+        if self._repository_exists_checked:
             return
-        elif response.status_code == 404:
-            self._create_repository()
-        else:
-            response.raise_for_status()
+
+        try:
+            response = self.session.get(self.api_base_url)
+
+            if response.status_code == 200:
+                self._repository_exists_checked = True
+                return
+            elif response.status_code == 404:
+                self._create_repository()
+                self._repository_exists_checked = True
+            elif response.status_code == 403:
+                # Rate limited - log but don't fail
+                # We'll assume the repo exists and let the actual commit fail if it doesn't
+                logger.warning(
+                    f"Cannot check if repository exists for {self.council_code} "
+                    f"(403 Forbidden - likely rate limited). Assuming it exists."
+                )
+                self._repository_exists_checked = True
+                return
+            else:
+                response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            if e.response and e.response.status_code == 403:
+                # Rate limited - assume repo exists
+                logger.warning(
+                    f"Cannot check if repository exists for {self.council_code} "
+                    f"(403 Forbidden - likely rate limited). Assuming it exists."
+                )
+                self._repository_exists_checked = True
+                return
+            raise
 
     def _create_repository(self) -> None:
         """Create a new repository for this council."""
@@ -435,9 +483,8 @@ class _GitHubSession(StorageSession):
 
     def _get_default_branch_name(self) -> str:
         """Get the name of the default branch."""
-        response = self.session.get(self.api_base_url)
-        response.raise_for_status()
-        return response.json()["default_branch"]
+        # OPTIMIZATION: Default branch is always "main", no API call needed
+        return self._default_branch
 
     def _is_repository_empty(self) -> bool:
         """Check if the repository is empty (no commits)"""
@@ -553,6 +600,9 @@ class _GitHubSession(StorageSession):
         if self._base_sha:
             return self._base_sha
 
+        # Ensure repository exists before trying to create branches
+        self._ensure_repository_exists()
+
         try:
             self._base_sha = self._get_branch_sha(self.branch_name)
         except requests.exceptions.HTTPError as e:
@@ -619,6 +669,15 @@ class _GitHubSession(StorageSession):
                 f"{self.api_base_url}/git/refs/heads/{default_branch}"
             )
 
+            if ref_response.status_code == 403:
+                logger.warning(
+                    f"Rate limited while getting branch ref for {default_branch}. "
+                    f"Cannot collect existing files."
+                )
+                raise requests.exceptions.HTTPError(
+                    "403 Forbidden", response=ref_response
+                )
+
             if ref_response.status_code != 200:
                 logger.warning(
                     f"Could not get branch ref for {default_branch}: "
@@ -633,6 +692,15 @@ class _GitHubSession(StorageSession):
                 f"{self.api_base_url}/git/trees/{commit_sha}",
                 params={"recursive": "1"},  # Get entire tree in one call
             )
+
+            if tree_response.status_code == 403:
+                logger.warning(
+                    f"Rate limited while getting tree for commit {commit_sha}. "
+                    f"Cannot collect existing files."
+                )
+                raise requests.exceptions.HTTPError(
+                    "403 Forbidden", response=tree_response
+                )
 
             if tree_response.status_code != 200:
                 logger.warning(
@@ -743,6 +811,24 @@ class _GitHubSession(StorageSession):
                 "files_to_replace": self._existing_files,
             }
 
+        except requests.exceptions.HTTPError as e:
+            # Handle rate limiting gracefully - allow scraper to continue
+            if e.response and e.response.status_code == 403:
+                logger.warning(
+                    f"Cannot collect existing files for {self.council_code} "
+                    f"(403 Forbidden - likely rate limited). Will skip change detection."
+                )
+                self._existing_files = []
+                # Disable change detection if we can't collect files
+                self.disable_change_detection = True
+                return {
+                    "error": "rate_limited",
+                    "existing_files_found": 0,
+                    "will_proceed": True,
+                    "change_detection_disabled": True,
+                }
+            self._existing_files = []
+            return {"error": str(e), "will_proceed": True}
         except Exception as e:
             self._existing_files = []
             return {"error": str(e), "will_proceed": True}
