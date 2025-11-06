@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import datetime
 import logging
 import os
@@ -331,10 +332,32 @@ class _GitHubSession(StorageSession):
             logger.warning(f"Error checking if repo exists: {e}")
             return False
 
+    def _check_if_repo_is_empty(self) -> bool:
+        """Check if repository has no commits (is empty) using GitHub API."""
+        try:
+            # Try to get the main branch reference
+            response = self.session.get(
+                f"{self.api_base_url}/git/refs/heads/{self._default_branch}",
+                timeout=30,
+            )
+            # If we get a 404, the branch doesn't exist (empty repo)
+            if response.status_code == 404:
+                logger.info(
+                    f"Repository exists but has no {self._default_branch} branch"
+                )
+                return True
+            # If we get a 200, the branch exists (repo has commits)
+            return False
+        except Exception as e:
+            logger.warning(f"Error checking if repo is empty: {e}")
+            # Assume it's not empty to avoid unnecessary initialization
+            return False
+
     def _create_repository(self) -> None:
-        """Create a new repository on GitHub using API."""
+        """Create a new repository on GitHub using API and ensure it has an initial commit."""
         logger.info(f"Creating new repository: {self.owner}/{self.repo}")
 
+        # Create repository without auto_init so we can control the initial commit
         create_data = {
             "name": self.repo,
             "description": f"Data storage for council {self.council_code}",
@@ -342,7 +365,7 @@ class _GitHubSession(StorageSession):
             "has_issues": False,
             "has_projects": False,
             "has_wiki": False,
-            "auto_init": True,  # Initialize with README to create main branch
+            "auto_init": False,  # We'll create our own initial commit
         }
 
         response = self.session.post(
@@ -353,42 +376,49 @@ class _GitHubSession(StorageSession):
 
         if response.status_code == 201:
             logger.info(f"Repository created successfully: {self.repository_url}")
-            # Wait for GitHub to fully initialize the repository
-            # Poll until we can see the main branch
-            max_wait = 30  # seconds
-            wait_interval = 2  # seconds
-            elapsed = 0
-
-            while elapsed < max_wait:
-                time.sleep(wait_interval)
-                elapsed += wait_interval
-
-                # Check if main branch exists
-                try:
-                    ref_response = self.session.get(
-                        f"{self.api_base_url}/git/refs/heads/{self._default_branch}",
-                        timeout=10,
-                    )
-                    if ref_response.status_code == 200:
-                        logger.info(
-                            f"Repository fully initialized after {elapsed} seconds"
-                        )
-                        return
-                except Exception:
-                    pass
-
-                logger.debug(
-                    f"Waiting for repository initialization... ({elapsed}s elapsed)"
-                )
-
-            logger.warning(
-                f"Repository initialization taking longer than expected ({max_wait}s), "
-                "proceeding anyway..."
-            )
+            # Now create the initial commit via API with custom README
+            self._create_initial_commit_via_api()
         elif response.status_code == 422:
             # Repository might already exist
             logger.info(f"Repository might already exist: {self.owner}/{self.repo}")
         else:
+            response.raise_for_status()
+
+    def _create_initial_commit_via_api(self) -> None:
+        """Create initial commit with README via GitHub API."""
+        logger.info(f"Creating initial commit for {self.owner}/{self.repo}")
+
+        # Create README content
+        readme_content = (
+            f"# Data for {self.council_code}\n\n"
+            f"This repository contains scraped data from the "
+            f"Local Government Scraper Framework (LGSF).\n"
+        )
+
+        # Encode content to base64 for GitHub API
+        encoded_content = base64.b64encode(readme_content.encode()).decode()
+
+        # Create file via API (this will create the initial commit)
+        file_data = {
+            "message": "Initial commit",
+            "content": encoded_content,
+            "branch": self._default_branch,
+        }
+
+        response = self.session.put(
+            f"{self.api_base_url}/contents/README.md",
+            json=file_data,
+            timeout=30,
+        )
+
+        if response.status_code in (200, 201):
+            logger.info("Initial commit created successfully")
+            # Wait a moment for GitHub to process the commit
+            time.sleep(2)
+        else:
+            logger.error(
+                f"Failed to create initial commit: {response.status_code} - {response.text}"
+            )
             response.raise_for_status()
 
     def _initialize_empty_repo(self) -> None:
@@ -412,12 +442,11 @@ class _GitHubSession(StorageSession):
             cwd=self.local_repo_path,
         )
 
-        # Create initial README
+        # Create initial README with council name
         readme_path = os.path.join(self.local_repo_path, "README.md")
         with open(readme_path, "w") as f:
             f.write(
-                f"# {self.repo}\n\n"
-                f"Data repository for {self.council_code}\n\n"
+                f"# Data for {self.council_code}\n\n"
                 "This repository contains scraped data from the "
                 "Local Government Scraper Framework (LGSF).\n"
             )
@@ -449,6 +478,7 @@ class _GitHubSession(StorageSession):
         1. Clone the repo if it doesn't exist locally
         2. Pull latest changes if it does exist
         3. Create the repo on GitHub if it doesn't exist there
+        4. Initialize empty repos (repos with no commits) before doing anything else
         """
         if not os.path.exists(self.local_repo_path):
             # Need to clone - first ensure repo exists on GitHub
@@ -456,6 +486,14 @@ class _GitHubSession(StorageSession):
             if not repo_exists:
                 self._create_repository()
                 repo_exists = True
+
+            # Check if repo exists but is empty (no commits)
+            if repo_exists:
+                is_empty = self._check_if_repo_is_empty()
+                if is_empty:
+                    logger.info("Repository exists but has no commits, initializing...")
+                    self._initialize_empty_repo()
+                    return
 
             # Clone repository (shallow clone for speed)
             logger.info(f"Cloning repository: {self.repository_url}")
@@ -492,10 +530,9 @@ class _GitHubSession(StorageSession):
                         or "Remote branch main not found" in error_msg
                     )
 
-                    # Only initialize empty repos if we JUST created them (repo_exists was False)
-                    if is_empty_repo and not repo_exists:
+                    if is_empty_repo:
                         logger.warning(
-                            f"Newly created repository has no main branch yet. "
+                            f"Repository has no main branch yet. "
                             f"Initializing it locally. Error: {error_msg[:200]}"
                         )
                         # Initialize empty repo locally
