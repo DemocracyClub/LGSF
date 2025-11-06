@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "http://democracy.kirklees.gov.uk",
+            "base_url": "https://democracy.kirklees.gov.uk",
             "cms_type": "ModernGov"
         }
     }

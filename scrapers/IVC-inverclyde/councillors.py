@@ -5,6 +5,7 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
+    timeout = 30
     list_page = {
         "container_css_selector": "div#listing",
         "councillor_css_selector": ".cardWrap",

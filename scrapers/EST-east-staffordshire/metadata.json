@@ -15,7 +15,7 @@
   "services": {
     "councillors": {
       "base_url": "https://www.eaststaffsbc.gov.uk/council-democracy/councillors",
-      "cms_type": "Custom HTML"
+      "cms_type": "CMIS"
     }
   }
 }

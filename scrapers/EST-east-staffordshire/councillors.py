@@ -1,10 +1,10 @@
 import re
 from urllib.parse import urljoin
 
-from lgsf.councillors.scrapers import HTMLCouncillorScraper
+from lgsf.councillors.scrapers import CMISCouncillorScraper
 
 
-class Scraper(HTMLCouncillorScraper):
+class Scraper(CMISCouncillorScraper):
     list_page = {
         "container_css_selector": ".view-councillors",
         "councillor_css_selector": "h3",
