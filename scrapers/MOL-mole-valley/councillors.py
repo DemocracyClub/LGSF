@@ -19,6 +19,7 @@ class Scraper(HTMLCouncillorScraper):
         name = (
             soup.select_one(".contentcontainer h2")
             .get_text(strip=True)
+            .replace("Councillor ", "")
             .replace("Cllr ", "")
             .replace("Cllr", "")  # Handle cases without space
             .strip()
@@ -29,11 +30,9 @@ class Scraper(HTMLCouncillorScraper):
 
         ward = councillor_html.select_one(".pt-cv-ctf-ward").get_text(strip=True)
 
+        # Party is in the second strong tag (after ward)
         party = (
-            soup.select(".contentcontainer p")[1]
-            .get_text(strip=True)
-            .replace(" Member", "")
-            .strip()
+            soup.select("strong")[1].get_text(strip=True).replace(" Member", "").strip()
         )
 
         councillor = self.add_councillor(
@@ -43,13 +42,16 @@ class Scraper(HTMLCouncillorScraper):
             party=party,
             division=ward,
         )
-        councillor.email = soup.select_one(".bgcontainer a[href^=mailto]").get_text(
-            strip=True
-        )
-        image = soup.select_one("article img")
+        # Email is optional
+        email_element = soup.select_one(".bgcontainer a[href^=mailto]")
+        if email_element:
+            councillor.email = email_element.get_text(strip=True)
+
+        # Photo is in contentcontainer, check data-src for lazy-loaded images
+        image = soup.select_one(".contentcontainer img")
         if image:
-            councillor.photo_url = urljoin(
-                self.base_url,
-                image["src"],
-            )
+            # Check for lazy-loaded image (data-src) first, fallback to src
+            img_src = image.get("data-src") or image.get("src")
+            if img_src and not img_src.startswith("data:"):
+                councillor.photo_url = urljoin(self.base_url, img_src)
         return councillor
