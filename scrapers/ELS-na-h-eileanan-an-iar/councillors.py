@@ -42,7 +42,9 @@ class Scraper(HTMLCouncillorScraper):
         )
 
         with contextlib.suppress(AttributeError):
-            councillor.email = soup.select_one(".banner-wrapper a[href^=mailto]").getText(strip=True)
+            councillor.email = soup.select_one(
+                ".banner-wrapper a[href^=mailto]"
+            ).getText(strip=True)
 
         with contextlib.suppress(TypeError):
             councillor.photo_url = urljoin(

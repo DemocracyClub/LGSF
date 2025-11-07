@@ -1,18 +1,19 @@
 from urllib.parse import urljoin
 
-from lgsf.councillors.scrapers import HTMLCouncillorScraper
+from lgsf.councillors.scrapers import PagedHTMLCouncillorScraper
 
 
-class Scraper(HTMLCouncillorScraper):
+class Scraper(PagedHTMLCouncillorScraper):
     list_page = {
-        "container_css_selector": ".views-fluid-grid",
-        "councillor_css_selector": "li",
+        "container_css_selector": ".localgov-directory__content",
+        "councillor_css_selector": ".view-content article",
+        "next_page_css_selector": "a[rel=next]",
     }
 
     def get_single_councillor(self, councillor_html):
         url = urljoin(self.base_url, councillor_html.a["href"])
-        soup = self.get_page(url).select_one("#content")
-        name = soup.h2.get_text(strip=True).replace("Councillor ", "")
+        soup = self.get_page(url).select_one("main")
+        name = soup.h1.get_text(strip=True).replace("Cllr ", "")
         division = (
             soup.select_one(".views-field-field-ward")
             .get_text(strip=True)

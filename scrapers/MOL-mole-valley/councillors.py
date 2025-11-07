@@ -20,6 +20,8 @@ class Scraper(HTMLCouncillorScraper):
             soup.select_one(".contentcontainer h2")
             .get_text(strip=True)
             .replace("Cllr ", "")
+            .replace("Cllr", "")  # Handle cases without space
+            .strip()
         )
 
         if "Vacant" in name:

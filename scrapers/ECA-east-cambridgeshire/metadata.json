@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "https://www.eastcambs.gov.uk/council-and-democracy/search-for-councillors",
+            "base_url": "https://eastcambs.gov.uk/about-council/councillors-and-committees/district-councillor-directory",
             "cms_type": "Custom HTML"
         }
     }
