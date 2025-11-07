@@ -4,6 +4,12 @@ from urllib.parse import urljoin
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
+def decode_cfemail(hexstr: str) -> str:
+    data = bytes.fromhex(hexstr)
+    key = data[0]
+    return bytes(b ^ key for b in data[1:]).decode("utf-8")
+
+
 class Scraper(HTMLCouncillorScraper):
     list_page = {
         "container_css_selector": "main .a-body",
@@ -26,6 +32,8 @@ class Scraper(HTMLCouncillorScraper):
             soup.select_one("h1.a-heading__title")
             .get_text(strip=True)
             .replace("Councillor ", "")
+            .replace("Cllr ", "")
+            .replace("Cllr", "")
         )
         ward = self.get_ward_from_person_url(url)
 
@@ -43,11 +51,14 @@ class Scraper(HTMLCouncillorScraper):
             division=ward,
         )
 
-        councillor.email = soup.select_one(".a-body a[href^=mailto]").get_text(
-            strip=True
-        )
-        councillor.photo_url = urljoin(
-            self.base_url,
-            soup.select_one(".a-relimage img")["src"],
-        )
+        # Email is Cloudflare-protected - decode it if present
+        cf_email = soup.select_one("span.__cf_email__")
+        if cf_email and cf_email.get("data-cfemail"):
+            councillor.email = decode_cfemail(cf_email["data-cfemail"])
+
+        # Photo is optional
+        photo_img = soup.select_one(".a-relimage img")
+        if photo_img and photo_img.get("src"):
+            councillor.photo_url = urljoin(self.base_url, photo_img["src"])
+
         return councillor
