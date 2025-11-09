@@ -6,6 +6,7 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
+    timeout = 30
     list_page = {
         "container_css_selector": ".article-body",
         "councillor_css_selector": ".councillor-card",
@@ -16,7 +17,12 @@ class Scraper(HTMLCouncillorScraper):
         soup = self.get_page(url)
 
         name = (
-            soup.select_one("h1.page-title").get_text(strip=True).replace("Cllr. ", "")
+            soup.select_one("h1.page-title")
+            .get_text(strip=True)
+            .replace("Councillor ", "")
+            .replace("Cllr. ", "")
+            .replace("Cllr ", "")
+            .strip()
         )
         if "vacant" in name.lower():
             raise SkipCouncillorException("Vacant")
