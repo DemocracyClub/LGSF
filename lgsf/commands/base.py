@@ -230,11 +230,8 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
         return args
 
     def missing(self):
-        always_excluded = ["GLA", "london"]
         missing_councils = []
         for council in self.current_councils:
-            if council.council_id in always_excluded:
-                continue
             scraper = load_scraper(council.council_id, self.command_name)
             if not scraper:
                 council_info = {
@@ -308,7 +305,11 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
                     councils.append(council)
         if self.options["exclude_missing"]:
             missing_councils = {c["code"] for c in self.missing()}
-            councils = list(set(councils) - missing_councils)
+            councils = [
+                council
+                for council in councils
+                if council.council_id not in missing_councils
+            ]
         return councils
 
     def run_councils(self):
