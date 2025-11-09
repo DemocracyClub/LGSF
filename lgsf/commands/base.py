@@ -398,8 +398,8 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
                 councillor.name or "N/A",
                 councillor.division or "N/A",
                 councillor.party or "N/A",
-                councillor.email or "N/A",
-                councillor.photo_url if councillor.photo_url else "None",
+                getattr(councillor, "email", None) or "N/A",
+                getattr(councillor, "photo_url", None) or "None",
             )
 
         total_councillors = len(self.scraped_councillors)
