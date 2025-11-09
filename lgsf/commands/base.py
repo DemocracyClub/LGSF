@@ -151,6 +151,10 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
     For commands that operate on a list of councils and run scrapers
     """
 
+    def __init__(self, argv, stdout, pretty=False):
+        super().__init__(argv, stdout, pretty)
+        self.scraped_councillors = []  # Store councillors for reporting
+
     def create_parser(self):
         self.parser = argparse.ArgumentParser()
         self.parser.add_argument(
@@ -200,6 +204,11 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
             "--list-failing",
             action="store_true",
             help="Print failing councils",
+        )
+        self.parser.add_argument(
+            "--report",
+            action="store_true",
+            help="Display a table report of scraped data after running",
         )
 
         self.add_default_arguments(self.parser)
@@ -327,6 +336,9 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
         run_log = settings.RUN_LOGGER(start=datetime.datetime.now(datetime.UTC))
         try:
             scraper.run(run_log)
+            # Collect councillors for reporting if flag is set
+            if self.options.get("report"):
+                self.scraped_councillors.extend(scraper.councillors)
         except KeyboardInterrupt:
             raise
         except Exception:
@@ -370,6 +382,34 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
         self.options["council"] = ",".join(new_codes)
         return self.options
 
+    def output_report(self):
+        """Display a Rich table report of scraped councillor data"""
+        table = Table(title="Scraped Councillor Data")
+        table.add_column("Name", style="cyan", no_wrap=False)
+        table.add_column("Ward", style="green", no_wrap=False)
+        table.add_column("Party", style="yellow", no_wrap=False)
+        table.add_column("Email", style="blue", no_wrap=False)
+        table.add_column("Photo", style="magenta", overflow="fold")
+
+        # Use councillors collected during scraping (in memory)
+        for councillor in sorted(self.scraped_councillors, key=lambda c: c.name):
+            table.add_row(
+                councillor.name or "N/A",
+                councillor.division or "N/A",
+                councillor.party or "N/A",
+                councillor.email or "N/A",
+                councillor.photo_url if councillor.photo_url else "None",
+            )
+
+        total_councillors = len(self.scraped_councillors)
+        if total_councillors > 0:
+            self.console.print(
+                f"\n[bold green]Total councillors scraped: {total_councillors}[/bold green]"
+            )
+            self.console.print(table)
+        else:
+            self.console.print("[yellow]No councillor data found to report[/yellow]")
+
     def handle(self, options):
         self.options = options
 
@@ -390,6 +430,11 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
         self.normalise_codes()
         if self.pretty:
             self.run_councils_with_progress()
-            return None
-        self.run_councils()
+        else:
+            self.run_councils()
+
+        # Display report if requested
+        if options.get("report"):
+            self.output_report()
+
         return None
