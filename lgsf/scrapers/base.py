@@ -22,7 +22,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
     extra_headers = {}
     http_lib = "rnet"
     verify_requests = True
-    timeout = 10
+    timeout = 30
     service_name = None
     scraper_object_type = None
 
