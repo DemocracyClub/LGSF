@@ -63,11 +63,10 @@ class ScraperBase(metaclass=abc.ABCMeta):
                     "https": proxy_url,
                 }
         elif self.http_lib == "httpx":
-            proxies = (
-                {"http://": proxy_url, "https://": proxy_url} if proxy_url else None
-            )
             self.http_client = httpx.Client(
-                verify=self.verify_requests, follow_redirects=True, proxies=proxies
+                verify=self.verify_requests,
+                follow_redirects=True,
+                proxy=proxy_url,
             )
         else:
             # rnet doesn't support proxies directly, fall back to requests if proxy needed
