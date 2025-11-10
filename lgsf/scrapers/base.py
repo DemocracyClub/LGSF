@@ -1,5 +1,6 @@
 import abc
 import datetime
+import os
 import traceback
 from pathlib import Path
 
@@ -25,6 +26,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
     timeout = 30
     service_name = None
     scraper_object_type = None
+    use_proxy = False
 
     def __init__(self, options, console):
         self.options = options
@@ -44,20 +46,46 @@ class ScraperBase(metaclass=abc.ABCMeta):
             scraper_object_type=self.scraper_object_type,
         )
         self.storage_session = self.storage_backend.start_session()
+
+        # Get proxy URL from environment variable if use_proxy is enabled
+        proxy_url = None
+        if self.use_proxy and os.environ.get("PROXY_URL"):
+            proxy_url = os.environ.get("PROXY_URL")
+            if self.options.get("verbose"):
+                self.console.log("Using proxy from PROXY_URL environment variable")
+
         if self.http_lib == "requests":
             self.http_client = requests.Session()
             self.http_client.verify = self.verify_requests
+            if proxy_url:
+                self.http_client.proxies = {
+                    "http": proxy_url,
+                    "https": proxy_url,
+                }
         elif self.http_lib == "httpx":
+            proxies = (
+                {"http://": proxy_url, "https://": proxy_url} if proxy_url else None
+            )
             self.http_client = httpx.Client(
-                verify=self.verify_requests, follow_redirects=True
+                verify=self.verify_requests, follow_redirects=True, proxies=proxies
             )
         else:
-            self.http_client = rnet.blocking.Client(
-                emulation=rnet.Emulation.Firefox133,
-                allow_redirects=True,
-                max_redirects=10,
-                verify=self.verify_requests,
-            )
+            # rnet doesn't support proxies directly, fall back to requests if proxy needed
+            if proxy_url:
+                self.http_lib = "requests"
+                self.http_client = requests.Session()
+                self.http_client.verify = self.verify_requests
+                self.http_client.proxies = {
+                    "http": proxy_url,
+                    "https": proxy_url,
+                }
+            else:
+                self.http_client = rnet.blocking.Client(
+                    emulation=rnet.Emulation.Firefox133,
+                    allow_redirects=True,
+                    max_redirects=10,
+                    verify=self.verify_requests,
+                )
 
     def get(self, url, extra_headers=None):
         """

@@ -209,6 +209,14 @@ class LgsfStack(cdk.Stack):
     def create_lambda_functions(self) -> None:
         """Create Lambda functions for Step Functions orchestration."""
 
+        # Fetch proxy URL from SSM if it exists
+        try:
+            proxy_url = ssm.StringParameter.value_for_string_parameter(
+                self, f"/lgsf/{self.dc_environment}/proxy_url"
+            )
+        except Exception:
+            proxy_url = None
+
         # Build common environment variables
         common_env = {
             "PYTHONPATH": "/var/task:/opt/python",
@@ -220,6 +228,10 @@ class LgsfStack(cdk.Stack):
             "GITHUB_APP_PRIVATE_KEY": self.github_app_private_key,
             "S3_REPORTS_BUCKET": self.s3_reports_bucket,
         }
+
+        # Add proxy URL if configured
+        if proxy_url:
+            common_env["PROXY_URL"] = proxy_url
 
         # Council Enumerator Function - discovers all councils to scrape
         self.council_enumerator_function = aws_lambda.Function(

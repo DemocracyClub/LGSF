@@ -72,7 +72,7 @@ class StepFunctionInvoker:
             ValueError: If ARN cannot be discovered
         """
         # Get environment from DC_ENVIRONMENT or default to production
-        environment = os.environ.get("DC_ENVIRONMENT", "production")
+        environment = os.environ.get("DC_ENVIRONMENT", "development")
 
         # Get AWS account ID and region
         account_id = self._get_account_id()
@@ -320,7 +320,7 @@ class StepFunctionInvoker:
                     "boto3 is required for AWS Step Function invocation. "
                     "Install it with: pip install boto3"
                 )
-            self._client = boto3.client("stepfunctions")
+            self._client = boto3.client("stepfunctions", region_name="eu-west-2")
         return self._client
 
     def invoke(
