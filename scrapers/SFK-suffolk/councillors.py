@@ -28,9 +28,9 @@ class Scraper(HTMLCouncillorScraper):
         )
         text = self.get_text(url)
         soup = BeautifulSoup(text, "lxml")
-        councillor.email = soup.select_one("a[href^=mailto]")["href"].replace(
-            "mailto:", ""
-        )
+        email_el = soup.select_one("a[href^=mailto]")
+        if email_el:
+            councillor.email = email_el["href"].replace("mailto:", "")
 
         councillor.photo_url = soup.select_one(".councillor__profile img")["src"]
         return councillor

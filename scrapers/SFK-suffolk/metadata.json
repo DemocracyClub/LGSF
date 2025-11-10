@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "https://www.suffolk.gov.uk/council-and-democracy/councillors-and-elected-representatives/find-your-councillor/?ward=&action=SEARCH&party=&name=",
+            "base_url": "https://www.suffolk.gov.uk/council-and-democracy/councillors-and-elected-representatives/find-your-councillor?pageSize=400",
             "cms_type": "Custom HTML"
         }
     }
