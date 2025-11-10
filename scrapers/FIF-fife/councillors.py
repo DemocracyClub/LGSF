@@ -1,4 +1,5 @@
 import re
+import time
 from urllib.parse import urljoin
 
 from lgsf.councillors import SkipCouncillorException
@@ -6,13 +7,15 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    timeout = 30
+    timeout = 60
+    use_proxy = True
     list_page = {
         "container_css_selector": ".article-body",
         "councillor_css_selector": ".councillor-card",
     }
 
     def get_single_councillor(self, councillor_html):
+        time.sleep(2)
         url = urljoin(self.base_url, councillor_html.a["href"])
         soup = self.get_page(url)
 
