@@ -5,7 +5,7 @@ description = "The Local Government Scraper Framework is a set of tools for scra
 readme = "README.md"
 requires-python = "==3.12.*"
 dependencies = [
-    "beautifulsoup4==4.13.4",
+    "beautifulsoup4==4.14.2",
     "cryptography>=41.0.0",
     "html5lib>=1.1",
     "httpx==0.28.1",
@@ -13,23 +13,23 @@ dependencies = [
     "pyjwt>=2.8.0",
     "python-dateutil==2.9.0.post0",
     "python-slugify==8.0.4",
-    "requests[security]==2.32.4",
+    "requests[security]==2.32.5",
     "retry2==0.9.5",
-    "rich==14.0.0",
-    "rnet==3.0.0rc10",
-    "urllib3<2",
+    "rich==14.2.0",
+    "rnet==3.0.0rc12",
+    "urllib3<3",
 ]
 
 [dependency-groups]
 dev = [
     "ipdb==0.13.13",
-    "pre-commit==4.2.0",
+    "pre-commit==4.4.0",
     "pystache==0.6.8",
-    "pytest==8.4.1",
+    "pytest==9.0.0",
     "pytest-blockage==0.2.4",
     "pytest-mypy-plugins==3.2.0",
     "pytest-ruff==0.5",
-    "ruff==0.12.0",
+    "ruff==0.14.4",
 ]
 cdk = [
     "aws-cdk-lib>=2.100.0,<3.0.0",
