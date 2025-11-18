@@ -14,7 +14,7 @@
   },
   "services": {
     "councillors": {
-      "base_url": "https://www.falkirk.gov.uk/councillors-and-decision-making/councillors",
+      "base_url": "https://council.falkirk.gov.uk/Councillors",
       "cms_type": "Custom HTML"
     }
   }
