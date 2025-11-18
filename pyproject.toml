@@ -17,7 +17,6 @@ dependencies = [
     "retry2==0.9.5",
     "rich==14.0.0",
     "rnet==3.0.0rc10",
-    "urllib3<2",
 ]
 
 [dependency-groups]
