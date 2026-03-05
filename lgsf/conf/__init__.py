@@ -28,6 +28,7 @@ class BaseSettings(object):
             "councillors",
             "templates",
             "metadata",
+            "sync",
             # 'parties',
             # "scrapers",
             # 'reconcilers',
