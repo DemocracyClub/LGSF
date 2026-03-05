@@ -1,7 +1,60 @@
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#     "python-dateutil",
+# ]
+# ///
+"""
+Output councillor data as CSV, filtering to current councils only.
+
+Usage:
+    uv run output_csv.py > councillors.csv
+    uv run output_csv.py --all > all_councillors.csv  # include non-current
+"""
+
 import csv
 import glob
 import json
 import sys
+from datetime import date
+from pathlib import Path
+
+from dateutil.parser import parse
+
+
+def is_current_council(metadata: dict) -> bool:
+    """Check if a council is current based on its metadata."""
+    today = date.today()
+
+    # Check for dates in everyelectiion_data first (new format)
+    everyelectiion_data = metadata.get("everyelectiion_data", {})
+    end_date = everyelectiion_data.get("end_date") or metadata.get("end_date")
+    start_date = everyelectiion_data.get("start_date") or metadata.get("start_date")
+
+    if end_date and parse(end_date).date() < today:
+        return False
+    if start_date and parse(start_date).date() > today:
+        return False
+    return True
+
+
+def get_current_council_ids() -> set[str]:
+    """Get set of council IDs that are currently active."""
+    current_ids = set()
+    scrapers_dir = Path("scrapers")
+
+    for metadata_file in scrapers_dir.glob("*/metadata.json"):
+        council_id = metadata_file.parent.name.split("-")[0].upper()
+        try:
+            with open(metadata_file) as f:
+                metadata = json.load(f)
+            if is_current_council(metadata):
+                current_ids.add(council_id)
+        except (json.JSONDecodeError, OSError):
+            continue
+
+    return current_ids
+
 
 field_names = [
     "council_id",
@@ -11,31 +64,25 @@ field_names = [
     "url",
     "raw_name",
     "raw_party",
-    "photo_url",
-    "standing_down",
-    # 'glasses',
-    # 'age_high',
-    # 'smile',
-    # 'happy',
-    # 'age_low',
-    # 'beard',
-    # 'gender'
 ]
 
-# field_names = [
-#     'council_id',
-#     'num_councilors',
-# ]
-
 csvout = csv.DictWriter(sys.stdout, fieldnames=field_names)
-
 csvout.writeheader()
 
-councillor_counter = {}
+# Check for --all flag
+include_all = "--all" in sys.argv
+
+# Get current councils (unless --all is specified)
+current_council_ids = None if include_all else get_current_council_ids()
 
 for file_name in glob.glob("./data/**/json/*.json"):
-    councillor = json.load(open(file_name))
     council_id = file_name.split("/")[-3]
+
+    # Skip non-current councils unless --all
+    if current_council_ids is not None and council_id not in current_council_ids:
+        continue
+
+    councillor = json.load(open(file_name))
     for k in list(councillor.keys()):
         if k not in field_names:
             del councillor[k]
