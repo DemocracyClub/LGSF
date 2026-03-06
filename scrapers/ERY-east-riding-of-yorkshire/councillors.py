@@ -1,5 +1,7 @@
 from lgsf.councillors.scrapers import JSONCouncillorScraper
 
+ENTRY_API_URL = "https://www.eastriding.gov.uk/index.php?option=com_erycdirectory&task=entrydata.fetchentrybyalias&format=json&directory_id=43&alias={alias}"
+
 
 class Scraper(JSONCouncillorScraper):
     def get_councillors(self):
@@ -38,5 +40,15 @@ class Scraper(JSONCouncillorScraper):
             file_path = image_data[0].get("file_path", "")
             if file_path:
                 councillor.photo_url = f"https://www.eastriding.gov.uk{file_path}"
+
+        # Fetch individual entry to get email (not included in bulk listing)
+        entry_data = self.get(ENTRY_API_URL.format(alias=alias)).json()
+        contact_data = entry_data.get("entry", {}).get("data", {}).get("contact", [{}])
+        if contact_data:
+            email = contact_data[0].get("emailWork", "") or contact_data[0].get(
+                "email", ""
+            )
+            if email and isinstance(email, str):
+                councillor.email = email
 
         return councillor
