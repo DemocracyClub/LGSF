@@ -16,7 +16,6 @@ class Scraper(PagedHTMLCouncillorScraper):
     def get_single_councillor(self, councillor_html):
         if councillor_html.find_all("th"):
             raise SkipCouncillorException
-        print(councillor_html)
         url = urljoin(self.base_url, councillor_html.a["href"])
         soup = self.get_page(url)
         name = soup.h1.get_text(strip=True).replace("Councillor ", "")
@@ -36,7 +35,7 @@ class Scraper(PagedHTMLCouncillorScraper):
         email = soup.find("h2", text=re.compile("Email address"))
         if email:
             councillor.email = email.find_next("a")["href"]
-        councillor.photo_url = urljoin(
-            self.base_url, soup.select_one("picture img")["src"]
-        )
+        picture_img = soup.select_one("picture img")
+        if picture_img:
+            councillor.photo_url = urljoin(self.base_url, picture_img["src"])
         return councillor
