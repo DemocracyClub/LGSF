@@ -46,9 +46,13 @@ class Scraper(HTMLCouncillorScraper):
             party=party,
             division=ward,
         )
-        councillor.email = decode_cfemail(
-            soup.select_one("td a span.__cf_email__")["data-cfemail"]
-        )
+        cf_span = soup.select_one("td a span.__cf_email__")
+        if cf_span:
+            councillor.email = decode_cfemail(cf_span["data-cfemail"])
+        else:
+            email_link = soup.select_one("a[href^=mailto]")
+            if email_link:
+                councillor.email = email_link["href"].replace("mailto:", "")
         councillor.photo_url = urljoin(
             self.base_url,
             soup.select_one(".a-relimage img")["src"],
