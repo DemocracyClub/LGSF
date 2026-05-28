@@ -1,48 +1,50 @@
-import re
+import contextlib
 
 from bs4 import BeautifulSoup
 
-from lgsf.councillors.scrapers import CMISCouncillorScraper
+from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
-class Scraper(CMISCouncillorScraper):
-    def get_from_profile_page(self, profile_url):
-        # Get the real profile page
-        text = self.get_text(profile_url)
-        soup = BeautifulSoup(text, "lxml")
+class Scraper(HTMLCouncillorScraper):
+    list_page = {
+        "container_css_selector": "ul.list--listing",
+        "councillor_css_selector": "article.listing",
+    }
 
-        identifier = profile_url.split("/councillors/")[1].split("/")[0]
-        name = soup.find("h2", {"class": "listing__heading"}).getText(strip=True)
-        division = soup.find(text="Ward:").next.strip()
-        party = soup.find(text="Party:").next.strip()
+    def get_single_councillor(self, councillor_html):
+        url = councillor_html.select_one("a.listing__link")["href"]
+
+        name = councillor_html.select_one("h3.listing__heading span").get_text(
+            strip=True
+        )
+
+        meta_items = councillor_html.select("li.listing__meta")
+        division = meta_items[0].get_text(strip=True).replace("Ward:", "").strip()
+        party = meta_items[1].get_text(strip=True).replace("Party:", "").strip()
+
+        identifier = url.split("/councillors/")[1].split("/")[0]
 
         councillor = self.add_councillor(
-            profile_url,
+            url,
             identifier=identifier,
             name=name,
             party=party,
             division=division,
         )
-        councillor.email = soup.find(text=re.compile("Email:")).next.getText(strip=True)
 
-        return councillor
+        with contextlib.suppress(AttributeError, TypeError):
+            img = councillor_html.select_one("img.listing__image")
+            if img:
+                img_src = img.get("src", "")
+                if img_src and not img_src.startswith("data:"):
+                    if img_src.startswith("//"):
+                        img_src = "https:" + img_src
+                    councillor.photo_url = img_src
 
-    def get_single_councillor(self, list_page_html):
-        """
-        Birmingham uses CMIS for councillors, but another URL for profiles
-        and contact info. This method traverses cmis to that profile URL and
-        parses it in to a Councillor object
-        """
-        url = list_page_html.a["href"]
+        with contextlib.suppress(AttributeError, IndexError, TypeError):
+            profile_soup = BeautifulSoup(self.get_text(url), "lxml")
+            email_link = profile_soup.select_one("a[href^=mailto]")
+            if email_link:
+                councillor.email = email_link["href"].replace("mailto:", "")
 
-        # Get the CMIS page for this person
-        text = self.get_text(url)
-        soup = BeautifulSoup(text, "lxml")
-        try:
-            profile_url = soup.select(".Biog")[0].a["href"].strip()
-            councillor = self.get_from_profile_page(profile_url)
-        except Exception:
-            # This person doesn't have a profile page or something else went
-            # wrong, do what we can with this page
-            councillor = super().get_single_councillor(list_page_html)
         return councillor

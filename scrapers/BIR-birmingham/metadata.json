@@ -14,8 +14,8 @@
     },
     "services": {
         "councillors": {
-            "base_url": "https://birmingham.cmis.uk.com/birmingham/Councillors.aspx",
-            "cms_type": "CMIS"
+            "base_url": "https://www.birmingham.gov.uk/councillors/name",
+            "cms_type": "Custom HTML"
         }
     }
 }
