@@ -36,7 +36,9 @@ class Scraper(HTMLCouncillorScraper):
             party=party,
             division=ward,
         )
-        councillor.email = soup.find("span", text=re.compile("@")).get_text(strip=True)
+        email_span = soup.find("span", text=re.compile("@"))
+        if email_span:
+            councillor.email = email_span.get_text(strip=True)
 
         image = soup.select_one(".councillor-details img")
         if image:
