@@ -7,7 +7,7 @@ from pathlib import Path
 import httpx
 import requests
 from dateutil import parser
-import rnet
+import wreq
 
 from ..metadata.models import CouncilMetadata
 from ..storage.backends import get_storage_backend
@@ -21,7 +21,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
 
     disabled = False
     extra_headers = {}
-    http_lib = "rnet"
+    http_lib = "wreq"
     verify_requests = True
     timeout = 30
     service_name = None
@@ -69,7 +69,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
                 proxy=proxy_url,
             )
         else:
-            # rnet doesn't support proxies directly, fall back to requests if proxy needed
+            # wreq doesn't support proxies directly, fall back to requests if proxy needed
             if proxy_url:
                 self.http_lib = "requests"
                 self.http_client = requests.Session()
@@ -79,8 +79,8 @@ class ScraperBase(metaclass=abc.ABCMeta):
                     "https": proxy_url,
                 }
             else:
-                self.http_client = rnet.blocking.Client(
-                    emulation=rnet.Emulation.Firefox133,
+                self.http_client = wreq.blocking.Client(
+                    emulation=wreq.Emulation.Firefox133,
                     allow_redirects=True,
                     max_redirects=10,
                     verify=self.verify_requests,
@@ -94,9 +94,9 @@ class ScraperBase(metaclass=abc.ABCMeta):
         if self.options.get("verbose"):
             self.console.log(f"Scraping from {url}")
 
-        # Don't change headers for rnet, as it does it for us
-        if self.http_lib == "rnet":
-            # See: https://github.com/0x676e67/rnet/issues/405
+        # Don't change headers for wreq, as it does it for us
+        if self.http_lib == "wreq":
+            # See: https://github.com/0x676e67/wreq-python/issues/405
             response = self.http_client.get(
                 url.replace(" ", "%20"), timeout=self.timeout
             )
@@ -115,7 +115,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
         Wraps self.get and always returns the response text.
 
         This is needed because requests and https h
-        ave response.text, rnet has response.text() (callable)
+        ave response.text, wreq has response.text() (callable)
         """
         response = self.get(url, extra_headers=extra_headers)
         text = response.text
