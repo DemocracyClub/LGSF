@@ -98,7 +98,8 @@ class ScraperBase(metaclass=abc.ABCMeta):
         if self.http_lib == "wreq":
             # See: https://github.com/0x676e67/wreq-python/issues/405
             response = self.http_client.get(
-                url.replace(" ", "%20"), timeout=self.timeout
+                url.replace(" ", "%20"),
+                timeout=datetime.timedelta(seconds=self.timeout),
             )
         else:
             headers = {"User-Agent": "Scraper/DemocracyClub", "Accept": "*/*"}
