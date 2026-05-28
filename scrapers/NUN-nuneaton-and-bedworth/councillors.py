@@ -5,6 +5,7 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
+    http_lib = "requests"
     list_page = {
         "container_css_selector": "ul.list--listing",
         "councillor_css_selector": "article.listing",
@@ -21,7 +22,7 @@ class Scraper(HTMLCouncillorScraper):
         )
 
         ward = (
-            soup.find("strong", text=re.compile("Ward:"))
+            soup.find("strong", string=re.compile("Ward:"))
             .find_parent("p")
             .get_text(strip=True)
             .replace("Ward:", "")
@@ -29,7 +30,7 @@ class Scraper(HTMLCouncillorScraper):
         )
 
         party = (
-            soup.find("strong", text=re.compile("Party:"))
+            soup.find("strong", string=re.compile("Party:"))
             .find_parent("p")
             .get_text(strip=True)
             .replace("Party:", "")
