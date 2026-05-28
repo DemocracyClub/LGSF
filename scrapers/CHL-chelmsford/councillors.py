@@ -7,6 +7,7 @@ from lgsf.councillors.scrapers import PagedHTMLCouncillorScraper
 
 
 class Scraper(PagedHTMLCouncillorScraper):
+    http_lib = "requests"
     list_page = {
         "container_css_selector": "table.directories-table__table",
         "councillor_css_selector": "tr",
@@ -34,7 +35,10 @@ class Scraper(PagedHTMLCouncillorScraper):
         )
         email = soup.find("h2", text=re.compile("Email address"))
         if email:
-            councillor.email = email.find_next("a")["href"]
+            href = email.find_next("a")["href"]
+            email_val = href.replace("mailto:", "").replace("tel:", "")
+            if "@" in email_val:
+                councillor.email = email_val
         picture_img = soup.select_one("picture img")
         if picture_img:
             councillor.photo_url = urljoin(self.base_url, picture_img["src"])
