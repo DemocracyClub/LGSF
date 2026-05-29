@@ -3,6 +3,8 @@ from lgsf.councillors.scrapers import ModGovCouncillorScraper
 
 
 class Scraper(ModGovCouncillorScraper):
+    http_lib = "requests"
+
     def get_single_councillor(self, ward, councillor_xml):
         councillor = super().get_single_councillor(ward, councillor_xml)
         if hasattr(councillor, "email") and "babergh.gov.uk" in councillor.email:
