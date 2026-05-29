@@ -1,14 +1,23 @@
 import codecs
+import contextlib
 import re
 
-from lgsf.councillors.scrapers import HTMLCouncillorScraper
+from lgsf.councillors.scrapers import PagedHTMLCouncillorScraper
 
 
-class Scraper(HTMLCouncillorScraper):
+class Scraper(PagedHTMLCouncillorScraper):
+    http_lib = "requests"
     list_page = {
         "container_css_selector": ".td-main-content",
         "councillor_css_selector": ".council-wrap-inner",
     }
+
+    def get_next_link(self, soup):
+        with contextlib.suppress(Exception):
+            for a in soup.select(".page-nav a"):
+                if a.get_text(strip=True) == "Next Page":
+                    return a["href"]
+        return None
 
     def decode_email(self, councillor_html):
         borked_email = councillor_html.select_one("a.mailto-link")["data-enc-email"]
