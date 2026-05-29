@@ -81,8 +81,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
             else:
                 self.http_client = wreq.blocking.Client(
                     emulation=wreq.Emulation.Firefox133,
-                    allow_redirects=True,
-                    max_redirects=10,
+                    redirect=wreq.Policy.limited(max=10),
                     verify=self.verify_requests,
                 )
 
