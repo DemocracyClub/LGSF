@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "http://democracy.anglesey.gov.uk",
+            "base_url": "https://democracy.anglesey.gov.uk",
             "cms_type": "ModernGov"
         }
     }
