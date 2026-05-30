@@ -82,7 +82,8 @@ class ScraperBase(metaclass=abc.ABCMeta):
                 self.http_client = wreq.blocking.Client(
                     emulation=wreq.Emulation.Firefox133,
                     redirect=wreq.Policy.limited(max=10),
-                    verify=self.verify_requests,
+                    tls_verify=self.verify_requests,
+                    tls_verify_hostname=self.verify_requests,
                 )
 
     def get(self, url, extra_headers=None):
