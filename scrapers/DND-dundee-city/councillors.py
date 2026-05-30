@@ -7,6 +7,7 @@ from lgsf.councillors.scrapers import (
 
 
 class Scraper(HTMLCouncillorScraper):
+    verify_requests = False
     list_page = {
         "container_css_selector": ".node-content",
         "councillor_css_selector": "tr",
