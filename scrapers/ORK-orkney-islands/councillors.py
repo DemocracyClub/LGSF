@@ -5,6 +5,7 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
+    verify_requests = False
     list_page = {
         "container_css_selector": ".contentcolumn",
         "councillor_css_selector": "td:first-child",
