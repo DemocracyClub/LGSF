@@ -5,6 +5,7 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
+    verify_requests = False
     list_page = {
         "container_css_selector": ".contentcolumn",
         "councillor_css_selector": "td:first-child",
@@ -58,7 +59,7 @@ class Scraper(HTMLCouncillorScraper):
                 .replace("Email:", "")
                 .strip()
             )
-        image = soup.select_one("img#pic1")
+        image = soup.select_one("h1 img")
         if image:
             councillor.photo_url = urljoin(
                 self.base_url,
