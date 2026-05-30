@@ -9,6 +9,7 @@ from lgsf.councillors.scrapers import (
 
 
 class Scraper(PagedHTMLCouncillorScraper):
+    verify_requests = False
     list_page = {
         "container_css_selector": ".localgov-directory",
         "councillor_css_selector": ".views-row",
@@ -23,8 +24,8 @@ class Scraper(PagedHTMLCouncillorScraper):
         if name == "Vacant":
             raise SkipCouncillorException("Vacant")
 
-        division = " ".join(
-            councillor_html.select_one(".field--name-field-ward").get_text(strip=True)
+        division = councillor_html.select_one(".field--name-field-ward").get_text(
+            strip=True
         )
         party = councillor_html.select_one(
             ".field--name-localgov-directory-facets-select"
