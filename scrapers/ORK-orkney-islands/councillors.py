@@ -59,7 +59,7 @@ class Scraper(HTMLCouncillorScraper):
                 .replace("Email:", "")
                 .strip()
             )
-        image = soup.select_one("img#pic1")
+        image = soup.select_one("h1 img")
         if image:
             councillor.photo_url = urljoin(
                 self.base_url,
