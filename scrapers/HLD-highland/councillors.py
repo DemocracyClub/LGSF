@@ -7,7 +7,7 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 class Scraper(HTMLCouncillorScraper):
     list_page = {
-        "container_css_selector": "article.container ul.item-list__articles",
+        "container_css_selector": "ul.list--listing",
         "councillor_css_selector": "li",
     }
 
@@ -16,12 +16,12 @@ class Scraper(HTMLCouncillorScraper):
         soup = self.get_page(url)
 
         name = (
-            soup.select_one(".title h1").get_text(strip=True).replace("Councillor ", "")
+            soup.select_one("h1.page-heading").get_text(strip=True).replace("Councillor ", "")
         )
 
         ward = (
             soup.find("strong", text=re.compile("Ward:"))
-            .find_parent("li")
+            .find_parent("p")
             .get_text(strip=True)
             .replace("Ward:", "")
             .strip()
@@ -30,7 +30,7 @@ class Scraper(HTMLCouncillorScraper):
 
         party = (
             soup.find("strong", text=re.compile("Party:"))
-            .find_parent("li")
+            .find_parent("p")
             .get_text(strip=True)
             .replace("Party:", "")
             .strip()
@@ -44,7 +44,7 @@ class Scraper(HTMLCouncillorScraper):
             division=ward,
         )
         with contextlib.suppress(AttributeError):
-            councillor.email = soup.select_one("li a[href^=mailto]").get_text(
+            councillor.email = soup.select_one("a[href^=mailto]").get_text(
                 strip=True
             )
         image = soup.select_one("article img")
