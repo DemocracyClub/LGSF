@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "https://mgov.wychavon.gov.uk",
+            "base_url": "https://mgov.wychavon.gov.uk/modern.gov",
             "cms_type": "ModernGov"
         }
     }
