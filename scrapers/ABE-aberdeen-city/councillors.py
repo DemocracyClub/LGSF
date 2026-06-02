@@ -2,4 +2,5 @@ from lgsf.councillors.scrapers import ModGovCouncillorScraper
 
 
 class Scraper(ModGovCouncillorScraper):
-    pass
+    verify_requests = False
+    timeout = 30
