@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "https://www.nelincs.gov.uk/your-council/councillors-mps-and-meps/find-your-councillor/councillors-by-party/",
+            "base_url": "https://www.nelincs.gov.uk/your-council/councillors-and-mps/",
             "cms_type": "Custom HTML"
         }
     }
