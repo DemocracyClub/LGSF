@@ -12,6 +12,7 @@ def decode_cfemail(hexstr: str) -> str:
 
 
 class Scraper(HTMLCouncillorScraper):
+    verify_requests = False
     list_page = {
         "container_css_selector": "main",
         "councillor_css_selector": "h4",
