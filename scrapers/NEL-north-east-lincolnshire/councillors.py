@@ -6,6 +6,7 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
+    verify_requests = False
     list_page = {
         "container_css_selector": "main .col-12 .page-content:nth-child(1)",
         "councillor_css_selector": "li",
