@@ -46,6 +46,7 @@ class Scraper(PagedHTMLCouncillorScraper):
         )
         councillor.email = email
 
-        councillor.photo_url = councillor_html.select_one("img")["src"]
-        councillor.photo_url = councillor.photo_url.replace("120x150", "240x300")
+        with contextlib.suppress(TypeError):
+            councillor.photo_url = councillor_html.select_one("img")["src"]
+            councillor.photo_url = councillor.photo_url.replace("120x150", "240x300")
         return councillor
