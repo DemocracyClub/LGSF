@@ -2,4 +2,4 @@ from lgsf.councillors.scrapers import CMISCouncillorScraper
 
 
 class Scraper(CMISCouncillorScraper):
-    pass
+    verify_requests = False
