@@ -258,7 +258,9 @@ class LgsfStack(cdk.Stack):
         self.scraper_worker_function = aws_lambda.DockerImageFunction(
             self,
             "ScraperWorkerFunction",
-            function_name=self.get_lambda_function_name("scraper-worker"),
+            # No custom function_name: allows CloudFormation to replace this resource
+            # cleanly when the package type changes (Zip -> Image requires replacement,
+            # and CF cannot replace a custom-named resource in place).
             code=aws_lambda.DockerImageCode.from_image_asset(
                 ".",
                 file="Dockerfile.scraper-worker",
