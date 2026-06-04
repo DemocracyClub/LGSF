@@ -59,7 +59,15 @@ class PlaywrightHTTPClient:
                 wait_until="networkidle",
             )
             status = response.status if response else 200
-            content = page.content()
+            # For XML responses (e.g. ModGov ASMX endpoints), Chrome wraps the content
+            # in its XML viewer UI. response.body() gives the raw response bytes instead.
+            # For HTML responses, page.content() gives the JS-rendered DOM (needed for
+            # Incapsula/Cloudflare-protected HTML pages like STH).
+            content_type = response.headers.get("content-type", "") if response else ""
+            if "xml" in content_type and response:
+                content = response.body().decode("utf-8", errors="replace")
+            else:
+                content = page.content()
             return PlaywrightResponse(status, content)
         finally:
             page.close()
