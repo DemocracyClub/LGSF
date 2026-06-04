@@ -70,6 +70,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
             )
         elif self.http_lib == "playwright":
             from .playwright_client import PlaywrightHTTPClient
+
             self.http_client = PlaywrightHTTPClient(timeout=self.timeout)
         else:
             # wreq doesn't support proxies directly, fall back to requests if proxy needed
