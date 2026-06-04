@@ -1,4 +1,5 @@
 import os
+import tempfile
 
 from playwright.sync_api import sync_playwright
 
@@ -20,8 +21,9 @@ class PlaywrightResponse:
 class PlaywrightHTTPClient:
     """Headless Chromium HTTP client for JS-challenge-protected sites (e.g. Incapsula).
 
-    Automatically uses no-sandbox mode when running inside AWS Lambda
-    (detected via AWS_LAMBDA_FUNCTION_NAME env var).
+    In Lambda, uses launch_persistent_context() with an explicit /tmp user data dir
+    because the rest of the Lambda filesystem is read-only. Outside Lambda, uses a
+    standard launch() with an ephemeral context.
     """
 
     _LAMBDA_ARGS = [
@@ -29,7 +31,6 @@ class PlaywrightHTTPClient:
         "--disable-dev-shm-usage",
         "--disable-gpu",
         "--single-process",
-        "--user-data-dir=/tmp/playwright-chrome",
     ]
 
     _USER_AGENT = (
@@ -40,12 +41,23 @@ class PlaywrightHTTPClient:
 
     def __init__(self, headless=True, timeout=30):
         self._pw = sync_playwright().start()
+        self._browser = None
         in_lambda = bool(os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
-        self._browser = self._pw.chromium.launch(
-            headless=headless,
-            args=self._LAMBDA_ARGS if in_lambda else [],
-        )
-        self._context = self._browser.new_context(user_agent=self._USER_AGENT)
+
+        if in_lambda:
+            # Lambda's filesystem is read-only except /tmp. Chromium needs to write its
+            # user data dir somewhere, so we create an explicit path under /tmp.
+            user_data_dir = tempfile.mkdtemp(dir="/tmp")
+            self._context = self._pw.chromium.launch_persistent_context(
+                user_data_dir,
+                headless=headless,
+                args=self._LAMBDA_ARGS,
+                user_agent=self._USER_AGENT,
+            )
+        else:
+            self._browser = self._pw.chromium.launch(headless=headless)
+            self._context = self._browser.new_context(user_agent=self._USER_AGENT)
+
         self.timeout = timeout
 
     def get(self, url, headers=None, timeout=None):
@@ -75,7 +87,8 @@ class PlaywrightHTTPClient:
     def close(self):
         try:
             self._context.close()
-            self._browser.close()
+            if self._browser:
+                self._browser.close()
             self._pw.stop()
         except Exception:
             pass
