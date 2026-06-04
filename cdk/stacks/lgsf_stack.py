@@ -251,26 +251,31 @@ class LgsfStack(cdk.Stack):
             description="Enumerate councils for parallel scraping",
         )
 
-        # Scraper Worker Function - processes individual council scrapers
-        self.scraper_worker_function = aws_lambda.Function(
+        # Scraper Worker Function - processes individual council scrapers.
+        # Uses a Docker container image so Playwright's Chromium binary (too large
+        # for a Lambda layer) is baked in at build time. git is also installed in
+        # the image, so the git Lambda layer is no longer needed here.
+        self.scraper_worker_function = aws_lambda.DockerImageFunction(
             self,
             "ScraperWorkerFunction",
             function_name=self.get_lambda_function_name("scraper-worker"),
-            code=aws_lambda.Code.from_asset(
+            code=aws_lambda.DockerImageCode.from_image_asset(
                 ".",
-                exclude=EXCLUDE_FILES,
+                file="Dockerfile.scraper-worker",
             ),
-            memory_size=512,
-            handler="lgsf.aws_lambda.handlers.scraper_worker_handler",
-            runtime=aws_lambda.Runtime.PYTHON_3_12,
+            memory_size=1024,  # Chromium requires more memory than plain scrapers
             timeout=cdk.Duration.minutes(15),
-            layers=[self.dependencies_layer, self.git_layer],
             role=self.lambda_execution_role,
             reserved_concurrent_executions=10,
-            environment=common_env.copy(),
+            environment={
+                **common_env,
+                # Must match PLAYWRIGHT_BROWSERS_PATH set during the Docker build
+                # so Playwright finds the pre-installed Chromium binary at runtime.
+                "PLAYWRIGHT_BROWSERS_PATH": "/ms-playwright",
+            },
             ephemeral_storage_size=cdk.Size.mebibytes(
                 1024
-            ),  # Increase /tmp to 1GB for git repos
+            ),  # Keep /tmp at 1GB for git repos
             description="Process individual council scraper tasks",
         )
 
