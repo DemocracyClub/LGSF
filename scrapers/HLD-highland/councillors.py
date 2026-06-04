@@ -16,7 +16,9 @@ class Scraper(HTMLCouncillorScraper):
         soup = self.get_page(url)
 
         name = (
-            soup.select_one("h1.page-heading").get_text(strip=True).replace("Councillor ", "")
+            soup.select_one("h1.page-heading")
+            .get_text(strip=True)
+            .replace("Councillor ", "")
         )
 
         ward = (
@@ -44,10 +46,8 @@ class Scraper(HTMLCouncillorScraper):
             division=ward,
         )
         with contextlib.suppress(AttributeError):
-            councillor.email = soup.select_one("a[href^=mailto]").get_text(
-                strip=True
-            )
-        image = soup.select_one("article img")
+            councillor.email = soup.select_one("a[href^=mailto]").get_text(strip=True)
+        image = soup.select_one("img.image--feature")
         if image:
             councillor.photo_url = urljoin(
                 self.base_url,
