@@ -1,0 +1,45 @@
+FROM public.ecr.aws/lambda/python:3.12
+
+# Install git (replaces the git Lambda layer) and Chromium headless shell
+# system dependencies for Amazon Linux 2023.
+RUN dnf install -y \
+    git \
+    alsa-lib \
+    at-spi2-atk \
+    atk \
+    cairo \
+    cups-libs \
+    dbus-libs \
+    libdrm \
+    libXcomposite \
+    libXdamage \
+    libXext \
+    libXfixes \
+    libXrandr \
+    libxcb \
+    libxkbcommon \
+    mesa-libgbm \
+    nss \
+    pango \
+    && dnf clean all
+
+# Install all Python dependencies (including playwright) using uv.
+# uv reads pyproject.toml + uv.lock so versions are pinned and reproducible.
+COPY pyproject.toml uv.lock ./
+RUN pip install uv && \
+    uv export --no-dev --no-hashes --frozen > /tmp/requirements.txt && \
+    pip install -r /tmp/requirements.txt
+
+# Download and install the Playwright Chromium headless shell binary at build
+# time so it is baked into the image. PLAYWRIGHT_BROWSERS_PATH is set here and
+# also surfaced as a Lambda env var (in the CDK stack) so both build and runtime
+# use the same location.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+RUN python -m playwright install chromium
+
+# Copy application code into the Lambda task root.
+COPY lgsf/ ${LAMBDA_TASK_ROOT}/lgsf/
+COPY scrapers/ ${LAMBDA_TASK_ROOT}/scrapers/
+COPY manage.py ${LAMBDA_TASK_ROOT}/
+
+CMD ["lgsf.aws_lambda.handlers.scraper_worker_handler"]

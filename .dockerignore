@@ -1,0 +1,17 @@
+.venv
+cdk.out
+data
+.git
+.github
+.circleci
+scripts
+lambda-layers
+*.pyc
+**/__pycache__
+.pytest_cache
+.ruff_cache
+.idea
+*.zip
+councillors.csv
+councils.csv
+modgov-councils.csv

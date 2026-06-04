@@ -68,6 +68,10 @@ class ScraperBase(metaclass=abc.ABCMeta):
                 follow_redirects=True,
                 proxy=proxy_url,
             )
+        elif self.http_lib == "playwright":
+            from .playwright_client import PlaywrightHTTPClient
+
+            self.http_client = PlaywrightHTTPClient(timeout=self.timeout)
         else:
             # wreq doesn't support proxies directly, fall back to requests if proxy needed
             if proxy_url:
@@ -100,6 +104,12 @@ class ScraperBase(metaclass=abc.ABCMeta):
             response = self.http_client.get(
                 url.replace(" ", "%20"),
                 timeout=datetime.timedelta(seconds=self.timeout),
+            )
+        elif self.http_lib == "playwright":
+            response = self.http_client.get(
+                url,
+                headers=extra_headers,
+                timeout=self.timeout,
             )
         else:
             headers = {"User-Agent": "Scraper/DemocracyClub", "Accept": "*/*"}
