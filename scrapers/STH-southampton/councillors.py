@@ -6,7 +6,7 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
-    http_lib = "requests"
+    http_lib = "playwright"
 
     list_page = {
         "container_css_selector": "div.mgThumbsList",
