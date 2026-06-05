@@ -8,7 +8,6 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 class Scraper(HTMLCouncillorScraper):
     timeout = 60
-    use_proxy = True
     list_page = {
         "container_css_selector": ".article-body",
         "councillor_css_selector": ".councillor-card",
