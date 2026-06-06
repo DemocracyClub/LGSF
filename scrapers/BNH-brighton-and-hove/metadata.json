@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "http://present.brighton-hove.gov.uk",
+            "base_url": "https://democracy.brighton-hove.gov.uk",
             "cms_type": "ModernGov"
         }
     }
