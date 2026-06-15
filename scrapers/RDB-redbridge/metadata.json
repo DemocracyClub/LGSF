@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "http://moderngov.redbridge.gov.uk",
+            "base_url": "https://moderngov.redbridge.gov.uk",
             "cms_type": "ModernGov"
         }
     }
