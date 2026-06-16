@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "http://democracy.bcpcouncil.gov.uk",
+            "base_url": "https://democracy.bcpcouncil.gov.uk",
             "cms_type": "ModernGov"
         }
     }
