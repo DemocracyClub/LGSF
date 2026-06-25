@@ -1,3 +1,4 @@
+from lgsf.councillors.exceptions import SkipCouncillorException
 from lgsf.councillors.scrapers import JSONCouncillorScraper
 
 ENTRY_API_URL = "https://www.eastriding.gov.uk/index.php?option=com_erycdirectory&task=entrydata.fetchentrybyalias&format=json&directory_id=43&alias={alias}"
@@ -12,6 +13,7 @@ class Scraper(JSONCouncillorScraper):
     def get_single_councillor(self, councillor_json):
         """Parse a single councillor from JSON"""
         search_data = councillor_json.get("search_data", {})
+        alias = councillor_json.get("alias", "")
 
         # Extract name from nested structure
         name_data = search_data.get("name", [{}])[0]
@@ -25,8 +27,13 @@ class Scraper(JSONCouncillorScraper):
         # Extract party (use political_group as fallback)
         party = search_data.get("party", "") or search_data.get("political_group", "")
 
+        # Skip entries with no party — the API search index retains stale
+        # entries for councillors who have left; their party field is cleared
+        # but the entry is not removed, causing add_councillor to assert-fail.
+        if not party:
+            raise SkipCouncillorException(f"No party for {alias}")
+
         # Build URL from alias
-        alias = councillor_json.get("alias", "")
         url = f"https://www.eastriding.gov.uk/council/councillors-and-committees/your-councillors/{alias}"
 
         # Create councillor
