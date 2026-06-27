@@ -1,33 +1,29 @@
-import contextlib
-import re
 from urllib.parse import urljoin
 
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
+    # Site migrated from /councillors/name to /council-and-democracy/councillors
+    # (LocalGov Drupal, Big Blue Door). Councillors are grouped by ward in
+    # accordion panes; each .card div holds all list-page data.
     list_page = {
-        "container_css_selector": "ul.list--political",
-        "councillor_css_selector": ".list__item",
+        "container_css_selector": ".view-id-councillors .view-content",
+        "councillor_css_selector": ".card",
     }
 
     def get_single_councillor(self, councillor_html):
-        url = urljoin(self.base_url, councillor_html.a["href"])
-        soup = self.get_page(url)
+        link = councillor_html.select_one(".views-field-title a")
+        url = urljoin(self.base_url, link["href"])
+        name = link.get_text(strip=True)
 
-        name = (
-            soup.select_one("h1.page-heading")
-            .get_text(strip=True)
-            .replace("Councillor ", "")
-        )
-        callout = soup.select(".callout__list .list__item")
-        for element in callout:
-            text = element.get_text(strip=True)
-            if text.startswith("Ward:"):
-                ward = text.replace("Ward:", "").strip()
-                ward = re.sub(r"[0-9]+ (.*)", r"\1", ward)
-            if text.startswith("Party:"):
-                party = text.replace("Party:", "").strip()
+        ward = councillor_html.select_one(
+            ".views-field-field-ward .field-content"
+        ).get_text(strip=True)
+
+        party = councillor_html.select_one(
+            ".views-field-field-party .field-content"
+        ).get_text(strip=True)
 
         councillor = self.add_councillor(
             url,
@@ -36,13 +32,16 @@ class Scraper(HTMLCouncillorScraper):
             party=party,
             division=ward,
         )
-        councillor.email = soup.select_one(".listing__summary a[href^=mailto]").getText(
-            strip=True
-        )
-        with contextlib.suppress(TypeError):
-            councillor.photo_url = urljoin(
-                self.base_url,
-                soup.select_one(".listing--with-image img.listing__image")["src"],
-            )
+
+        img = councillor_html.select_one(".views-field-field-image img")
+        if img:
+            img_src = img.get("data-src") or img.get("src")
+            if img_src and not img_src.startswith("data:"):
+                councillor.photo_url = urljoin(self.base_url, img_src)
+
+        detail = self.get_page(url)
+        email_link = detail.select_one("a[href^='mailto:']")
+        if email_link:
+            councillor.email = email_link.get_text(strip=True)
 
         return councillor
