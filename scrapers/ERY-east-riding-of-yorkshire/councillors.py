@@ -13,6 +13,7 @@ class Scraper(JSONCouncillorScraper):
     def get_single_councillor(self, councillor_json):
         """Parse a single councillor from JSON"""
         search_data = councillor_json.get("search_data", {})
+        alias = councillor_json.get("alias", "")
 
         # Extract name from nested structure
         name_data = search_data.get("name", [{}])[0]
@@ -31,7 +32,6 @@ class Scraper(JSONCouncillorScraper):
             raise SkipCouncillorException(f"No party data for {alias}")
 
         # Build URL from alias
-        alias = councillor_json.get("alias", "")
         url = f"https://www.eastriding.gov.uk/council/councillors-and-committees/your-councillors/{alias}"
 
         # Create councillor
