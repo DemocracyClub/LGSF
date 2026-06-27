@@ -13,7 +13,6 @@ class Scraper(JSONCouncillorScraper):
     def get_single_councillor(self, councillor_json):
         """Parse a single councillor from JSON"""
         search_data = councillor_json.get("search_data", {})
-        alias = councillor_json.get("alias", "")
 
         # Extract name from nested structure
         name_data = search_data.get("name", [{}])[0]
@@ -24,16 +23,15 @@ class Scraper(JSONCouncillorScraper):
         # Extract ward (division)
         division = search_data.get("ward", "")
 
-        # Extract party (use political_group as fallback)
+        # Extract party (use political_group as fallback).
+        # Newly elected councillors can appear in the API with empty party before
+        # the council populates their record — skip them rather than crashing.
         party = search_data.get("party", "") or search_data.get("political_group", "")
-
-        # Skip entries with no party — the API search index retains stale
-        # entries for councillors who have left; their party field is cleared
-        # but the entry is not removed, causing add_councillor to assert-fail.
         if not party:
-            raise SkipCouncillorException(f"No party for {alias}")
+            raise SkipCouncillorException(f"No party data for {alias}")
 
         # Build URL from alias
+        alias = councillor_json.get("alias", "")
         url = f"https://www.eastriding.gov.uk/council/councillors-and-committees/your-councillors/{alias}"
 
         # Create councillor
