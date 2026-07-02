@@ -4,6 +4,7 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
+    http_lib = "playwright"
     # Site migrated from /councillors/name to /council-and-democracy/councillors
     # (LocalGov Drupal, Big Blue Door). Councillors are grouped by ward in
     # accordion panes; each .card div holds all list-page data.
