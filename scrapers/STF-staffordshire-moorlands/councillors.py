@@ -9,6 +9,7 @@ class Scraper(ModGovCouncillorScraper):
             if councillor.identifier == "1414":
                 # This person doesn't have an email address listed
                 return councillor
+            raise SkipCouncillorException()
         if "staffsmoorlands.gov.uk" in councillor.email:
             return councillor
         raise SkipCouncillorException()
