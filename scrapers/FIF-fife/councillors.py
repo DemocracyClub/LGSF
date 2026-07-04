@@ -53,7 +53,7 @@ class Scraper(HTMLCouncillorScraper):
             division=ward,
         )
 
-        councillor.email = soup.select_one(".councillor-social a[href^=mailto][")[
+        councillor.email = soup.select_one(".councillor-social a[href^=mailto]")[
             "href"
         ].replace("mailto:", "")
         councillor.photo_url = urljoin(
