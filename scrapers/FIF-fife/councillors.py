@@ -7,6 +7,7 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
+    http_lib = "playwright"
     timeout = 60
     list_page = {
         "container_css_selector": ".article-body",
@@ -52,7 +53,7 @@ class Scraper(HTMLCouncillorScraper):
             division=ward,
         )
 
-        councillor.email = soup.select_one(".councillor-social a[href^=mailto]")[
+        councillor.email = soup.select_one(".councillor-social a[href^=mailto][")[
             "href"
         ].replace("mailto:", "")
         councillor.photo_url = urljoin(
