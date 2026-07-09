@@ -3,4 +3,4 @@ from lgsf.councillors.scrapers import ModGovCouncillorScraper
 
 class Scraper(ModGovCouncillorScraper):
     verify_requests = False
-    timeout = 30
+    http_lib = "playwright"
