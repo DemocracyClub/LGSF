@@ -8,6 +8,7 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 class Scraper(HTMLCouncillorScraper):
     verify_requests = False
+    http_lib = "playwright"
     list_page = {
         "container_css_selector": "article",
         "councillor_css_selector": ".title-wrapper a",
