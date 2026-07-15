@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "http://www.minutes.haringey.gov.uk",
+            "base_url": "https://www.minutes.haringey.gov.uk",
             "cms_type": "ModernGov"
         }
     }
