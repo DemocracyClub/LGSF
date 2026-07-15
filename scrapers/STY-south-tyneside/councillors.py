@@ -10,6 +10,7 @@ def decode_cfemail(hexstr: str) -> str:
 
 
 class Scraper(HTMLCouncillorScraper):
+    http_lib = "playwright"
     list_page = {
         "container_css_selector": "#COUNCILLORSLISTBYNAME_HTML",  # lol
         "councillor_css_selector": "tbody td a",
