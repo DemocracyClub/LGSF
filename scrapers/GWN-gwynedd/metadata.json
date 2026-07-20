@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "https://democracy.cyngor.gwynedd.gov.uk",
+            "base_url": "https://democracy.gwynedd.llyw.cymru",
             "cms_type": "ModernGov"
         }
     }
