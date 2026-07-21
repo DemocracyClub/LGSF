@@ -1,4 +1,5 @@
 import re
+from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
@@ -6,6 +7,8 @@ from lgsf.councillors.scrapers import CMISCouncillorScraper
 
 
 class Scraper(CMISCouncillorScraper):
+    http_lib = "requests"
+
     def get_party_name(self, list_page_html):
         url = list_page_html.a["href"]
         text = self.get_text(url)
@@ -27,3 +30,12 @@ class Scraper(CMISCouncillorScraper):
 
         # If neither found, return empty string
         return ""
+
+    def get_single_councillor(self, list_page_html):
+        councillor = super().get_single_councillor(list_page_html)
+        img = list_page_html.find("img", class_="PenPicResize")
+        if img:
+            img_src = img.get("data-src") or img.get("src")
+            if img_src and not img_src.startswith("data:"):
+                councillor.photo_url = urljoin(self.base_url, img_src)
+        return councillor
