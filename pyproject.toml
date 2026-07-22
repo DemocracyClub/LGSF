@@ -39,7 +39,7 @@ cdk = [
 
 [tool.uv]
 package = false
-required-version = "==0.9.*"
+required-version = "==0.11.*"
 
 [tool.pytest.ini_options]
 testpaths = ["lgsf", "scrapers"]
