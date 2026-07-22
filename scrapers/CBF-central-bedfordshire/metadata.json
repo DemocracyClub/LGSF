@@ -14,8 +14,8 @@
     },
     "services": {
         "councillors": {
-            "base_url": "https://www.centralbedfordshire.gov.uk/directory/14/your_councillors/category/67",
-            "cms_type": "Custom HTML"
+            "base_url": "https://centralbeds.moderngov.co.uk",
+            "cms_type": "ModernGov"
         }
     }
 }
