@@ -5,6 +5,7 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
 class Scraper(HTMLCouncillorScraper):
+    http_lib = "playwright"
     disabled = False
     list_page = {
         "container_css_selector": ".main-article",
@@ -21,7 +22,7 @@ class Scraper(HTMLCouncillorScraper):
             .get_text(strip=True, separator="\n")
             .splitlines()
         )
-        party = content_box[2]
+        party = content_box[1]
         division = soup.h2.get_text(strip=True).split(":")[-1].strip()
         councillor = self.add_councillor(
             url,
@@ -30,7 +31,9 @@ class Scraper(HTMLCouncillorScraper):
             party=party,
             division=division,
         )
-        councillor.email = soup.select_one("a[href^=mailto]")["href"]
+        councillor.email = soup.select_one("a[href^=mailto]")["href"].replace(
+            "mailto:", ""
+        )
         councillor.photo_url = urljoin(
             self.base_url,
             soup.find("img", src=re.compile("Councillors"))["src"],
