@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "http://cardiff.moderngov.co.uk",
+            "base_url": "https://cardiff.moderngov.co.uk",
             "cms_type": "ModernGov"
         }
     }
