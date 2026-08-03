@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "http://easthants.moderngov.co.uk",
+            "base_url": "https://easthants.moderngov.co.uk",
             "cms_type": "ModernGov"
         }
     }
