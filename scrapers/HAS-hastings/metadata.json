@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "http://hastings.moderngov.co.uk",
+            "base_url": "https://hastings.moderngov.co.uk",
             "cms_type": "ModernGov"
         }
     }
