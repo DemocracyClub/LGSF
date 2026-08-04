@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "http://hart.moderngov.co.uk",
+            "base_url": "https://hart.moderngov.co.uk",
             "cms_type": "ModernGov"
         }
     }
