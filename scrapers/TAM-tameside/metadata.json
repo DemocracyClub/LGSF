@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "http://tameside.moderngov.co.uk",
+            "base_url": "https://tameside.moderngov.co.uk",
             "cms_type": "ModernGov"
         }
     }
