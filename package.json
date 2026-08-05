@@ -10,7 +10,7 @@
     "cdk": "cdk"
   },
   "devDependencies": {
-    "aws-cdk": "^2.100.0"
+    "aws-cdk": "^2.1135.0"
   },
   "keywords": [
     "aws-cdk",
