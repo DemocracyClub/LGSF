@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "http://northlincolnshire.moderngov.co.uk",
+            "base_url": "https://northlincolnshire.moderngov.co.uk",
             "cms_type": "ModernGov"
         }
     }
