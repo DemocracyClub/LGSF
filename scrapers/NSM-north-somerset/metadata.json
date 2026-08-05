@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "http://n-somerset.moderngov.co.uk",
+            "base_url": "https://n-somerset.moderngov.co.uk",
             "cms_type": "ModernGov"
         }
     }
