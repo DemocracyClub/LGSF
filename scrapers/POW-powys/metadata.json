@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "http://powys.moderngov.co.uk",
+            "base_url": "https://powys.moderngov.co.uk",
             "cms_type": "ModernGov"
         }
     }
