@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "http://scottishborders.moderngov.co.uk",
+            "base_url": "https://scottishborders.moderngov.co.uk",
             "cms_type": "ModernGov"
         }
     }
