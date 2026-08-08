@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "http://moderngov.torfaen.gov.uk",
+            "base_url": "https://torfaen.moderngov.co.uk",
             "cms_type": "ModernGov"
         }
     }
