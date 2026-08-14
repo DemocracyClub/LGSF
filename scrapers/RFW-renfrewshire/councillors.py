@@ -2,4 +2,5 @@ from lgsf.councillors.scrapers import CMISCouncillorScraper
 
 
 class Scraper(CMISCouncillorScraper):
-    timeout = 20
+    http_lib = "playwright"
+    timeout = 60
