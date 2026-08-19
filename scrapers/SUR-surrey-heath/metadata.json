@@ -3,6 +3,7 @@
         "common_name": "Surrey Heath",
         "created": "1974-04-01T00:00:00Z",
         "election_name": "Surrey Heath local election",
+        "end_date": "2027-03-31",
         "official_identifier": "SUR",
         "official_name": "Surrey Heath Borough Council",
         "organisation_subtype": "NMD",
@@ -12,6 +13,7 @@
         "territory_code": "ENG",
         "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SUR/1974-04-01/"
     },
+    "everyelectiion_data_last_updated": "2026-08-19T09:45:37.732608",
     "services": {
         "councillors": {
             "base_url": "http://surreyheath.moderngov.co.uk",

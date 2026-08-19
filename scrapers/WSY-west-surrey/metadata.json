@@ -1,0 +1,17 @@
+{
+    "everyelectiion_data": {
+        "common_name": "West Surrey",
+        "created": "2026-01-28T13:24:24.717741Z",
+        "election_name": "West Surrey local election",
+        "official_identifier": "WSY",
+        "official_name": "West Surrey Council",
+        "organisation_subtype": "UA",
+        "organisation_type": "local-authority",
+        "slug": "west-surrey",
+        "start_date": "2026-05-07",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/WSY/2026-05-07/"
+    },
+    "everyelectiion_data_last_updated": "2026-08-19T09:45:37.883483",
+    "services": {}
+}

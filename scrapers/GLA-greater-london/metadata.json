@@ -12,7 +12,5 @@
         "territory_code": "ENG",
         "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/GLA/2000-07-03/"
     },
-    "services": {
-        "councillors": {}
-    }
+    "services": {}
 }
