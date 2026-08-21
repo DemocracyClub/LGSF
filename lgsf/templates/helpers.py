@@ -203,6 +203,8 @@ class Scraper(CustomHTMLDecisionsScraper):
         decision.status = None
         decision.is_key_decision = None
         decision.is_subject_to_call_in = None
+        # True when the source lists this among its officer decisions.
+        decision.is_officer_decision = None
         decision.publication_date = None
         decision.purpose = None
         # The decision text itself, which is stored in the record rather

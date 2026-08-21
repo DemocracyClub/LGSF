@@ -99,23 +99,26 @@ def test_list_dates_are_normalised_to_iso():
 
 def test_both_list_pages_are_read_and_deduplicated():
     """
-    Councils differ in which of the two pages they populate, and a decision
-    can appear on both.
+    A decision on both pages is one decision, not two.
+
+    The officer page returns a subset of the delegated one, so this is the
+    normal case rather than an edge case.
     """
     scraper = make_scraper()
-    urls = scraper.list_urls()
-    pages = {url: fixture("modgov_decisions_list.html") for url in urls}
+    pages = {
+        url: fixture("modgov_decisions_list.html") for url, _ in scraper.list_urls()
+    }
     scraper.get_text = lambda url, **kwargs: pages[url]
 
     rows = list(scraper.get_decisions())
 
-    assert len(urls) == 2
+    assert len(scraper.list_urls()) == 2
     assert [r["identifier"] for r in rows] == ["13567", "13149"]
 
 
 def test_a_list_page_a_council_does_not_have_is_not_fatal():
     scraper = make_scraper()
-    working, missing = scraper.list_urls()
+    (working, _), (missing, _) = scraper.list_urls()
 
     def get_text(url, **kwargs):
         if url == missing:
@@ -125,6 +128,52 @@ def test_a_list_page_a_council_does_not_have_is_not_fatal():
     scraper.get_text = get_text
 
     assert len(list(scraper.get_decisions())) == 2
+
+
+def test_a_decision_on_the_officer_list_is_marked_as_one():
+    """
+    Appearing on the officer list is the only signal the source gives for
+    which delegated decisions were taken by an officer.
+    """
+    scraper = make_scraper()
+    (delegated, _), (officer, _) = scraper.list_urls()
+    pages = {
+        delegated: fixture("modgov_decisions_list.html"),
+        officer: fixture("modgov_officer_decisions_list.html"),
+    }
+    scraper.get_text = lambda url, **kwargs: pages[url]
+
+    by_id = {r["identifier"]: r for r in scraper.get_decisions()}
+
+    assert by_id["13149"]["is_officer_decision"] is True
+    assert by_id["13567"]["is_officer_decision"] is False
+
+
+def test_a_council_with_no_officer_list_marks_nothing_as_officer():
+    """
+    A page that isn't there is not evidence that its decisions are absent,
+    but False is the only honest answer the source supports.
+    """
+    scraper = make_scraper()
+    (delegated, _), (officer, _) = scraper.list_urls()
+
+    def get_text(url, **kwargs):
+        if url == officer:
+            raise OSError("404")
+        return fixture("modgov_decisions_list.html")
+
+    scraper.get_text = get_text
+
+    assert all(not r["is_officer_decision"] for r in scraper.get_decisions())
+
+
+def test_the_officer_flag_reaches_the_record():
+    scraper = detail_scraper(fixture("modgov_decision_detail.html"))
+
+    decision = scraper.get_single_decision({**ROW, "is_officer_decision": True})
+
+    assert decision.is_officer_decision is True
+    assert decision.as_dict()["is_officer_decision"] is True
 
 
 # ---- the decision page itself ----
@@ -291,12 +340,16 @@ def test_the_window_is_a_year_back_from_today():
 
 def test_asks_for_published_decisions_over_the_window():
     scraper = make_scraper()
-    delegated, officer = scraper.list_urls()
+    (delegated, delegated_is_officer), (officer, officer_is_officer) = (
+        scraper.list_urls()
+    )
     start, end = scraper.date_range
 
     assert "mgDelegatedDecisions.aspx" in delegated
     assert "DS=2" in delegated
+    assert delegated_is_officer is False
     assert "mgListOfficerDecisions.aspx" in officer
+    assert officer_is_officer is True
     assert f"DR={scraper.format_date(start)}-{scraper.format_date(end)}" in delegated
 
 

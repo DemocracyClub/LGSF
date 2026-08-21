@@ -32,15 +32,43 @@ Unlike minutes, this reads rendered HTML rather than a web service:
 **ModernGov's `mgWebService.asmx` has no decisions method.** It exposes
 meetings, committees, councillors and webcasts only.
 
-Two list pages carry decisions and councils differ in which they populate, so
-both are read and the results deduplicated by URL:
+Two list pages are read and the results deduplicated by URL:
 
 | Page | Carries |
 | --- | --- |
 | `mgDelegatedDecisions.aspx` with `DS=2` | Published delegated decisions |
-| `mgListOfficerDecisions.aspx` | Officer decisions |
+| `mgListOfficerDecisions.aspx` | Officer decisions — a subset of the above |
 
 A council that lacks one of them is not an error; the other still runs.
+
+## Officer decisions and delegated decisions
+
+These are not two kinds of record. A local authority may delegate a function
+to a committee, a sub-committee **or an officer** (Local Government Act 1972,
+s.101(1)(a)), so an officer decision is a delegated decision whose delegate is
+an officer. The recording duty for one is in the Openness of Local Government
+Bodies Regulations 2014 reg 7; for executive decisions taken by members it is
+the Executive Arrangements Regulations 2012 regs 12 and 13.
+
+The endpoints reflect that containment. Over the same date range:
+
+| Council | Delegated | Officer | On the officer list only |
+| --- | ---: | ---: | ---: |
+| Kirklees | 657 | 48 | 0 |
+| Dorset | 740 | 606 | 0 |
+| Durham | 603 | 601 | 0 |
+
+So the officer page adds **no coverage**. It is still read, because appearing
+on it is the only signal the source gives for which decisions those are, and
+that is recorded as `is_officer_decision`.
+
+Read `is_officer_decision` as "the council listed this among its officer
+decisions", not as a legal classification. A council with no officer page
+yields `False` throughout, and the 2012 and 2014 regulations are England-only
+while this scrapes all four nations.
+
+`DS=2` is not a coverage risk either: across all nine `DS` values Kirklees
+returns 658 decisions in a year, and `DS=2` alone returns 657.
 
 ### `CustomHTMLDecisionsScraper`
 
@@ -85,6 +113,7 @@ decision = self.add_decision(
 decision.status = "Recommendations Approved"
 decision.is_key_decision = False
 decision.is_subject_to_call_in = False
+decision.is_officer_decision = True
 decision.publication_date = "2025-12-10"
 decision.purpose = "To seek approval for ..."
 decision.text = "That approval be given to ..."

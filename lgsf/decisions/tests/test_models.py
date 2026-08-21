@@ -29,6 +29,7 @@ def make_decision():
     decision.status = "Recommendations Approved"
     decision.is_key_decision = True
     decision.is_subject_to_call_in = False
+    decision.is_officer_decision = True
     decision.publication_date = "2026-01-17"
     decision.purpose = "To award the contract."
     decision.text = "The contract was awarded to the recommended bidder."

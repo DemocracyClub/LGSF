@@ -391,7 +391,15 @@ class ModGovDecisionsScraper(BaseDecisionsScraper):
         return date.strftime("%d%%2f%m%%2f%Y")
 
     def list_urls(self):
-        """The list pages to read, in order."""
+        """
+        The list pages to read, each paired with whether it is the officer
+        list.
+
+        The officer page returns a subset of the delegated one — an officer
+        decision is a delegated decision whose delegate is an officer — so
+        it adds no coverage. It is still read, because appearing on it is
+        the only signal the source gives for which decisions those are.
+        """
         start, end = self.date_range
         date_range = f"{self.format_date(start)}-{self.format_date(end)}"
 
@@ -404,7 +412,10 @@ class ModGovDecisionsScraper(BaseDecisionsScraper):
             f"{self.OFFICER_PATH}?XXR=0&FULL=1&BAM=1&DR={date_range}"
             f"&ACT=Find&K=0&DM=0&DEP=0&PH=0&LO=0&C3=0&Next=true"
         )
-        return [urljoin(self.base_url, delegated), urljoin(self.base_url, officer)]
+        return [
+            (urljoin(self.base_url, delegated), False),
+            (urljoin(self.base_url, officer), True),
+        ]
 
     def get_page(self, url):
         return BeautifulSoup(
@@ -460,11 +471,17 @@ class ModGovDecisionsScraper(BaseDecisionsScraper):
         """
         Every decision in the window, from both list pages.
 
+        Both pages are read before any is yielded, so that a decision
+        appearing on the officer list can be marked as one however it was
+        found first.
+
         A council can legitimately not have one of the two pages, so a
         failure to read one is logged and the other still runs.
         """
-        seen = set()
-        for list_url in self.list_urls():
+        rows = {}
+        officer_urls = set()
+
+        for list_url, is_officer_list in self.list_urls():
             try:
                 soup = self.get_page(list_url)
             except Exception as e:
@@ -472,10 +489,13 @@ class ModGovDecisionsScraper(BaseDecisionsScraper):
                 continue
 
             for row in self.decision_rows(soup, list_url):
-                if row["url"] in seen:
-                    continue
-                seen.add(row["url"])
-                yield row
+                if is_officer_list:
+                    officer_urls.add(row["url"])
+                rows.setdefault(row["url"], row)
+
+        for url, row in rows.items():
+            row["is_officer_decision"] = url in officer_urls
+            yield row
 
     def label_value(self, soup, label):
         """
@@ -611,6 +631,7 @@ class ModGovDecisionsScraper(BaseDecisionsScraper):
         decision.is_subject_to_call_in = self.yes_no(
             self.label_value(soup, "Is subject to call in?")
         )
+        decision.is_officer_decision = decision_data.get("is_officer_decision")
         decision.publication_date = self.iso_date(
             self.label_value(soup, "Publication date")
         )

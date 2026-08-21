@@ -34,9 +34,22 @@ Scaffold with `--template decisions_scraper_modgov` or
 ## ModernGov has no decisions API
 
 `mgWebService.asmx` covers meetings, committees, councillors and webcasts
-only. Decisions are read from rendered HTML, from two list pages that
-councils populate inconsistently — `mgDelegatedDecisions.aspx` with `DS=2`,
-and `mgListOfficerDecisions.aspx`. Both are read and deduplicated by URL.
+only. Decisions are read from rendered HTML, from two list pages —
+`mgDelegatedDecisions.aspx` with `DS=2`, and `mgListOfficerDecisions.aspx`.
+Both are read and deduplicated by URL.
+
+## Officer decisions are a subset, not a second type
+
+A function may be delegated to a committee, a sub-committee or an officer
+(LGA 1972 s.101(1)(a)), so an officer decision is a delegated decision whose
+delegate is an officer. Measured over the same range, the officer page is a
+strict subset of the delegated one — 48 of 657 for Kirklees, 606 of 740 for
+Dorset, none outside it in either case.
+
+It is read anyway, because appearing on it is the only signal for which
+decisions those are, recorded as `is_officer_decision`. Read that field as
+"the council listed this as an officer decision", not as a legal
+classification: a council with no officer page yields `False` throughout.
 
 ## Three things the pages do that need undoing
 

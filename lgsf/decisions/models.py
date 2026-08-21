@@ -17,6 +17,11 @@ class DecisionBase:
     status: str = field(init=False, hash=False, compare=False)
     is_key_decision: bool = field(init=False, hash=False, compare=False)
     is_subject_to_call_in: bool = field(init=False, hash=False, compare=False)
+    #: True when the source listed this among its officer decisions. An
+    #: officer decision is one delegated to an officer rather than taken by
+    #: a committee or a member, so these are a subset of the delegated
+    #: decisions, not a separate kind of record.
+    is_officer_decision: bool = field(init=False, hash=False, compare=False)
     publication_date: str = field(init=False, hash=False, compare=False)
     purpose: str = field(init=False, hash=False, compare=False)
     #: The decision text itself, stored in the metadata store rather than the
@@ -52,6 +57,7 @@ class DecisionBase:
             "status",
             "is_key_decision",
             "is_subject_to_call_in",
+            "is_officer_decision",
             "publication_date",
             "purpose",
             "text",
@@ -76,6 +82,7 @@ class DecisionBase:
             "status": getattr(self, "status", None),
             "is_key_decision": getattr(self, "is_key_decision", None),
             "is_subject_to_call_in": getattr(self, "is_subject_to_call_in", None),
+            "is_officer_decision": getattr(self, "is_officer_decision", None),
             "publication_date": getattr(self, "publication_date", None),
             "purpose": getattr(self, "purpose", None),
             "text": getattr(self, "text", None),
