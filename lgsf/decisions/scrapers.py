@@ -1,7 +1,9 @@
 import abc
 import datetime
 import json
+import re
 from functools import cached_property
+from urllib.parse import parse_qs, urljoin, urlparse
 
 from bs4 import BeautifulSoup, Tag
 
@@ -357,6 +359,272 @@ class BaseDecisionsScraper(ScraperBase):
                 f"Documents: {self.documents_downloaded} downloaded, "
                 f"{self.documents_skipped} already stored"
             )
+
+
+class ModGovDecisionsScraper(BaseDecisionsScraper):
+    """
+    Decisions from a ModernGov install.
+
+    There is no decisions method on ModernGov's web service — it covers
+    meetings, committees and councillors only — so unlike the minutes
+    scraper this reads the rendered HTML.
+
+    Two list pages carry decisions and councils differ in which they
+    populate, so both are read and the results deduplicated by URL:
+
+    - ``mgDelegatedDecisions.aspx`` with ``DS=2``, published decisions
+    - ``mgListOfficerDecisions.aspx``, officer decisions
+    """
+
+    class_tags = ["modgov"]
+
+    DELEGATED_PATH = "mgDelegatedDecisions.aspx"
+    OFFICER_PATH = "mgListOfficerDecisions.aspx"
+
+    #: Decision status to request from the delegated decisions page.
+    #: 2 is "published", meaning decisions actually made. Forthcoming
+    #: decisions (1) are proposals and are deliberately not scraped.
+    DECISION_STATUS = 2
+
+    def format_date(self, date):
+        """ModernGov wants dd/mm/yyyy, slash-encoded, in its DR parameter."""
+        return date.strftime("%d%%2f%m%%2f%Y")
+
+    def list_urls(self):
+        """The list pages to read, in order."""
+        start, end = self.date_range
+        date_range = f"{self.format_date(start)}-{self.format_date(end)}"
+
+        delegated = (
+            f"{self.DELEGATED_PATH}?XXR=0&DR={date_range}&ACT=Find&RP=0&K=0"
+            f"&V=0&DM=0&HD=0&DS={self.DECISION_STATUS}&Next=true"
+            f"&META=mgdelegateddecisions"
+        )
+        officer = (
+            f"{self.OFFICER_PATH}?XXR=0&FULL=1&BAM=1&DR={date_range}"
+            f"&ACT=Find&K=0&DM=0&DEP=0&PH=0&LO=0&C3=0&Next=true"
+        )
+        return [urljoin(self.base_url, delegated), urljoin(self.base_url, officer)]
+
+    def get_page(self, url):
+        return BeautifulSoup(
+            self.get_text(url, extra_headers=self.extra_headers), "lxml"
+        )
+
+    def decision_rows(self, soup, list_url):
+        """
+        Yield one dict per decision row on a list page.
+
+        The link carries the decision id; the row's second cell carries the
+        published date. A row's link text ends with a hidden ``ref: NNNN``
+        span which is chrome, not part of the title.
+        """
+        for link in soup.select('a[href*="ieDecisionDetails.aspx"]'):
+            href = link.get("href")
+            if not href:
+                continue
+
+            url = urljoin(list_url, href)
+            identifier = parse_qs(urlparse(url).query).get("ID", [None])[0]
+            if not identifier:
+                continue
+
+            for hidden in link.select(".mgHide"):
+                hidden.decompose()
+
+            row = link.find_parent("tr")
+            cells = row.find_all("td") if row else []
+            date = cells[1].get_text(strip=True) if len(cells) > 1 else None
+
+            yield {
+                "url": url,
+                "identifier": identifier,
+                "title": link.get_text(strip=True),
+                "date": self.iso_date(date),
+            }
+
+    def iso_date(self, date_str):
+        """dd/mm/yyyy as ModernGov writes it, to an ISO date string."""
+        if not date_str:
+            return None
+        try:
+            return (
+                datetime.datetime.strptime(date_str.strip(), "%d/%m/%Y")
+                .date()
+                .isoformat()
+            )
+        except ValueError:
+            return None
+
+    def get_decisions(self):
+        """
+        Every decision in the window, from both list pages.
+
+        A council can legitimately not have one of the two pages, so a
+        failure to read one is logged and the other still runs.
+        """
+        seen = set()
+        for list_url in self.list_urls():
+            try:
+                soup = self.get_page(list_url)
+            except Exception as e:
+                self.console.log(f"[yellow]Could not read {list_url}: {e}[/yellow]")
+                continue
+
+            for row in self.decision_rows(soup, list_url):
+                if row["url"] in seen:
+                    continue
+                seen.add(row["url"])
+                yield row
+
+    def label_value(self, soup, label):
+        """
+        The text following a ``mgLabel`` span, by label text.
+
+        Labels vary between installs — a decision may carry "Decision
+        Maker:" or "Decided at meeting:" — so callers ask for what they
+        want and get None when it isn't there.
+        """
+        wanted = label.lower().rstrip(": ")
+        for span in soup.select("span.mgLabel"):
+            if span.get_text(strip=True).lower().rstrip(": ") != wanted:
+                continue
+            parent = span.find_parent("p")
+            if not parent:
+                continue
+            value = parent.get_text(" ", strip=True)
+            prefix = span.get_text(" ", strip=True)
+            return value[len(prefix) :].strip(" :") or None
+        return None
+
+    def section_text(self, soup, heading):
+        """
+        The body of a ``mgSubSubTitleTxt`` section, by its heading.
+
+        A decision page carries its text in one of these, and often a
+        Purpose in another, both wrapped in a WordSection1 block.
+        """
+        wanted = heading.lower().rstrip(": ")
+        for title in soup.select("h3.mgSubSubTitleTxt"):
+            if title.get_text(strip=True).lower().rstrip(": ") != wanted:
+                continue
+            block = title.find_next_sibling()
+            if block is None:
+                return None
+            return self.block_text(block)
+        return None
+
+    def block_text(self, block):
+        """
+        A block of Word-exported HTML as plain text.
+
+        Decision text is pasted from Word and hard-wrapped in the source, so
+        reading it straight puts newlines mid-sentence. Paragraphs are read
+        one at a time with their internal whitespace collapsed, keeping the
+        breaks between paragraphs and dropping the blank ones that are only
+        there for spacing.
+        """
+        paragraphs = block.find_all("p")
+        if not paragraphs:
+            return " ".join(block.get_text(" ", strip=True).split()) or None
+
+        out = []
+        for paragraph in paragraphs:
+            text = " ".join(paragraph.get_text(" ", strip=True).split())
+            if text:
+                out.append(text)
+        return "\n\n".join(out) or None
+
+    def get_documents(self, soup, page_url):
+        """
+        Documents linked from a decision page.
+
+        Scoped to the bullet list ModernGov puts under "Accompanying
+        Documents", so the site's own navigation links aren't collected.
+        The ``sNNNN`` segment of the path is a stable attachment id.
+        """
+        documents = []
+        for bullet in soup.select("ul.mgBulletList a[href]"):
+            href = bullet.get("href")
+            if not href:
+                continue
+
+            for size in bullet.select(".mgFileSize"):
+                size.decompose()
+
+            url = urljoin(page_url, href)
+            attachment_id = None
+            match = re.search(r"/(s\d+)/", urlparse(url).path)
+            if match:
+                attachment_id = match.group(1)
+
+            documents.append(
+                {
+                    "title": bullet.get_text(" ", strip=True),
+                    "url": url,
+                    "attachment_id": attachment_id,
+                }
+            )
+        return documents
+
+    def get_single_decision(self, decision_data):
+        """Fetch a decision's own page and read the record off it."""
+        url = decision_data["url"]
+        etag, last_modified = self.validators_for(url)
+        response = self.get_conditional(
+            url,
+            etag=etag,
+            last_modified=last_modified,
+            extra_headers=self.extra_headers,
+        )
+        if self.response_status(response) == 304:
+            raise DecisionNotModifiedException(url)
+
+        text = response.text
+        if callable(text):
+            text = text()
+        soup = BeautifulSoup(text, "lxml")
+
+        title = decision_data.get("title")
+        heading = soup.select_one("h2.mgSubTitleTxt")
+        if heading:
+            title = heading.get_text(" ", strip=True) or title
+
+        date = self.iso_date(self.label_value(soup, "Date of decision")) or (
+            decision_data.get("date")
+        )
+        if not date:
+            raise SkipDecisionException(f"No date for {url}")
+
+        decision = self.add_decision(
+            url,
+            identifier=decision_data["identifier"],
+            title=title,
+            date=date,
+            decision_maker=self.label_value(soup, "Decision Maker")
+            or self.label_value(soup, "Decided at meeting"),
+        )
+        decision.status = self.label_value(soup, "Decision status")
+        decision.is_key_decision = self.yes_no(
+            self.label_value(soup, "Is Key decision?")
+        )
+        decision.is_subject_to_call_in = self.yes_no(
+            self.label_value(soup, "Is subject to call in?")
+        )
+        decision.publication_date = self.iso_date(
+            self.label_value(soup, "Publication date")
+        )
+        decision.purpose = self.section_text(soup, "Purpose")
+        decision.text = self.section_text(soup, "Decision")
+        decision.documents = self.get_documents(soup, url)
+        decision.source = self.record_source(url, response)
+        return decision
+
+    def yes_no(self, value):
+        """ModernGov writes these as Yes/No text, not a flag."""
+        if value is None:
+            return None
+        return value.strip().lower() == "yes"
 
 
 class CustomHTMLDecisionsScraper(BaseDecisionsScraper):
