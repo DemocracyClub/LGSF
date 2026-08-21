@@ -151,6 +151,74 @@ class Scraper(CustomHTMLMinutesScraper):
 """
 
 
+class ModGovDecisionsTemplate(BaseTemplate):
+    required_fields = ["base_url"]
+    file_name = "decisions.py"
+
+    template = """from lgsf.decisions.scrapers import ModGovDecisionsScraper
+
+
+class Scraper(ModGovDecisionsScraper):
+    base_url = "$base_url"
+
+    """
+
+
+class CustomDecisionsTemplate(BaseTemplate):
+    """
+    Starting point for a council whose decisions aren't on ModernGov, where
+    the scraper has to be written by hand.
+    """
+
+    required_fields = ["base_url"]
+    file_name = "decisions.py"
+
+    template = """from lgsf.decisions.scrapers import CustomHTMLDecisionsScraper
+
+
+class Scraper(CustomHTMLDecisionsScraper):
+    base_url = "$base_url"
+
+    def get_decisions(self):
+        # Return one item per decision, in whatever shape suits this site:
+        # a BeautifulSoup Tag, a dict from a JSON API, anything. Each item
+        # is passed to get_single_decision(). self.date_range gives the
+        # window to filter to.
+        soup = self.get_page(self.base_url)
+        raise NotImplementedError
+        return soup.select("EDITME")
+
+    def get_single_decision(self, decision_data):
+        # Turn one item from get_decisions() into a decision. Raise
+        # SkipDecisionException to drop an item, which is how you deal with
+        # header rows or decisions belonging to a neighbouring council.
+        raise NotImplementedError
+        decision = self.add_decision(
+            url,
+            identifier=identifier,  # a stable id from the source, not a row number
+            title=title,
+            date=date,  # ISO format, e.g. "2026-08-19"
+            decision_maker=decision_maker,
+        )
+        decision.status = None
+        decision.is_key_decision = None
+        decision.is_subject_to_call_in = None
+        decision.publication_date = None
+        decision.purpose = None
+        # The decision text itself, which is stored in the record rather
+        # than the document store.
+        decision.text = None
+        decision.documents = [
+            {
+                "title": document_title,
+                "url": document_url,
+                "attachment_id": None,
+            }
+        ]
+        return decision
+"""
+
+
 TEMPLATES = {
     "councillor_scraper_modgov": ModGovCouncillorTemplate,
     "councillor_scraper_cmis": CMISCouncillorTemplate,
@@ -158,4 +226,6 @@ TEMPLATES = {
     "minutes_scraper_modgov": ModGovMinutesTemplate,
     "minutes_scraper_cmis": CMISMinutesTemplate,
     "minutes_scraper_custom": CustomMinutesTemplate,
+    "decisions_scraper_modgov": ModGovDecisionsTemplate,
+    "decisions_scraper_custom": CustomDecisionsTemplate,
 }
