@@ -68,7 +68,14 @@ class CouncilMetadata:
     """Council metadata with file I/O."""
 
     everyelection_data: EveryElectionData = field(default_factory=EveryElectionData)
-    councillors: ServiceData = field(default_factory=ServiceData)
+
+    #: Per-service metadata, keyed by service name ("councillors",
+    #: "minutes", ...). Keying them means adding a scraper type needs no
+    #: change to this class: a service exists as soon as a council's
+    #: metadata.json declares one, and every service loads and saves
+    #: through the same code path.
+    services: Dict[str, ServiceData] = field(default_factory=dict)
+
     everyelection_data_last_updated: Optional[str] = None
 
     @classmethod
@@ -89,8 +96,10 @@ class CouncilMetadata:
                     data["everyelectiion_data"]
                 )
 
-            councillors_data = data["services"].get("councillors", {})
-            metadata.councillors = ServiceData.from_dict(councillors_data)
+            for service_name, service_data in (data["services"] or {}).items():
+                metadata.services[service_name] = ServiceData.from_dict(
+                    service_data or {}
+                )
 
             metadata.everyelection_data_last_updated = data.get(
                 "everyelectiion_data_last_updated"
@@ -105,9 +114,10 @@ class CouncilMetadata:
             "services": {},
         }
 
-        councillors_dict = self.councillors.to_dict()
-        if councillors_dict:
-            result["services"]["councillors"] = councillors_dict
+        for service_name, service in sorted(self.services.items()):
+            service_dict = service.to_dict()
+            if service_dict:
+                result["services"][service_name] = service_dict
 
         if self.everyelection_data_last_updated:
             result["everyelectiion_data_last_updated"] = (
@@ -131,15 +141,33 @@ class CouncilMetadata:
             self.everyelection_data_last_updated = datetime.now().isoformat()
 
     def update_service_data(self, service_name: str, **kwargs) -> None:
-        """Update service data fields."""
-        if service_name == "councillors":
-            self.councillors.update_from_dict(kwargs)
+        """
+        Update one service's fields, creating the service if it's new.
 
-    def get_service_metadata(self, service_name: str) -> Optional[ServiceData]:
-        """Get metadata for a specific service type."""
-        if service_name == "councillors":
-            return self.councillors
-        return None
+        There is deliberately no list of permitted service names: the
+        services a council has are whatever its metadata.json declares.
+        """
+        self.services.setdefault(service_name, ServiceData()).update_from_dict(kwargs)
+
+    def get_service_metadata(self, service_name: str) -> ServiceData:
+        """
+        Get metadata for one service.
+
+        Always returns a ServiceData. A service this council has no
+        configuration for comes back empty rather than as None, so callers
+        can read `.base_url` without a null check and get None for
+        "not configured" either way.
+        """
+        return self.services.get(service_name) or ServiceData()
+
+    def configured_services(self) -> list:
+        """Names of the services this council actually has config for."""
+        return sorted(
+            name for name, service in self.services.items() if service.to_dict()
+        )
+
+    def has_service(self, service_name: str) -> bool:
+        return bool(self.services.get(service_name, ServiceData()).to_dict())
 
     @classmethod
     def for_council(cls, council_id: str) -> "CouncilMetadata":
@@ -154,11 +182,21 @@ class CouncilMetadata:
             return metadata
 
     def get_summary(self) -> Dict[str, Any]:
-        """Get summary of key metadata fields."""
+        """
+        Summary of this council's metadata.
+
+        Every configured service is reported: a council has a cms_type and
+        base_url *per service*, so there is no single "the" one.
+        """
         return {
             "official_identifier": self.everyelection_data.official_identifier,
             "common_name": self.everyelection_data.common_name,
-            "cms_type": self.councillors.cms_type,
-            "base_url": self.councillors.base_url,
-            "services": ["councillors"] if self.councillors.to_dict() else [],
+            "services": {
+                name: {
+                    "cms_type": service.cms_type,
+                    "base_url": service.base_url,
+                }
+                for name, service in sorted(self.services.items())
+                if service.to_dict()
+            },
         }
