@@ -1,7 +1,22 @@
 import abc
 import contextlib
+from enum import StrEnum
 from pathlib import Path
 from typing import Iterator, Literal, Optional, Union
+
+
+class StorageMode(StrEnum):
+    """How a run should treat whatever previous runs left behind."""
+
+    #: Each run replaces everything previously stored for this council and data
+    #: type. Correct for data where the latest scrape is the whole truth (e.g.
+    #: councillors: someone who has left the council should disappear).
+    REPLACE = "replace"
+
+    #: Each run adds to what is already stored, leaving untouched anything it
+    #: didn't scrape this time. Correct for append-only historical records (e.g.
+    #: minutes: a meeting from last year is still a fact).
+    ACCUMULATE = "accumulate"
 
 
 class StorageSession(abc.ABC):
@@ -201,7 +216,9 @@ class BaseStorage(abc.ABC):
     - Session objects should not be shared across threads
     """
 
-    def __init__(self, council_code: str):
+    def __init__(
+        self, council_code: str, storage_mode: StorageMode = StorageMode.REPLACE
+    ):
         """
         Initialize storage backend for a specific council.
 
@@ -209,14 +226,27 @@ class BaseStorage(abc.ABC):
             council_code: Identifier for the council/organization this storage
                          instance will serve. Must be non-empty and contain only
                          safe characters.
+            storage_mode: Either StorageMode.REPLACE (each run wipes what came
+                         before) or StorageMode.ACCUMULATE (each run adds to
+                         it). Plain strings are accepted and coerced. See
+                         StorageMode for when each is appropriate.
 
         Raises:
-            ValueError: If council_code is invalid (empty, unsafe characters)
+            ValueError: If council_code or storage_mode is invalid
         """
         if not council_code or not council_code.strip():
             raise ValueError("council_code cannot be empty")
 
+        try:
+            storage_mode = StorageMode(storage_mode)
+        except ValueError:
+            raise ValueError(
+                f"Unknown storage_mode {storage_mode!r}, "
+                f"expected one of {', '.join(StorageMode)}"
+            ) from None
+
         self.council_code = council_code.strip()
+        self.storage_mode = storage_mode
 
     # ---- Session lifecycle ----
     def start_session(self, **kwargs) -> StorageSession:

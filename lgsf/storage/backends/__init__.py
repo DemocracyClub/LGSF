@@ -1,7 +1,7 @@
 import os
 from typing import Optional
 
-from lgsf.storage.backends.base import BaseStorage
+from lgsf.storage.backends.base import BaseStorage, StorageMode
 
 
 def detect_storage_backend_from_environment(options: dict) -> str:
@@ -44,6 +44,8 @@ def get_storage_backend(
         options: Scraper options dictionary for backend detection.
         **kwargs: Additional backend-specific parameters:
                  - scraper_object_type: For github backend, the type of scraper data
+                 - storage_mode: StorageMode.REPLACE (default) or
+                   StorageMode.ACCUMULATE
                  - organization: For github backend, the organization name
                  - github_token: For github backend, the authentication token
 
@@ -61,10 +63,16 @@ def get_storage_backend(
 
     backend_type = backend_type.lower()
 
+    storage_mode = kwargs.get("storage_mode", StorageMode.REPLACE)
+
     if backend_type == "local":
         from lgsf.storage.backends.local import LocalFilesystemStorage
 
-        return LocalFilesystemStorage(council_code=council_code)
+        return LocalFilesystemStorage(
+            council_code=council_code,
+            scraper_object_type=kwargs.get("scraper_object_type"),
+            storage_mode=storage_mode,
+        )
     elif backend_type == "github":
         scraper_object_type = kwargs.get("scraper_object_type", "Data")
         from lgsf.storage.backends.github import GitHubStorage
@@ -74,6 +82,7 @@ def get_storage_backend(
             scraper_object_type=scraper_object_type,
             organization=kwargs.get("organization"),
             github_token=kwargs.get("github_token"),
+            storage_mode=storage_mode,
         )
     else:
         raise ValueError(f"Unsupported storage backend: {backend_type}")

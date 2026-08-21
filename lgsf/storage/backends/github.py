@@ -14,7 +14,7 @@ from typing import Any, override
 import jwt
 import requests
 
-from lgsf.storage.backends.base import BaseStorage, StorageSession
+from lgsf.storage.backends.base import BaseStorage, StorageMode, StorageSession
 
 logger = logging.getLogger(__name__)
 
@@ -134,11 +134,13 @@ class _GitHubSession(StorageSession):
         council_code: str,
         scraper_object_type: str = "Data",
         run_id: str | None = None,
+        storage_mode: StorageMode = StorageMode.REPLACE,
     ):
         self.organization: str = organization
         self.github_token: str = github_token
         self.council_code: str = council_code
         self.scraper_object_type: str = scraper_object_type
+        self.storage_mode: str = storage_mode
         self.run_id: str = run_id or self._generate_run_id()
 
         # Repository configuration
@@ -726,13 +728,15 @@ class _GitHubSession(StorageSession):
             # Create and checkout new branch
             self._create_and_checkout_branch()
 
-            # Delete all existing files in the scraper object type folder
+            # In REPLACE mode the latest scrape is the whole truth, so clear
+            # the folder first and let the commit record the deletions. In
+            # ACCUMULATE mode previous runs are history we're adding to, so
+            # keep them and let git diff pick up only what actually changed.
             scraper_dir = os.path.join(self.local_repo_path, self.scraper_object_type)
-            if os.path.exists(scraper_dir):
+            if self.storage_mode == StorageMode.REPLACE and os.path.exists(scraper_dir):
                 logger.info(f"Deleting existing files in {self.scraper_object_type}/")
                 shutil.rmtree(scraper_dir)
 
-            # Create directory
             os.makedirs(scraper_dir, exist_ok=True)
 
             # Write all staged files to disk
@@ -897,6 +901,7 @@ class GitHubStorage(BaseStorage):
         organization: str | None = None,
         github_token: str | None = None,
         auto_merge: bool = True,
+        storage_mode: StorageMode = StorageMode.REPLACE,
     ):
         """
         Initialize GitHub storage backend.
@@ -908,7 +913,7 @@ class GitHubStorage(BaseStorage):
             github_token: GitHub authentication token (deprecated, ignored - GitHub App required)
             auto_merge: If True, automatically merge PRs after creation (always True in this version)
         """
-        super().__init__(council_code)
+        super().__init__(council_code, storage_mode=storage_mode)
         self.scraper_object_type: str = scraper_object_type
 
         self.organization: str = organization or os.environ.get(
@@ -959,6 +964,7 @@ class GitHubStorage(BaseStorage):
             council_code=self.council_code,
             scraper_object_type=scraper_type,
             run_id=run_id,
+            storage_mode=self.storage_mode,
         )
 
         self._active = session
