@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://castlepoint.cmis.uk.com/castlepoint/Councillors.aspx",
             "cms_type": "CMIS"
+        },
+        "minutes": {
+            "base_url": "https://castlepoint.cmis.uk.com/castlepoint/Meetings.aspx",
+            "cms_type": "CMIS"
         }
     }
 }

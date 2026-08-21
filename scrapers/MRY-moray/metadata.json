@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://moray.cmis.uk.com/moray/CouncilandGovernance/Councillors.aspx",
             "cms_type": "CMIS"
+        },
+        "minutes": {
+            "base_url": "https://moray.cmis.uk.com/moray/CouncilandGovernance/Meetings.aspx",
+            "cms_type": "CMIS"
         }
     }
 }

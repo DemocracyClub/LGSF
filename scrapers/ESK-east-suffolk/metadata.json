@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://eastsuffolk.cmis.uk.com/eastsuffolk/councillors.aspx",
             "cms_type": "CMIS"
+        },
+        "minutes": {
+            "base_url": "https://eastsuffolk.cmis.uk.com/eastsuffolk/Meetings.aspx",
+            "cms_type": "CMIS"
         }
     }
 }

@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://www.warrington.gov.uk/councillors",
             "cms_type": "Custom HTML"
+        },
+        "minutes": {
+            "base_url": "https://cmis.warrington.gov.uk/cmis5/MeetingsCalendar.aspx",
+            "cms_type": "CMIS"
         }
     }
 }

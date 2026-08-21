@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://council.southglos.gov.uk",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://council.southglos.gov.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

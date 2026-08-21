@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "http://rds.eppingforestdc.gov.uk",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://rds.eppingforestdc.gov.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

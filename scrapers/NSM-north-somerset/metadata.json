@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "http://n-somerset.moderngov.co.uk",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://n-somerset.moderngov.co.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

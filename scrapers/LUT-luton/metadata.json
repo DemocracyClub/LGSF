@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "http://democracy.luton.gov.uk/cmis5public/Councillors.aspx",
             "cms_type": "CMIS"
+        },
+        "minutes": {
+            "base_url": "http://democracy.luton.gov.uk/cmis5public/Meetings.aspx",
+            "cms_type": "CMIS"
         }
     }
 }

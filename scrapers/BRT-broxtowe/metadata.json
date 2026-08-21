@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "http://democracy.broxtowe.gov.uk",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://democracy.broxtowe.gov.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

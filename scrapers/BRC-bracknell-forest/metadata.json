@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "http://democratic.bracknell-forest.gov.uk",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://democratic.bracknell-forest.gov.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

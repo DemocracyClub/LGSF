@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://democratic.trafford.gov.uk",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://democratic.trafford.gov.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "http://democracy.havering.gov.uk",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://democracy.havering.gov.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

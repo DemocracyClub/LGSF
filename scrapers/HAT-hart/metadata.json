@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "http://hart.moderngov.co.uk",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://hart.moderngov.co.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

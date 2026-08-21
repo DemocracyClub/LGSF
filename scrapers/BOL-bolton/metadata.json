@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://bolton.moderngov.co.uk",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://bolton.moderngov.co.uk/mgCalendarMonthView.aspx?GL=1&bcr=",
+            "cms_type": "ModernGov"
         }
     }
 }

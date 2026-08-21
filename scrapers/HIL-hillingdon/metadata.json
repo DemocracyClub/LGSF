@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "http://modgov.hillingdon.gov.uk",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://modgov.hillingdon.gov.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

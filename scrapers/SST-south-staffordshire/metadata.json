@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://southstaffs.cmis.uk.com/Councillors.aspx",
             "cms_type": "CMIS"
+        },
+        "minutes": {
+            "base_url": "https://southstaffs.cmis.uk.com/Meetings.aspx",
+            "cms_type": "CMIS"
         }
     }
 }

@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://www.argyll-bute.gov.uk/my-council/councillors-directory",
             "cms_type": "Custom HTML (Paged)"
+        },
+        "minutes": {
+            "base_url": "https://www.argyll-bute.gov.uk/moderngov",
+            "cms_type": "ModernGov"
         }
     }
 }

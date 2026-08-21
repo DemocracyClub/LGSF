@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "http://democracy.islington.gov.uk",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://democracy.islington.gov.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

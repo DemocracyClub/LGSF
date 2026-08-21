@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://midlothian.cmis.uk.com/live/Councillors.aspx",
             "cms_type": "CMIS"
+        },
+        "minutes": {
+            "base_url": "https://midlothian.cmis.uk.com/live/Meetings.aspx",
+            "cms_type": "CMIS"
         }
     }
 }

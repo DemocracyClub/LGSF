@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://www.southampton.gov.uk/moderngov",
             "cms_type": "Custom HTML"
+        },
+        "minutes": {
+            "base_url": "https://www.southampton.gov.uk/modernGov",
+            "cms_type": "ModernGov"
         }
     }
 }

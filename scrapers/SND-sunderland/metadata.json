@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://committees.sunderland.gov.uk/committees/cmis5/Members.aspx",
             "cms_type": "CMIS"
+        },
+        "minutes": {
+            "base_url": "https://committees.sunderland.gov.uk/committees/cmis5/Meetings.aspx",
+            "cms_type": "CMIS"
         }
     }
 }

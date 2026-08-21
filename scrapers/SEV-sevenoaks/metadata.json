@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "http://cds.sevenoaks.gov.uk",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://cds.sevenoaks.gov.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

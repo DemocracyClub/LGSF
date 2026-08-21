@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://www.birmingham.gov.uk/councillors/name",
             "cms_type": "Custom HTML"
+        },
+        "minutes": {
+            "base_url": "https://birmingham.cmis.uk.com/birmingham/Meetings.aspx",
+            "cms_type": "CMIS"
         }
     }
 }

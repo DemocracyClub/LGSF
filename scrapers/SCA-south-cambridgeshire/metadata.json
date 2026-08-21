@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "http://scambs.moderngov.co.uk",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://scambs.moderngov.co.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

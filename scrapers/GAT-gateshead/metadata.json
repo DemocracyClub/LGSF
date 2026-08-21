@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "http://democracy.gateshead.gov.uk",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://gateshead.moderngov.co.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

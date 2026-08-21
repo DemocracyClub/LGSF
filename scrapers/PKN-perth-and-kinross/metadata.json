@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://perth-and-kinross.cmis.uk.com/perth-and-kinross/Councillors/OverviewofCouncillors.aspx",
             "cms_type": "CMIS"
+        },
+        "minutes": {
+            "base_url": "https://perth-and-kinross.cmis.uk.com/perth-and-kinross/Meetings.aspx",
+            "cms_type": "CMIS"
         }
     }
 }

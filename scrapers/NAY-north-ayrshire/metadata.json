@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://north-ayrshire.cmis.uk.com/north-ayrshire/Councillors/CurrentCouncillors.aspx",
             "cms_type": "CMIS"
+        },
+        "minutes": {
+            "base_url": "https://north-ayrshire.cmis.uk.com/north-ayrshire/Meetings.aspx",
+            "cms_type": "CMIS"
         }
     }
 }

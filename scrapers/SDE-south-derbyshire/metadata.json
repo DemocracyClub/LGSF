@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "http://south-derbys.cmis.uk.com/south-derbys/Councillors.aspx",
             "cms_type": "CMIS"
+        },
+        "minutes": {
+            "base_url": "http://south-derbys.cmis.uk.com/south-derbys/Meetings.aspx",
+            "cms_type": "CMIS"
         }
     }
 }

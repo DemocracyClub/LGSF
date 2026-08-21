@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://www.northwarks.gov.uk/councillors",
             "cms_type": "Custom HTML"
+        },
+        "minutes": {
+            "base_url": "https://northwarwickshire.moderngov.co.uk",
+            "cms_type": "ModernGov"
         }
     }
 }
