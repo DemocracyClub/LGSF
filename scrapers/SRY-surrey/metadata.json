@@ -3,6 +3,7 @@
         "common_name": "Surrey",
         "created": "1974-04-01T00:00:00Z",
         "election_name": "Surrey local election",
+        "end_date": "2027-04-01",
         "official_identifier": "SRY",
         "official_name": "Surrey County Council",
         "organisation_subtype": "CTY",
@@ -12,8 +13,13 @@
         "territory_code": "ENG",
         "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/SRY/1974-04-01/"
     },
+    "everyelectiion_data_last_updated": "2026-08-19T09:45:37.732107",
     "services": {
         "councillors": {
+            "base_url": "https://mycouncil.surreycc.gov.uk",
+            "cms_type": "ModernGov"
+        },
+        "minutes": {
             "base_url": "https://mycouncil.surreycc.gov.uk",
             "cms_type": "ModernGov"
         }

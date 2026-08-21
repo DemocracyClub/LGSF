@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "http://colchester.cmis.uk.com/colchester/Councillors.aspx",
             "cms_type": "CMIS"
+        },
+        "minutes": {
+            "base_url": "http://colchester.cmis.uk.com/colchester/MeetingCalendar.aspx",
+            "cms_type": "CMIS"
         }
     }
 }

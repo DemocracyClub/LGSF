@@ -1,10 +1,16 @@
 import abc
 import argparse
 import datetime
+import io
+import json
+import os
+import threading
 import traceback
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import List
+from typing import List, Optional
 
 import requests
 from dateutil.parser import parse
@@ -78,6 +84,35 @@ class Council:
         return self._metadata_cache
 
     @property
+    def name(self):
+        """
+        The council's name for display.
+
+        metadata.json keeps the name under everyelectiion_data. Some files
+        are in an older flat format with it at the top level, so both are
+        checked, falling back to the council code.
+        """
+        everyelection = self.metadata.get("everyelectiion_data", {})
+        return (
+            everyelection.get("official_name")
+            or everyelection.get("common_name")
+            # Legacy flat format
+            or self.metadata.get("official_name")
+            or self.council_id
+        )
+
+    def service_metadata(self, service_name):
+        """
+        This council's recorded config for one service, or an empty dict.
+
+        Deliberately takes the service name rather than defaulting to
+        councillors: a listing for one data type showing another type's
+        config reads as though the data is there when it isn't.
+        """
+        services = self.metadata.get("services") or {}
+        return services.get(service_name) or {}
+
+    @property
     def current(self):
         # Check for dates in everyelectiion_data first (new format)
         everyelectiion_data = self.metadata.get("everyelectiion_data", {})
@@ -138,11 +173,9 @@ class CouncilFilteringCommandBase(CommandBase):
         for council in self.current_councils:
             scraper = load_scraper(council.council_id, self.command_name)
             if scraper and scraper.disabled:
-                council_info = {
-                    "code": council.council_id,
-                    "name": council.metadata.get("official_name", "Unknown"),
-                }
-                disabled_councils.append(council_info)
+                disabled_councils.append(
+                    {"code": council.council_id, "name": council.name}
+                )
         return sorted(disabled_councils, key=lambda d: d["code"])
 
 
@@ -153,7 +186,11 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
 
     def __init__(self, argv, stdout, pretty=False):
         super().__init__(argv, stdout, pretty)
-        self.scraped_councillors = []  # Store councillors for reporting
+        self.scraped_items = []  # Store scraped objects for reporting
+        self._results = []
+        self._lock = threading.Lock()
+        self._concurrent = False
+        self._council_count = 0
 
     def create_parser(self):
         self.parser = argparse.ArgumentParser()
@@ -206,6 +243,13 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
             help="Print failing councils",
         )
         self.parser.add_argument(
+            "--workers",
+            type=int,
+            default=4,
+            help="How many scrapers to run at once. Use 1 to watch a "
+            "single scraper's output.",
+        )
+        self.parser.add_argument(
             "--report",
             action="store_true",
             help="Display a table report of scraped data after running",
@@ -234,19 +278,20 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
         for council in self.current_councils:
             scraper = load_scraper(council.council_id, self.command_name)
             if not scraper:
-                council_info = {
-                    "code": council.council_id,
-                    "name": council.metadata.get("official_name", "Unknown"),
-                }
-                missing_councils.append(council_info)
+                missing_councils.append(
+                    {"code": council.council_id, "name": council.name}
+                )
         return sorted(missing_councils, key=lambda d: d["code"])
 
     def output_missing(self):
-        table = Table(title=f"Councils missing '{self.command_name}' scraper")
+        missing = self.missing()
+        table = Table(
+            title=f"{len(missing)} councils missing a '{self.command_name}' scraper"
+        )
 
         table.add_column("Code", style="magenta")
         table.add_column("Name", style="green")
-        for council in self.missing():
+        for council in missing:
             table.add_row(council["code"], council["name"])
 
         self.console.print(table)
@@ -261,20 +306,89 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
 
         self.console.print(table)
 
+    #: URL listing the scrapers failing in production, for command types
+    #: that have one. The dashboard reports a single scheduled job with no
+    #: service field, so it describes exactly one data type and cannot be
+    #: reused for the others.
+    failing_api_url = None
+
+    def local_run_logs(self):
+        """
+        The last recorded run for each council of this scraper type.
+
+        Only councils that have been run on this machine appear, so an
+        empty result means "nothing has been run here", not "nothing is
+        failing".
+        """
+        logs = {}
+        for council in self.current_councils:
+            scraper_cls = load_scraper(council.council_id, self.command_name)
+            if not scraper_cls or not scraper_cls.scraper_object_type:
+                continue
+            path = (
+                Path(settings.DATA_DIR_NAME)
+                / council.council_id
+                / scraper_cls.scraper_object_type
+                / self.RUN_LOG_FILE_NAME
+            )
+            if not path.is_file():
+                continue
+            try:
+                logs[council.council_id] = json.loads(path.read_text())
+            except ValueError:
+                continue
+        return logs
+
     def failing(self):
-        req = requests.get(
-            "https://democracyclub.github.io/lgsf-dashboard/api/failing.json"
-        )
+        if not self.failing_api_url:
+            return []
+        req = requests.get(self.failing_api_url)
         return req.json()
 
     def output_failing(self):
-        table = Table(title=f"Councils with '{self.command_name}' failing")
-        table.add_column("Code", style="magenta")
-        table.add_column("Error", style="red")
-        for council in self.failing():
-            if council["council_id"] in self.current_council_ids:
-                table.add_row(council["council_id"], council["latest_run"]["log_text"])
-        self.console.print(table)
+        logs = self.local_run_logs()
+        if logs:
+            failed = {code: log for code, log in logs.items() if log.get("status_code")}
+            table = Table(
+                title=f"{self.command_name}: {len(failed)} of {len(logs)} councils "
+                f"failing in the last local run"
+            )
+            table.add_column("Code", style="magenta")
+            table.add_column("When", style="cyan")
+            table.add_column("Error", style="red", overflow="fold")
+            for code, log in sorted(failed.items()):
+                error = (log.get("error") or "").strip().splitlines()
+                table.add_row(
+                    code,
+                    str(log.get("start", ""))[:19],
+                    error[-1][:160] if error else "",
+                )
+            self.console.print(table)
+            self.console.print(
+                f"[dim]From {len(logs)} councils run locally. Councils never run "
+                f"here do not appear.[/dim]"
+            )
+            return
+
+        if self.failing_api_url:
+            table = Table(
+                title=f"Councils with '{self.command_name}' failing in production"
+            )
+            table.add_column("Code", style="magenta")
+            table.add_column("Error", style="red")
+            for council in self.failing():
+                if council["council_id"] in self.current_council_ids:
+                    table.add_row(
+                        council["council_id"], council["latest_run"]["log_text"]
+                    )
+            self.console.print(table)
+            return
+
+        self.console.print(
+            f"[yellow]No {self.command_name} run logs on this machine, and no "
+            f"production report for this type. Run the scrapers to find out what "
+            f"is failing: `manage.py {self.command_name} --all-councils`.[/yellow]"
+        )
 
     def output_status(self):
         from rich.columns import Columns
@@ -312,66 +426,209 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
             ]
         return councils
 
+    @property
+    def in_lambda(self):
+        """
+        Lambda runs one council per invocation through its own handler and
+        keeps its logs in CloudWatch, so there is nothing to write locally.
+        """
+        return bool(
+            self.options.get("aws_lambda") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME")
+        )
+
+    #: File a council's last run of this scraper type is recorded in,
+    #: alongside the data that run produced.
+    RUN_LOG_FILE_NAME = "runlog.json"
+
+    def run_log_path(self, scraper) -> Optional[Path]:
+        """
+        Where to record this council's run, or None if there is nowhere.
+
+        Run logs sit beside the data they describe, in
+        data/<COUNCIL>/<Type>/. Only backends that keep data on this
+        machine offer a place for them; the GitHub backend writes to a
+        clone elsewhere and reports through the dashboard instead.
+        """
+        council_root = getattr(scraper.storage_backend, "council_root", None)
+        if council_root is None:
+            return None
+        return council_root / self.RUN_LOG_FILE_NAME
+
+    def record_run_log(self, scraper, run_log):
+        """
+        Record how this council's run went, replacing any previous one.
+
+        Written straight to disk rather than through the storage session,
+        because the runs most worth a record are the ones the session
+        never commits: a failure resets the session without writing, and a
+        run that scrapes nothing skips the commit entirely.
+
+        The scraper's console output is kept only for runs that failed. It
+        is what you need to diagnose one, and keeping it for every council
+        would bloat every data directory.
+        """
+        if self.in_lambda:
+            return
+
+        path = self.run_log_path(scraper)
+        if path is None:
+            return
+
+        entry = {
+            "council": scraper.council_id,
+            "command": self.command_name,
+            "status_code": run_log.status_code,
+            "start": run_log.start,
+            "end": run_log.end,
+            "duration": run_log.duration,
+            "error": run_log.error,
+        }
+        if run_log.error and run_log.log:
+            entry["log"] = run_log.log
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(entry, indent=2, default=str))
+
     def run_councils(self):
-        for council in self.councils_to_run:
-            self.run_council(council.council_id)
+        self._run_councils(progress=False)
 
     def run_councils_with_progress(self):
-        to_run = self.councils_to_run
-        with Progress(
-            "[progress.description]{task.description}",
-            BarColumn(),
-            "[progress.percentage]{task.percentage:>3.0f}%",
-            TimeElapsedColumn(),
-            console=self.console,
-            auto_refresh=False,
-        ) as progress:
-            total = progress.add_task(description="Total", total=len(to_run))
-            while not progress.finished:
-                for council in to_run:
-                    self.run_council(council.council_id)
-                    progress.update(total, advance=1)
-                    progress.refresh()
+        self._run_councils(progress=True)
 
-    def _run_single(self, scraper):
+    def _run_councils(self, progress=True):
+        to_run = self.councils_to_run
+        self._council_count = len(to_run)
+        workers = max(1, int(self.options.get("workers") or 1))
+        # Nothing to parallelise, and one council should stream its output
+        # rather than being held back and replayed.
+        if self._council_count <= 1:
+            workers = 1
+        self._concurrent = workers > 1
+
+        if not progress:
+            self._map(to_run, workers, None)
+        else:
+            with Progress(
+                "[progress.description]{task.description}",
+                BarColumn(),
+                "[progress.percentage]{task.percentage:>3.0f}%",
+                TimeElapsedColumn(),
+                console=self.console,
+                auto_refresh=False,
+            ) as bar:
+                task = bar.add_task(description="Total", total=self._council_count)
+                self._map(to_run, workers, (bar, task))
+
+        if self._concurrent:
+            self.output_run_summary()
+
+    def _map(self, councils, workers, progress):
+        def done():
+            if progress:
+                bar, task = progress
+                bar.update(task, advance=1)
+                bar.refresh()
+
+        if workers == 1:
+            for council in councils:
+                self.run_council(council.council_id)
+                done()
+            return
+
+        with ThreadPoolExecutor(workers) as pool:
+            futures = [
+                pool.submit(self.run_council, council.council_id)
+                for council in councils
+            ]
+            for future in as_completed(futures):
+                future.result()
+                done()
+
+    def output_run_summary(self):
+        """Per-council outcomes, for runs too large to read as they happen."""
+        table = Table(title=f"{self.command_name}: {len(self._results)} councils run")
+        table.add_column("Council", style="magenta")
+        table.add_column("Status", style="green")
+        table.add_column("Seconds", style="cyan", justify="right")
+        table.add_column("Error", style="red", overflow="fold")
+
+        for council_id, run_log in sorted(self._results):
+            failed = bool(run_log.error)
+            table.add_row(
+                council_id,
+                "[red]failed[/red]" if failed else "ok",
+                f"{run_log.duration.total_seconds():.1f}",
+                run_log.error.strip().splitlines()[-1][:120] if failed else "",
+            )
+        self.console.print(table)
+
+        failures = [c for c, log in self._results if log.error]
+        if failures:
+            self.console.print(
+                f"[red]{len(failures)} of {len(self._results)} failed:[/red] "
+                + " ".join(sorted(failures))
+            )
+
+    def _run_single(self, scraper, console):
         run_log = settings.RUN_LOGGER(start=datetime.datetime.now(datetime.UTC))
         try:
             scraper.run(run_log)
-            # Collect councillors for reporting if flag is set
             if self.options.get("report"):
-                self.scraped_councillors.extend(scraper.councillors)
+                with self._lock:
+                    self.scraped_items.extend(scraper.report_items)
         except KeyboardInterrupt:
             raise
         except Exception:
             run_log.error = traceback.format_exc()
-            if self.options.get("verbose"):
+            if not run_log.log and hasattr(console, "export_text"):
+                run_log.log = console.export_text()
+            # One council failing must not end a run over many of them.
+            # A run of exactly one is someone working on that scraper, or a
+            # scripted call that wants the failure to surface.
+            if self._council_count <= 1 and self.options.get("verbose"):
+                run_log.finish()
+                self.record_run_log(scraper, run_log)
                 raise
         run_log.finish()
 
-        self.console.print(run_log.as_rich_table)
+        with self._lock:
+            self._results.append((scraper.options["council"], run_log))
+        self.record_run_log(scraper, run_log)
+
+        if not self._concurrent:
+            console.print(run_log.as_rich_table)
 
     def run_council(self, council):
-        self.options["council"] = council
-        self.options["council_info"] = load_council_info(council)
+        # Each council gets its own options and console: sharing them means
+        # concurrent runs overwrite each other's council and interleave
+        # their logs into each other's run records.
+        options = dict(self.options)
+        options["council"] = council
+        options["council_info"] = load_council_info(council)
+
+        console = self.console
+        if self._concurrent:
+            console = Console(file=io.StringIO(), record=True, width=120)
+
         scraper_cls = load_scraper(council, self.command_name)
         if not scraper_cls:
             return
-        with scraper_cls(self.options, self.console) as scraper:
+        with scraper_cls(options, console) as scraper:
             should_run = True
             if scraper.disabled:
                 should_run = False
-            if should_run and self.options["refresh"] and scraper.run_since():
+            if should_run and options["refresh"] and scraper.run_since():
                 should_run = False
-            if should_run and self.options["tags"]:
-                required_tags = set(self.options["tags"].split(","))
+            if should_run and options["tags"]:
+                required_tags = set(options["tags"].split(","))
                 scraper_tags = set(scraper.get_tags)
                 if not required_tags.issubset(scraper_tags):
                     should_run = False
             if should_run:
                 # Clear console recording to exclude bootstrapping output from run log
-                if hasattr(self.console, "_record_buffer"):
-                    self.console._record_buffer.clear()
-                self._run_single(scraper)
+                if hasattr(console, "_record_buffer"):
+                    console._record_buffer.clear()
+                self._run_single(scraper, console)
 
     def normalise_codes(self):
         new_codes = []
@@ -384,32 +641,10 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
         return self.options
 
     def output_report(self):
-        """Display a Rich table report of scraped councillor data"""
-        table = Table(title="Scraped Councillor Data")
-        table.add_column("Name", style="cyan", no_wrap=False)
-        table.add_column("Ward", style="green", no_wrap=False)
-        table.add_column("Party", style="yellow", no_wrap=False)
-        table.add_column("Email", style="blue", no_wrap=False)
-        table.add_column("Photo", style="magenta", overflow="fold")
-
-        # Use councillors collected during scraping (in memory)
-        for councillor in sorted(self.scraped_councillors, key=lambda c: c.name):
-            table.add_row(
-                councillor.name or "N/A",
-                councillor.division or "N/A",
-                councillor.party or "N/A",
-                getattr(councillor, "email", None) or "",
-                getattr(councillor, "photo_url", None) or "",
-            )
-
-        total_councillors = len(self.scraped_councillors)
-        if total_councillors > 0:
-            self.console.print(
-                f"\n[bold green]Total councillors scraped: {total_councillors}[/bold green]"
-            )
-            self.console.print(table)
-        else:
-            self.console.print("[yellow]No councillor data found to report[/yellow]")
+        """Display a report of scraped data. Subclasses render their own table."""
+        self.console.print(
+            f"\n[bold green]Total items scraped: {len(self.scraped_items)}[/bold green]"
+        )
 
     def handle(self, options):
         self.options = options

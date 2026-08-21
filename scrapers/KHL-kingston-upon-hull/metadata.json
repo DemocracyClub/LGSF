@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://cmis.hullcc.gov.uk/cmis/CouncillorsandSeniorOfficers/CouncillorsandSeniorOfficers.aspx",
             "cms_type": "CMIS"
+        },
+        "minutes": {
+            "base_url": "https://cmis.hullcc.gov.uk/cmis/CalendarofMeetings.aspx",
+            "cms_type": "CMIS"
         }
     }
 }

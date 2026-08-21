@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://committeeadmin.lancaster.gov.uk",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://committeeadmin.lancaster.gov.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://cmispublic.walsall.gov.uk/cmis/Councillors.aspx",
             "cms_type": "CMIS"
+        },
+        "minutes": {
+            "base_url": "https://cmispublic.walsall.gov.uk/cmis/Meetings.aspx",
+            "cms_type": "CMIS"
         }
     }
 }

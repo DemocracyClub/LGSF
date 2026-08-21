@@ -3,6 +3,7 @@
         "common_name": "Tandridge",
         "created": "1974-04-01T00:00:00Z",
         "election_name": "Tandridge local election",
+        "end_date": "2027-03-31",
         "official_identifier": "TAN",
         "official_name": "Tandridge District Council",
         "organisation_subtype": "NMD",
@@ -12,8 +13,13 @@
         "territory_code": "ENG",
         "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/TAN/1974-04-01/"
     },
+    "everyelectiion_data_last_updated": "2026-08-19T09:45:37.841490",
     "services": {
         "councillors": {
+            "base_url": "https://tandridge.moderngov.co.uk",
+            "cms_type": "ModernGov"
+        },
+        "minutes": {
             "base_url": "https://tandridge.moderngov.co.uk",
             "cms_type": "ModernGov"
         }

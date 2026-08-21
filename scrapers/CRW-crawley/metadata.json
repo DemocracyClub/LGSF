@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "http://democracy.crawley.gov.uk",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://democracy.crawley.gov.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

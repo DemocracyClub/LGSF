@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "http://committee.nottinghamcity.gov.uk",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://committee.nottinghamcity.gov.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

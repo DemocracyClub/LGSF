@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://democraticservices.hounslow.gov.uk",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://democraticservices.hounslow.gov.uk/%28S%28czobl0450xbqi155ede3ifez%29%29",
+            "cms_type": "ModernGov"
         }
     }
 }

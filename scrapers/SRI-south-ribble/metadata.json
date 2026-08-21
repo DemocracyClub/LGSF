@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "http://southribble.moderngov.co.uk",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://southribble.moderngov.co.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

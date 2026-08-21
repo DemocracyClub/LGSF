@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "http://councillors.knowsley.gov.uk",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://councillors.knowsley.gov.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://cambridgeshire.cmis.uk.com/ccc_live/Councillors.aspx",
             "cms_type": "CMIS"
+        },
+        "minutes": {
+            "base_url": "https://cambridgeshire.cmis.uk.com/ccc_live/MeetingsCalendar.aspx",
+            "cms_type": "CMIS"
         }
     }
 }

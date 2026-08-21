@@ -2,6 +2,7 @@ import abc
 import datetime
 import os
 import traceback
+from functools import cached_property
 from pathlib import Path
 
 import httpx
@@ -11,6 +12,8 @@ import wreq
 
 from ..metadata.models import CouncilMetadata
 from ..storage.backends import get_storage_backend
+from ..storage.backends.base import StorageMode
+from ..storage.documents import get_document_storage_backend
 from .checks import ScraperChecker
 
 
@@ -28,6 +31,12 @@ class ScraperBase(metaclass=abc.ABCMeta):
     scraper_object_type = None
     use_proxy = False
 
+    #: How this scraper's storage should treat previous runs.
+    #: StorageMode.REPLACE (the default) suits data where the latest scrape is
+    #: the whole truth; StorageMode.ACCUMULATE suits append-only historical
+    #: records. See lgsf.storage.backends.base.
+    storage_mode = StorageMode.REPLACE
+
     def __init__(self, options, console):
         self.options = options
         self.console = console
@@ -44,6 +53,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
             council_code=self.council_id,
             options=self.options,
             scraper_object_type=self.scraper_object_type,
+            storage_mode=self.storage_mode,
         )
         self.storage_session = self.storage_backend.start_session()
 
@@ -98,12 +108,17 @@ class ScraperBase(metaclass=abc.ABCMeta):
         if self.options.get("verbose"):
             self.console.log(f"Scraping from {url}")
 
-        # Don't change headers for wreq, as it does it for us
+        # wreq builds a full set of browser-emulation headers for us, so we
+        # only pass extra_headers when there are some: anything we supply is
+        # merged on top of the emulated set rather than replacing it.
         if self.http_lib == "wreq":
             # See: https://github.com/0x676e67/wreq-python/issues/405
+            wreq_kwargs = {"timeout": datetime.timedelta(seconds=self.timeout)}
+            if extra_headers:
+                wreq_kwargs["headers"] = extra_headers
             response = self.http_client.get(
                 url.replace(" ", "%20"),
-                timeout=datetime.timedelta(seconds=self.timeout),
+                **wreq_kwargs,
             )
         elif self.http_lib == "playwright":
             response = self.http_client.get(
@@ -121,6 +136,60 @@ class ScraperBase(metaclass=abc.ABCMeta):
         response.raise_for_status()
         return response
 
+    def response_status(self, response) -> int:
+        """
+        Return the HTTP status as an int.
+
+        Each supported client models this differently: wreq exposes a
+        StatusCode object with .as_int(), requests and httpx use an int
+        .status_code.
+        """
+        status = getattr(response, "status_code", None)
+        if isinstance(status, int):
+            return status
+
+        status = getattr(response, "status", None)
+        if status is None:
+            raise ValueError(f"Can't read status from {type(response)} response")
+        if isinstance(status, int):
+            return status
+        if hasattr(status, "as_int"):
+            return status.as_int()
+        return int(status)
+
+    def response_header(self, response, name: str):
+        """
+        Return a response header as a string, or None if it isn't set.
+
+        wreq's HeaderMap returns bytes; requests and httpx return str.
+        """
+        headers = getattr(response, "headers", None)
+        if headers is None:
+            return None
+        value = headers.get(name)
+        if value is None:
+            return None
+        if isinstance(value, bytes):
+            return value.decode("utf-8", errors="replace")
+        return value
+
+    def get_conditional(self, url, etag=None, last_modified=None, extra_headers=None):
+        """
+        GET a URL, telling the server what we already have so it can answer
+        304 Not Modified instead of resending the body.
+
+        Returns the response either way; callers should check
+        ``self.response_status(response) == 304`` before using the body.
+        Servers that ignore conditional headers answer 200 as usual.
+        """
+        headers = dict(extra_headers or {})
+        if etag:
+            headers["If-None-Match"] = etag
+        if last_modified:
+            headers["If-Modified-Since"] = last_modified
+
+        return self.get(url, extra_headers=headers or None)
+
     def get_text(self, url, extra_headers=None):
         """
         Wraps self.get and always returns the response text.
@@ -133,6 +202,25 @@ class ScraperBase(metaclass=abc.ABCMeta):
         if callable(text):
             text = text()
         return text
+
+    @cached_property
+    def document_storage(self):
+        """
+        Where this scraper's document *files* go, as opposed to its metadata.
+
+        Lazily created, so scrapers that don't download documents never
+        construct one. Selected independently of the metadata backend: see
+        lgsf.storage.documents.
+        """
+        return get_document_storage_backend(
+            council_code=self.council_id,
+            options=self.options,
+        )
+
+    @property
+    def report_items(self):
+        """Objects collected during the run, used by the --report flag."""
+        return []
 
     def check(self):
         assert self.service_name, "Scrapers must set a service_name"

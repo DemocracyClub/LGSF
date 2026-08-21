@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "http://hastings.moderngov.co.uk",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://hastings.moderngov.co.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

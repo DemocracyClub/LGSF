@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://www.basildonmeetings.info",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://www.basildonmeetings.info",
+            "cms_type": "ModernGov"
         }
     }
 }

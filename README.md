@@ -6,201 +6,117 @@ The Local Government Scraper Framework is a set of tools for scraping UK local
 government websites. It was made for fun to see what a toolkit for people who
 wanted to turn government websites in to open data would look like.
 
-Ideas:
-
-1. Each council has a folder/package that contains scrapers.
-
-2. There are scraper classes for _types_ of thing that might want scraping,
-like councillors
-
-3. There are classes for the _types_ of thing. For example, there is a
-`Councillor` class. A `CouncillorScraper` is expected to produce a set of
-`Councillor` objects. The `Councillor` objects know how to be saved, cleaned,
-etc.
-
-4. Raw data is scraped and normalised into a simple structure with little
-processing of the values. The data may be processed later, for example to match
-party names to identifiers.
-
-5. Scrapers for common CMSs exist, making sub-classing of them easy. All
-that should be needed is the base URL, if a CMS is known and a scraper class
-exists for it.
-
-6. It’s possible to use a Django like command line interface for running
-scrapers. Scrapers can be run by tags, council identifiers, failing, etc
-
-## Using
-
-This is very new and likely to change a lot. If you want to actually use this
-project, it’s recommended you also
+If you want to actually use this project, it's recommended you also
 [join the Democracy Club Slack](https://slack.democracyclub.org.uk/) to talk
 about it with us. Everything is likely to change, and this code is in no way
 supported.
 
-### Requirements
+## How it fits together
 
-* Python 3.12
-* `uv`
+**A council is a directory.** Each of the ~440 councils has a package in
+`scrapers/`, named `CODE-slug`, holding a `metadata.json` and one Python file
+per kind of data being scraped.
 
-### Installation
+**A data type is a package.** `lgsf/councillors/` and `lgsf/minutes/` each
+define a model, a base scraper, CMS-specific subclasses, and a command. Adding
+more types means adding a package like them — see
+[docs/adding-a-scraper-type.md](docs/adding-a-scraper-type.md).
 
-Check out the code and run `uv sync` in the directory
+Two types are supported:
 
-### Running
+| Type | Command | Scrapes | Scraper classes | Storage |
+| --- | --- | --- | --- | --- |
+| [Councillors](docs/councillor-scrapers.md) | `manage.py councillors` | The current set of councillors | ModernGov, CMIS, HTML, paged HTML, JSON | Replaced each run |
+| [Minutes](docs/minutes-scrapers.md) | `manage.py minutes` | Committee meetings and their documents | ModernGov, CMIS, custom HTML | Added to each run |
 
-At the moment, the only type of scraper supported is councillors.
-
-To scrape all councillors, run:
-
- `python manage.py councillors --all-councils`
-
-This will take some time. Add `-v` for verbose output.
-
-To run a single council run e.g:
-
-`python manage.py councillors --council KIR`
-
-Where `KIR` is the council ID from the
-[MHCLG register](https://www.registers.service.gov.uk/registers/).
-
-Running the scrapers will create a `data` directory with raw and JSON folders
-and a file in each per councillor.
-
-### Contributing
-
-Install pre-commit hooks:
-`$ pre-commit install`
-
-If you want to add a scraper for a new council:
-
-
-1. Find the register code for it using the link above
-
-2. Create a python package in `scrapers`
-
-3. Create a file called `councillors.py` (more types of scraper are planned,
-but not supported yet).
-
-4. Create a class called `Scraper` and sub-class either the base scraper or a
-CMS specific scraper (see below)
-
-5. Test the scraper with `python manage.py councillors --council [package
-name] -v`
-
-### Councillor Scraper classes
-
-There are 4 types of councillor scraper class supported.
-
-All scrapers require a `base_url` property on the class. You can optionally
-set a list of `tags` and a `disabled` flag on the class.
-
-#### `BaseCouncillorScraper`
-
-This is the most basic scraper class. It requires two methods:
-`get_councillors` and `get_single_councillor`.
-
-`get_councillors` must return a iterator that contains the raw content
-representing a councillor.
-
-Each item returned will be passed to `get_single_councillor`.
-
-`get_single_councillor` must return a `Councillor` object.
-
-If this pattern doesn’t work for a council, then the required `run` method can
-be overridden. Run needs to call `self.save_councillor` with the raw scraped
-data for each councillor, and a councillor object. It then needs to call
-`self.report()`.
-
-#### `HTMLCouncillorScraper`
-
-Expects a dict containing CSS selectors for example:
+A council's scraper subclasses the base for whatever content management system
+that council uses:
 
 ```python
-list_page = {
-	"container_css_selector": ".container .col-md-8",
-	"councillor_css_selector": ".col-sm-3",
-}
+from lgsf.minutes.scrapers import ModGovMinutesScraper
+
+
+class Scraper(ModGovMinutesScraper):
+    pass
 ```
 
-Where `container_css_selector` is the CSS selector for the elements that
-contains a list of councillors, and `councillor_css_selector` is the selector
-for each element that contains a single councillor.
+Most UK councils run one of two systems, ModernGov or CMIS. This framework
+also supports writing custom HTML scrapers.
 
-The `get_single_councillor` method is required, and needs to return
-`Councillor` object.
+**Configuration lives in metadata, not code.** A scraper reads its `base_url`
+from the council's `metadata.json`, under `services.<type>`. The same council
+can be on different systems for different data types.
 
-#### PagedHTMLCouncillorScraper
+**The HTTP client is pluggable.** Council sites vary in what they will answer,
+so a scraper picks its client by setting `http_lib` on the class:
 
-A subclass of `HTMLCouncillorScraper` that supports pagination in on the
-container page (the list of coucillors is split over different pages).
+| `http_lib`   | Client | |
+|--------------| --- | --- |
+| `wreq`       | Rust client, default | Sends the TLS and header fingerprint of Firefox 133 |
+| `requests`   | `requests.Session` | |
+| `httpx`      | `httpx.Client` | Follows redirects |
+| `playwright` | Headless Chromium | Runs JavaScript, for sites behind Incapsula or Cloudflare |
 
-Looks for a new key in `self.list_page` called `"next_page_css_selector"`
-and uses that to iterate over the pages calling `get_single_councillor` for
-each as it goes.
+Other class attributes that change how requests are made: `verify_requests`
+to skip TLS verification, `timeout` (default 30), `extra_headers`, and
+`use_proxy`, which routes through `PROXY_URL` from the environment. `wreq` has
+no proxy support, so a scraper setting both gets `requests` instead.
 
-#### CMISCouncillorScraper
+**Everything is driven from `manage.py`**, one subcommand per data type:
 
-This is a scraper sub-class for councils using CMIS. You can tell these
-because they normally have `CMIS` in the URL somewhere.
-
-All that should be required is a `base_url`. This normally ends in
-`Councillors.aspx` or `Members.aspx` and is the list of councillors per ward.
-
-#### ModGovCouncillorScraper
-
-Similar to the CMIS class, this scrapes ModernGov URLs. ModernGov sites have
-URLs that contain something like `mgMemberIndex.aspx`. If `mg` is in the URL,
-it’s likely it’s a ModGov site. You can test this by looking for the WDSL page.
-
-If the URL with councillors on is
-`http://democracy.kirklees.gov.uk/mgMemberIndex.aspx` then try requesting
-`http://democracy.kirklees.gov.uk/ mgWebService.asmx?WSDL`. If you see XML,
-then it's using ModGov with the API turned on.
-
-The `base_url` should be the URL above the `mgWebService.asmx` script, e.g.
-`http://democracy.kirklees.gov.uk/` or
-`http://democracy.kirklees.gov.uk/councillors/` if it’s installed at a
-sub-path.
-
-
-### Skipping councillors
-
-The contract of `get_single_councillor` is that it must return a 
-`Councillor` object.
-
-However in some cases the source requires that this can't happen. Two examples:
-
-1. With `HTMLCouncillorScraper` when iteration over all rows in a table, we
-   sometimes see inline header rows. They can get passed to
-   `get_single_councillor`, but don't contain a councillor
-2. Adur and Worthing have one page for all their councillors and we need to
-   remove Adur councillors from Worthing's scraper and vise versa.
-
-To deal with this we have `SkipCouncillorException`. If
-`get_single_councillor` raises this exception then the loop continues on to
-the next councillor.
-
-### Councillor objects
-
-All scrapers in some way need to make a set of councillor objects.
-`CMISCouncillorScraper` and `ModGovCouncillorScraper` handle this
-automatically, but the `HTMLCouncillorScraper` and `BaseCouncillorScraper`
-don’t.
-
-Councillor objects require a `url`, `identifier`, `name`, `party` and
-`division`:
-
-```python
-from lgsf.councillors import CouncillorBase
-
-councillor = CouncillorBase(
-    url,
-    identifier=identifier,
-    name=name,
-    party=party,
-    division=division,
-)
+```
+python manage.py minutes --council KIR
+python manage.py councillors --all-councils
 ```
 
-All councillor scrapers need to have `self.councillors = set()`, and each
-scraper needs to populate this with `Councillor` objects.
+**Output is files.** Scraped data lands in `data/<COUNCIL>/<Type>/` as raw
+responses and normalised JSON, with documents beside it in
+`data/<COUNCIL>/documents/`. Storage is pluggable: the same run can write to
+the local filesystem or commit to a per-council GitHub repository.
+
+## Install
+
+Requires Python 3.12 and [uv](https://docs.astral.sh/uv/).
+
+```
+git clone git@github.com:DemocracyClub/LGSF.git
+cd LGSF
+uv sync
+```
+
+Check it works by scraping a single council:
+
+```
+uv run python manage.py minutes --council ADU -v --skip-documents
+```
+
+That should report a handful of meetings and write them to
+`data/ADU/Minutes/`. No API keys or config are needed to run scrapers locally.
+
+Install the pre-commit hooks if you intend to contribute:
+
+```
+uv run pre-commit install
+```
+
+## Documentation
+
+| Document | What it covers |
+| --- | --- |
+| [docs/running-scrapers.md](docs/running-scrapers.md) | Running scrapers, the options that matter, finding work, fixing a broken scraper |
+| [docs/councillor-scrapers.md](docs/councillor-scrapers.md) | Councillor scraper classes and the objects they produce |
+| [docs/minutes-scrapers.md](docs/minutes-scrapers.md) | Minutes scraper classes, the scrape window, and document storage |
+| [docs/adding-a-scraper-type.md](docs/adding-a-scraper-type.md) | Adding a whole new data type, not a council |
+
+## For LLMs and coding agents
+
+`.claude/skills/` holds task-scoped guides for agents working on this repo.
+Each is a single `SKILL.md` covering the conventions, commands and constraints
+for one kind of task.
+
+| Skill | Read it when |
+| --- | --- |
+| [lgsf-run](.claude/skills/lgsf-run/SKILL.md) | Running a scraper, diagnosing a failing one, or finding councils that need work |
+| [lgsf-councillors](.claude/skills/lgsf-councillors/SKILL.md) | Working on a council's `councillors.py`, or on `lgsf/councillors/` |
+| [lgsf-minutes](.claude/skills/lgsf-minutes/SKILL.md) | Working on a council's `minutes.py`, or on meeting and document scraping |
+| [lgsf-add-scraper-type](.claude/skills/lgsf-add-scraper-type/SKILL.md) | Adding a new data type, not a scraper for one council |

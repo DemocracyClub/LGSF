@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://democracy.derby.gov.uk/cmis5/Councillors/tabid/62/ScreenMode/Alphabetical/Default.aspx",
             "cms_type": "CMIS"
+        },
+        "minutes": {
+            "base_url": "https://democracy.derby.gov.uk/MeetingsCalendar.aspx",
+            "cms_type": "CMIS"
         }
     }
 }

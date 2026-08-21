@@ -53,6 +53,10 @@ class BaseCouncillorScraper(ScraperBase):
     def get_tags(self):
         return self.tags + self.class_tags
 
+    @property
+    def report_items(self):
+        return list(self.councillors)
+
     def run(self, run_log: RunLog):
         for councillor_html in self.get_councillors():
             try:

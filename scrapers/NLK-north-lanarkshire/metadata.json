@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://northlanarkshire.cmis.uk.com/Councillors.aspx",
             "cms_type": "CMIS"
+        },
+        "minutes": {
+            "base_url": "https://northlanarkshire.cmis.uk.com/Meetings.aspx",
+            "cms_type": "CMIS"
         }
     }
 }

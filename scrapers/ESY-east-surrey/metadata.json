@@ -1,0 +1,17 @@
+{
+    "everyelectiion_data": {
+        "common_name": "East Surrey",
+        "created": "2026-01-28T13:22:59.626989Z",
+        "election_name": "East Surrey local election",
+        "official_identifier": "ESY",
+        "official_name": "East Surrey Council",
+        "organisation_subtype": "UA",
+        "organisation_type": "local-authority",
+        "slug": "east-surrey",
+        "start_date": "2026-05-07",
+        "territory_code": "ENG",
+        "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/ESY/2026-05-07/"
+    },
+    "everyelectiion_data_last_updated": "2026-08-19T09:45:37.393794",
+    "services": {}
+}

@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://renfrewshire.cmis.uk.com/renfrewshire/Councillors.aspx",
             "cms_type": "CMIS"
+        },
+        "minutes": {
+            "base_url": "https://renfrewshire.cmis.uk.com/renfrewshire/Meetings.aspx",
+            "cms_type": "CMIS"
         }
     }
 }

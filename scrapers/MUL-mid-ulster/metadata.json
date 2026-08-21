@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://mid-ulster.cmis-ni.org/midulster/Councillors.aspx",
             "cms_type": "CMIS"
+        },
+        "minutes": {
+            "base_url": "https://mid-ulster.cmis-ni.org/midulster/MeetingsCalendar.aspx",
+            "cms_type": "CMIS"
         }
     }
 }

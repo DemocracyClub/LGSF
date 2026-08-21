@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://www.torbay.gov.uk/DemocraticServices/",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "http://www.torbay.gov.uk/DemocraticServices",
+            "cms_type": "ModernGov"
         }
     }
 }

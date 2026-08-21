@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "http://chesterfield.moderngov.co.uk",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://chesterfield.moderngov.co.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

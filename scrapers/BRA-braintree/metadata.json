@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "http://braintree.cmis.uk.com/braintree/Councillors.aspx",
             "cms_type": "CMIS"
+        },
+        "minutes": {
+            "base_url": "http://braintree.cmis.uk.com/braintree/Meetings.aspx",
+            "cms_type": "CMIS"
         }
     }
 }

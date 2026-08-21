@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<meeting>
+  <meetingid>4966</meetingid>
+  <meetingdate>13/01/2026</meetingdate>
+  <meetingstatus>Cancelled</meetingstatus>
+  <isdisplayallowed>True</isdisplayallowed>
+  <meetingtime>10.00 am</meetingtime>
+  <meetingactualstarttime>
+  </meetingactualstarttime>
+  <meetingplannedfinishtime>2.00 pm</meetingplannedfinishtime>
+  <meetingactualfinishtime>
+  </meetingactualfinishtime>
+  <meetinglocation>Council Antechamber, Level 2, Town Hall Extension</meetinglocation>
+  <iswebcast>False</iswebcast>
+  <agendaid>4966</agendaid>
+  <agendapublished>False</agendapublished>
+  <decisionpublished>False</decisionpublished>
+  <minutepublished>False</minutepublished>
+  <meetingroom>
+  </meetingroom>
+  <agendaitems>
+  </agendaitems>
+  <attendees>
+    <attendee membertype="U" memberid="192" name="Councillor Basil Curley" roledescription="Committee Member" attendance="Expected" politicalparty="LAB" ward="Charlestown" keyposts="Chair of Health Scrutiny Committee">
+      <url>https://democracy.manchester.gov.uk/mgUserInfo.aspx?UID=192</url>
+      <photosmallurl>https://democracy.manchester.gov.uk/UserData/2/9/1/Info00000192/smallpic.jpg</photosmallurl>
+      <photobigurl>https://democracy.manchester.gov.uk/UserData/2/9/1/Info00000192/bigpic.jpg</photobigurl>
+    </attendee>
+  </attendees>
+</meeting>

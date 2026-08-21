@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "http://cmis.essex.gov.uk/EssexCmis5/Councillors.aspx",
             "cms_type": "CMIS"
+        },
+        "minutes": {
+            "base_url": "http://cmis.essex.gov.uk/EssexCmis5/CalendarofMeetings.aspx",
+            "cms_type": "CMIS"
         }
     }
 }

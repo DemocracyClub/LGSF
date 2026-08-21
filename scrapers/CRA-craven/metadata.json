@@ -13,7 +13,5 @@
         "territory_code": "ENG",
         "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/CRA/1974-04-01/"
     },
-    "services": {
-        "councillors": {}
-    }
+    "services": {}
 }

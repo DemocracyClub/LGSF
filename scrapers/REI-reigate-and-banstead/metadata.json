@@ -3,6 +3,7 @@
         "common_name": "Reigate and Banstead",
         "created": "1974-04-01T00:00:00Z",
         "election_name": "Reigate and Banstead local election",
+        "end_date": "2027-03-31",
         "official_identifier": "REI",
         "official_name": "Reigate and Banstead Borough Council",
         "organisation_subtype": "NMD",
@@ -12,8 +13,13 @@
         "territory_code": "ENG",
         "url": "http://elections.democracyclub.org.uk/api/organisations/local-authority/REI/1974-04-01/"
     },
+    "everyelectiion_data_last_updated": "2026-08-19T09:45:37.697223",
     "services": {
         "councillors": {
+            "base_url": "https://reigate-banstead.moderngov.co.uk",
+            "cms_type": "ModernGov"
+        },
+        "minutes": {
             "base_url": "https://reigate-banstead.moderngov.co.uk",
             "cms_type": "ModernGov"
         }

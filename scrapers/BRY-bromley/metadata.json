@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://cds.bromley.gov.uk/mgMemberIndex.aspx?FN=ALPHA&VW=LIST&PIC=0",
             "cms_type": "Custom HTML"
+        },
+        "minutes": {
+            "base_url": "https://cds.bromley.gov.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

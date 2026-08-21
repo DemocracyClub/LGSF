@@ -1,3 +1,4 @@
+import ast
 import csv
 import json
 import sys
@@ -11,6 +12,40 @@ from rich.text import Text
 from lgsf.commands.base import CouncilFilteringCommandBase
 from lgsf.metadata.models import CouncilMetadata
 from lgsf.path_utils import create_org_package, scraper_abs_path
+
+
+def find_scraper_base_url(source: str) -> str | None:
+    """
+    Return the string literal a scraper class assigns to base_url, if any.
+
+    Reading the assignment out of the parsed module rather than pattern
+    matching the source means a commented-out URL, or one built at runtime
+    from an expression, is ignored rather than picked up.
+    """
+    for class_node in ast.parse(source).body:
+        if not isinstance(class_node, ast.ClassDef):
+            continue
+
+        for node in class_node.body:
+            if isinstance(node, ast.Assign):
+                targets = node.targets
+            elif isinstance(node, ast.AnnAssign):
+                targets = [node.target]
+            else:
+                continue
+
+            if not any(
+                isinstance(target, ast.Name) and target.id == "base_url"
+                for target in targets
+            ):
+                continue
+
+            if isinstance(node.value, ast.Constant) and isinstance(
+                node.value.value, str
+            ):
+                return node.value.value
+
+    return None
 
 
 class Command(CouncilFilteringCommandBase):
@@ -85,7 +120,24 @@ class Command(CouncilFilteringCommandBase):
         validate_parser = subparsers.add_parser(
             "validate", help="Validate scrapers against their metadata"
         )
+        validate_parser.add_argument(
+            "--service",
+            action="store",
+            default="councillors",
+            help="Service to validate (default: councillors)",
+        )
         self._add_council_filtering_args(validate_parser)
+
+    @property
+    def service_name(self):
+        """
+        The service this invocation is about.
+
+        Subcommands that work per service take --service; the rest operate
+        on councillors.
+        """
+        options = getattr(self, "options", None) or {}
+        return options.get("service") or "councillors"
 
     def handle(self, options):
         self.options = options  # Store options for use in filtering
@@ -93,21 +145,22 @@ class Command(CouncilFilteringCommandBase):
 
         if subcommand == "list-cms":
             self.list_cms_types(
-                options.get("service", "councillors"),
+                self.service_name,
                 csv_format=options.get("csv", False),
                 json_format=options.get("json", False),
             )
             return
 
         elif subcommand == "validate":
+            service_name = self.service_name
             if options.get("council"):
                 council_ids = [c.strip() for c in options.get("council").split(",")]
                 if len(council_ids) == 1:
-                    self.validate_single_scraper(council_ids[0])
+                    self.validate_single_scraper(council_ids[0], service_name)
                 else:
-                    self.validate_multiple_scrapers(council_ids)
+                    self.validate_multiple_scrapers(council_ids, service_name)
             else:
-                self.validate_all_scrapers()
+                self.validate_all_scrapers(service_name)
             return
 
         elif subcommand == "update":
@@ -142,28 +195,27 @@ class Command(CouncilFilteringCommandBase):
         print(f"Updated EveryElection metadata for {councils_updated} councils")
 
     def update_single_council(self, council_id):
-        """Update EveryElection metadata for a single council."""
+        """
+        Update EveryElection metadata for a single council.
+
+        The organisation detail endpoint answers for a known identifier
+        directly, so one council costs one request rather than a walk
+        through every page of the organisation list. An identifier that
+        doesn't exist comes back as an empty result set rather than a 404.
+        """
         base_url = "https://elections.democracyclub.org.uk/"
-        url = f"{base_url}api/organisations/"
+        url = f"{base_url}api/organisations/local-authority/{council_id}/"
 
-        # Search for the specific council
-        params = {"official_identifier": council_id}
-        req = requests.get(url, params=params)
-        data = req.json()
+        req = requests.get(url)
+        req.raise_for_status()
+        results = req.json()["results"]
 
-        found = False
-        for org in data["results"]:
-            if (
-                org["organisation_type"] == "local-authority"
-                and org["official_identifier"] == council_id
-            ):
-                self.update_council_metadata(org)
-                found = True
-                print(f"Updated EveryElection metadata for {council_id}")
-                break
-
-        if not found:
+        if not results:
             print(f"Council {council_id} not found in EveryElection API")
+            return
+
+        self.update_council_metadata(results[0])
+        print(f"Updated EveryElection metadata for {council_id}")
 
     def update_council_metadata(self, org_data):
         """Update metadata for a single council, preserving manual data."""
@@ -184,7 +236,7 @@ class Command(CouncilFilteringCommandBase):
         metadata = CouncilMetadata.from_file(metadata_file)
 
         # Update EveryElection data while preserving manual data
-        metadata.update_everyelectiion_data(org_data)
+        metadata.update_everyelection_data(org_data)
 
         # Auto-detect CMS and scraper info if not already set
         self.auto_update_scraper_info(metadata, scraper_path)
@@ -198,36 +250,35 @@ class Command(CouncilFilteringCommandBase):
             init_file.touch()
 
     def auto_update_scraper_info(self, metadata: CouncilMetadata, scraper_path: Path):
-        """Auto-detect and update scraper information if not manually set."""
-        councillors_file = scraper_path / "councillors.py"
+        """
+        Fill in any service's missing base_url from its scraper file.
 
-        councillors_service = metadata.get_councillors_service()
+        A council's scrapers are named after their service
+        (scrapers/<CODE>/<service>.py), so every scraper file present is
+        considered, and any service without a base_url gets one.
+        """
+        for scraper_file in sorted(scraper_path.glob("*.py")):
+            service_name = scraper_file.stem
+            if service_name.startswith("_"):
+                continue
 
-        if councillors_file.exists():
+            if metadata.get_service_metadata(service_name).base_url:
+                continue
+
             try:
-                # Read the scraper file to extract base_url if not set
-                with open(councillors_file, "r") as f:
-                    content = f.read()
+                content = scraper_file.read_text()
+            except OSError as e:
+                print(f"Warning: could not read {scraper_file}: {e}")
+                continue
 
-                import re
+            try:
+                base_url = find_scraper_base_url(content)
+            except SyntaxError as e:
+                print(f"Warning: could not parse {scraper_file}: {e}")
+                continue
 
-                updates = {}
-
-                # Extract base_url if not set
-                if not councillors_service.base_url:
-                    url_match = re.search(
-                        r'base_url\s*=\s*["\']([^"\']+)["\']', content
-                    )
-                    if url_match:
-                        updates["base_url"] = url_match.group(1)
-
-                if updates:
-                    metadata.update_service_data("councillors", **updates)
-
-            except Exception as e:
-                print(
-                    f"Warning: Could not auto-detect scraper info for {scraper_path.name}: {e}"
-                )
+            if base_url:
+                metadata.update_service_data(service_name, base_url=base_url)
 
     def update_manual_metadata(self, options):
         """Update manual metadata fields for a specific council."""
@@ -274,12 +325,7 @@ class Command(CouncilFilteringCommandBase):
             try:
                 metadata = CouncilMetadata.for_council(council.council_id)
 
-                # Track available services across all councils
-                if service_name == "councillors" and metadata.councillors.to_dict():
-                    available_services.add("councillors")
-                # Future services can be added here
-                # if service_name == "meetings" and metadata.meetings.to_dict():
-                #     available_services.add("meetings")
+                available_services.update(metadata.configured_services())
 
                 service_metadata = metadata.get_service_metadata(service_name)
 
@@ -443,7 +489,10 @@ class Command(CouncilFilteringCommandBase):
                 filtered_councils = []
                 for council in self._safe_current_councils():
                     try:
-                        scraper = load_scraper(council.council_id, "councillors")
+                        # Tags belong to the scraper for the service being
+                        # operated on, so --service decides which scrapers
+                        # are consulted.
+                        scraper = load_scraper(council.council_id, self.service_name)
                         if scraper and hasattr(scraper, "tags"):
                             if any(tag in scraper.tags for tag in tag_list):
                                 filtered_councils.append(council)
@@ -467,8 +516,8 @@ class Command(CouncilFilteringCommandBase):
                 safe_councils.append(council)
         return safe_councils
 
-    def validate_all_scrapers(self):
-        """Validate all scrapers and print a comprehensive report."""
+    def validate_all_scrapers(self, service_name="councillors"):
+        """Validate all scrapers for a service and print a report."""
         from lgsf.metadata.validation import ScraperValidator
 
         validator = ScraperValidator()
@@ -477,13 +526,16 @@ class Command(CouncilFilteringCommandBase):
         councils_to_validate = self._get_filtered_councils()
 
         with self.console.status(
-            f"[bold green]Running validation for {len(councils_to_validate)} scrapers..."
+            f"[bold green]Validating {service_name} scrapers for "
+            f"{len(councils_to_validate)} councils..."
         ):
-            report = validator.validate_filtered_scrapers(councils_to_validate)
+            report = validator.validate_filtered_scrapers(
+                councils_to_validate, service_name
+            )
 
         validator.print_validation_report(report, console=self.console)
 
-    def validate_multiple_scrapers(self, council_ids):
+    def validate_multiple_scrapers(self, council_ids, service_name="councillors"):
         """Validate multiple scrapers and print detailed reports."""
         from lgsf.metadata.validation import ScraperValidator
 
@@ -493,20 +545,29 @@ class Command(CouncilFilteringCommandBase):
             self.console.print(f"\n[bold blue]Validating {council_id}...[/bold blue]")
 
             with self.console.status(
-                f"[bold green]Validating scraper for {council_id}..."
+                f"[bold green]Validating {service_name} scraper for {council_id}..."
             ):
-                report = validator.validate_council_scraper(council_id)
+                report = validator.validate_council_scraper(council_id, service_name)
 
             validator.print_single_council_report(report, console=self.console)
 
-    def validate_single_scraper(self, council_id):
+    def validate_single_scraper(self, council_id, service_name="councillors"):
         """Validate a single scraper and print detailed report."""
         from lgsf.metadata.validation import ScraperValidator
 
         validator = ScraperValidator()
 
-        with self.console.status(f"[bold green]Validating scraper for {council_id}..."):
-            report = validator.validate_council_scraper(council_id)
+        with self.console.status(
+            f"[bold green]Validating {service_name} scraper for {council_id}..."
+        ):
+            report = validator.validate_council_scraper(council_id, service_name)
+
+        if not report.get("applicable", True):
+            self.console.print(
+                f"[yellow]{council_id} has no {service_name} scraper or "
+                f"metadata - nothing to validate[/yellow]"
+            )
+            return
 
         # Create a panel with the validation status
         if report["valid"]:

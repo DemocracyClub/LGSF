@@ -5,7 +5,7 @@ from typing import Dict, Literal, Optional, Union
 from uuid import uuid4
 
 from lgsf.conf import settings
-from lgsf.storage.backends.base import BaseStorage, StorageSession
+from lgsf.storage.backends.base import BaseStorage, StorageMode, StorageSession
 
 
 class _LocalPathlibSession(StorageSession):
@@ -148,8 +148,13 @@ class LocalFilesystemStorage(BaseStorage):
             session.write(Path("output.csv"), processed)
     """
 
-    def __init__(self, council_code: str):
-        super().__init__(council_code)
+    def __init__(
+        self,
+        council_code: str,
+        scraper_object_type: Optional[str] = None,
+        storage_mode: StorageMode = StorageMode.REPLACE,
+    ):
+        super().__init__(council_code, storage_mode=storage_mode)
         self.root = Path(settings.DATA_DIR_NAME)
         self.encoding = "utf8"
         self._active: Optional[_LocalPathlibSession] = None
@@ -160,6 +165,32 @@ class LocalFilesystemStorage(BaseStorage):
             raise ValueError(f"Invalid council_code: {council_code}")
 
         self.safe_council_code = safe_council_code
+
+        # Scope sessions to a per-data-type subdirectory (matching the
+        # GitHub backend's layout) so that, for example, a minutes run
+        # can't wipe councillors data for the same council.
+        self.scraper_object_type = None
+        if scraper_object_type:
+            safe_object_type = "".join(
+                c for c in scraper_object_type if c.isalnum() or c in "_-"
+            )
+            if not safe_object_type:
+                raise ValueError(f"Invalid scraper_object_type: {scraper_object_type}")
+            self.scraper_object_type = safe_object_type
+
+    @property
+    def council_root(self) -> Path:
+        """
+        Where this council's data for this scraper type lives.
+
+        Exposed so callers can write alongside the scraped data - a run
+        log, say - without repeating the council code sanitising or
+        guessing the layout.
+        """
+        root = self.root / self.safe_council_code
+        if self.scraper_object_type:
+            root = root / self.scraper_object_type
+        return root
 
     def _start_session(self, **kwargs) -> StorageSession:
         """
@@ -183,16 +214,16 @@ class LocalFilesystemStorage(BaseStorage):
                 "A session is already active on this LocalFilesystemStorage instance."
             )
 
-        # Clean and recreate council-specific subdirectory
-        council_root = self.root / self.safe_council_code
+        council_root = self.council_root
         try:
-            # Clean existing directory if it exists
-            if council_root.exists():
+            # In REPLACE mode the latest scrape is the whole truth, so clear
+            # out anything from previous runs. In ACCUMULATE mode previous
+            # runs are history we're adding to, so leave them alone.
+            if self.storage_mode == StorageMode.REPLACE and council_root.exists():
                 import shutil
 
                 shutil.rmtree(council_root)
 
-            # Create fresh directory
             council_root.mkdir(parents=True, exist_ok=True)
         except OSError as e:
             raise RuntimeError(
@@ -286,9 +317,12 @@ class LocalFilesystemStorage(BaseStorage):
                     }
 
                     try:
-                        summary_data.update(run_log.as_json)
-                    except (AttributeError, TypeError):
-                        pass  # run_log might not have as_json method or might not be serializable
+                        # as_dict, not as_json: updating a dict with a JSON
+                        # string raises, and the failure is swallowed far
+                        # enough away that the summary file is never written.
+                        summary_data.update(run_log.as_dict)
+                    except (AttributeError, TypeError, ValueError):
+                        pass  # a run log that can't be serialised isn't fatal
 
                     with summary_path.open("w", encoding="utf-8") as f:
                         json.dump(summary_data, f, indent=2, default=str)

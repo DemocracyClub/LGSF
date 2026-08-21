@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://norfolkcc.cmis.uk.com/norfolkcc/Councillors.aspx",
             "cms_type": "CMIS"
+        },
+        "minutes": {
+            "base_url": "https://norfolkcc.cmis.uk.com/norfolkcc/CalendarofMeetings.aspx",
+            "cms_type": "CMIS"
         }
     }
 }

@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "http://democratic.southoxon.gov.uk",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://democratic.southoxon.gov.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

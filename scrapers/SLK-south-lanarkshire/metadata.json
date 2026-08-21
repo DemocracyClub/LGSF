@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://southlanarkshire.cmis.uk.com/southlanarkshire/Councillors.aspx",
             "cms_type": "CMIS"
+        },
+        "minutes": {
+            "base_url": "https://southlanarkshire.cmis.uk.com/southlanarkshire/MeetingsCalendar.aspx",
+            "cms_type": "CMIS"
         }
     }
 }

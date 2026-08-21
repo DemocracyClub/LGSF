@@ -20,15 +20,25 @@ class ScraperValidator:
     def __init__(self):
         self.warnings_issued = []
 
-    def validate_council_scraper(self, council_id: str) -> Dict[str, Any]:
+    def validate_council_scraper(
+        self, council_id: str, service_name: str = "councillors"
+    ) -> Dict[str, Any]:
         """
-        Validate a council's scraper against its metadata.
+        Validate a council's scraper for one service against its metadata.
 
-        Returns a validation report with any issues found.
+        A council is only checked for a service it actually takes part in:
+        one that has neither a scraper file nor service metadata is
+        reported as not applicable rather than as broken, since most
+        councils will never have every service.
+
+        Having exactly one of the two is an error - a scraper with no
+        base_url can't run, and metadata with no scraper is never used.
         """
         report = {
             "council_id": council_id,
+            "service": service_name,
             "valid": True,
+            "applicable": True,
             "warnings": [],
             "errors": [],
             "suggestions": [],
@@ -40,43 +50,51 @@ class ScraperValidator:
 
             # Check if scraper file exists
             scraper_path = scraper_abs_path(council_id)
-            councillors_file = scraper_path / "councillors.py"
+            scraper_file = scraper_path / f"{service_name}.py"
+            has_service_metadata = metadata.has_service(service_name)
 
-            if not councillors_file.exists():
-                report["errors"].append("No councillors.py file found")
+            if not scraper_file.exists():
+                if not has_service_metadata:
+                    # This council doesn't do this service.
+                    report["applicable"] = False
+                    return report
+                report["errors"].append(
+                    f"metadata.json declares services.{service_name} but there "
+                    f"is no {service_name}.py"
+                )
+                report["valid"] = False
+                return report
+
+            if not has_service_metadata:
+                report["errors"].append(
+                    f"{service_name}.py exists but metadata.json has no "
+                    f"services.{service_name} block"
+                )
                 report["valid"] = False
                 return report
 
             # Load and inspect the scraper
-            scraper_info = self._load_scraper_info(councillors_file)
+            scraper_info = self._load_scraper_info(scraper_file)
 
             if not scraper_info:
                 report["errors"].append("Could not load scraper class information")
                 report["valid"] = False
                 return report
 
-            # Basic metadata checks
-            councillors_service = metadata.get_service_metadata("councillors")
-            if councillors_service and councillors_service.cms_type:
-                # Could add runtime CMS validation here if needed
-                pass
+            service = metadata.get_service_metadata(service_name)
 
             # Check for missing metadata fields
-            missing_fields = self._check_missing_metadata(metadata)
+            missing_fields = self._check_missing_metadata(metadata, service_name)
             if missing_fields:
                 report["suggestions"].extend(
                     [f"Consider setting {field}" for field in missing_fields]
                 )
 
             # Check scraper implementation quality
-            quality_issues = self._check_scraper_quality(scraper_info, councillors_file)
+            quality_issues = self._check_scraper_quality(scraper_info, scraper_file)
             report["warnings"].extend(quality_issues)
 
-            # Check base_url in metadata
-            councillors_service = metadata.get_service_metadata("councillors")
-            metadata_base_url = (
-                councillors_service.base_url if councillors_service else None
-            )
+            metadata_base_url = service.base_url
             is_disabled = scraper_info.get("disabled", False)
 
             # Skip base_url validation for disabled scrapers
@@ -88,28 +106,25 @@ class ScraperValidator:
                 # No base_url in metadata
                 report["errors"].append(
                     "No base_url found in metadata. "
-                    "Please set services.councillors.base_url in metadata.json"
+                    f"Please set services.{service_name}.base_url in metadata.json"
                 )
 
             # Check CMS type consistency
-            if councillors_service and councillors_service.cms_type and scraper_info:
+            if service.cms_type and scraper_info:
                 parent_class = scraper_info.get("parent_class")
-                expected_cms_mapping = {
-                    "ModGovCouncillorScraper": "ModernGov",
-                    "CMISCouncillorScraper": "CMIS",
-                    "HTMLCouncillorScraper": "Custom HTML",
-                }
-                expected_cms = expected_cms_mapping.get(parent_class)
-                if expected_cms and expected_cms != councillors_service.cms_type:
+                expected_cms = self._expected_cms_type(parent_class)
+                if expected_cms and expected_cms != service.cms_type:
                     report["warnings"].append(
                         f"CMS type mismatch: scraper uses '{parent_class}' (suggests '{expected_cms}') "
-                        f"but metadata has '{councillors_service.cms_type}'"
+                        f"but metadata has '{service.cms_type}'"
                     )
 
         except Exception as e:
             report["errors"].append(f"Validation failed: {str(e)}")
-            report["valid"] = False
 
+        # Derived once at the end rather than maintained at each append, so
+        # a report can never claim to pass while listing errors.
+        report["valid"] = not report["errors"]
         return report
 
     def _load_scraper_info(self, scraper_file: Path) -> Optional[Dict[str, Any]]:
@@ -157,19 +172,50 @@ class ScraperValidator:
         except Exception:
             return None
 
-    def _check_missing_metadata(self, metadata: CouncilMetadata) -> List[str]:
+    #: Scraper base classes are named <CMS><Type>Scraper, so the CMS a
+    #: scraper is written against can be read off the prefix. Matching on
+    #: the prefix rather than a table of full class names means a new
+    #: scraper type needs no entry here.
+    CMS_PREFIXES = (
+        ("ModGov", "ModernGov"),
+        ("CMIS", "CMIS"),
+        # PagedHTML before HTML: the first match wins and one is a prefix
+        # of the other's meaning, not its name.
+        ("PagedHTML", "Custom HTML (Paged)"),
+        ("CustomHTML", "Custom HTML"),
+        ("HTML", "Custom HTML"),
+        ("JSON", "JSON API"),
+        ("Base", "Custom Base"),
+    )
+
+    def _is_cms_base_class(self, parent_class: Optional[str]) -> bool:
+        """
+        True for the framework's turnkey CMS scrapers, where subclassing
+        with nothing added is correct rather than suspicious.
+        """
+        return self._expected_cms_type(parent_class) in ("ModernGov", "CMIS")
+
+    def _expected_cms_type(self, parent_class: Optional[str]) -> Optional[str]:
+        """Infer the CMS a scraper is written against from its base class."""
+        if not parent_class:
+            return None
+        for prefix, cms_type in self.CMS_PREFIXES:
+            if parent_class.startswith(prefix):
+                return cms_type
+        return None
+
+    def _check_missing_metadata(
+        self, metadata: CouncilMetadata, service_name: str = "councillors"
+    ) -> List[str]:
         """Check for important missing metadata fields."""
         missing = []
 
-        councillors_service = metadata.get_service_metadata("councillors")
-        if not councillors_service:
-            missing.append("councillors service metadata")
-            return missing
+        service = metadata.get_service_metadata(service_name)
 
-        if not councillors_service.cms_type:
+        if not service.cms_type:
             missing.append("cms_type")
 
-        if not councillors_service.base_url:
+        if not service.base_url:
             missing.append("base_url")
 
         return missing
@@ -191,21 +237,21 @@ class ScraperValidator:
         if scraper_info["disabled"]:
             issues.append("Scraper is marked as disabled")
 
-        # Check if it's just inheriting without customization
-        if (
+        # Subclassing a CMS base class and adding nothing is the expected
+        # shape for ModernGov and CMIS councils - the base class does the
+        # work and the council only supplies a base_url. Anything else with
+        # no methods probably is incomplete.
+        if len(scraper_info["custom_methods"]) == 0 and not self._is_cms_base_class(
             scraper_info["parent_class"]
-            in ["CMISCouncillorScraper", "ModGovCouncillorScraper"]
-            and len(scraper_info["custom_methods"]) == 0
         ):
-            # This is actually good - simple CMS scrapers should be minimal
-            pass
-        elif len(scraper_info["custom_methods"]) == 0:
             issues.append("No custom methods defined - scraper may be incomplete")
 
         return issues
 
-    def validate_all_scrapers(self) -> Dict[str, Any]:
-        """Validate all scrapers and return a comprehensive report."""
+    def validate_all_scrapers(
+        self, service_name: str = "councillors"
+    ) -> Dict[str, Any]:
+        """Validate every council's scraper for a service."""
         from pathlib import Path
 
         scrapers_dir = Path("scrapers")
@@ -213,6 +259,8 @@ class ScraperValidator:
             return {"error": "Scrapers directory not found"}
 
         results = {
+            "service": service_name,
+            "not_applicable": 0,
             "total_councils": 0,
             "valid_scrapers": 0,
             "scrapers_with_warnings": 0,
@@ -228,9 +276,14 @@ class ScraperValidator:
             if council_dir.is_dir() and not council_dir.name.startswith("."):
                 council_id = self._extract_council_id(council_dir.name)
                 if council_id:
-                    results["total_councils"] += 1
+                    validation_result = self.validate_council_scraper(
+                        council_id, service_name
+                    )
+                    if not validation_result.get("applicable", True):
+                        results["not_applicable"] += 1
+                        continue
 
-                    validation_result = self.validate_council_scraper(council_id)
+                    results["total_councils"] += 1
                     results["councils"].append(validation_result)
 
                     if validation_result["valid"]:
@@ -245,16 +298,12 @@ class ScraperValidator:
                     # Update summary statistics
                     try:
                         metadata = CouncilMetadata.for_council(council_id)
-                        councillors_service = metadata.get_service_metadata(
-                            "councillors"
-                        )
-
-                        # CMS type distribution
+                        # CMS type distribution for the service being
+                        # validated, not whatever councillors happens to use.
                         cms_type = (
-                            councillors_service.cms_type
-                            if councillors_service
-                            else None
-                        ) or "Unknown"
+                            metadata.get_service_metadata(service_name).cms_type
+                            or "Unknown"
+                        )
                         results["summary"]["cms_types"][cms_type] = (
                             results["summary"]["cms_types"].get(cms_type, 0) + 1
                         )
@@ -270,9 +319,13 @@ class ScraperValidator:
 
         return results
 
-    def validate_filtered_scrapers(self, councils) -> Dict[str, Any]:
+    def validate_filtered_scrapers(
+        self, councils, service_name: str = "councillors"
+    ) -> Dict[str, Any]:
         """Validate a filtered list of councils and return a comprehensive report."""
         results = {
+            "service": service_name,
+            "not_applicable": 0,
             "total_councils": 0,
             "valid_scrapers": 0,
             "scrapers_with_warnings": 0,
@@ -286,9 +339,16 @@ class ScraperValidator:
 
         for council in councils:
             council_id = council.council_id
-            results["total_councils"] += 1
 
-            validation_result = self.validate_council_scraper(council_id)
+            validation_result = self.validate_council_scraper(council_id, service_name)
+
+            # Councils that don't do this service aren't failures, and
+            # counting them would drown the real results.
+            if not validation_result.get("applicable", True):
+                results["not_applicable"] += 1
+                continue
+
+            results["total_councils"] += 1
             results["councils"].append(validation_result)
 
             if validation_result["valid"]:
@@ -303,12 +363,12 @@ class ScraperValidator:
             # Update summary statistics
             try:
                 metadata = CouncilMetadata.for_council(council_id)
-                councillors_service = metadata.get_service_metadata("councillors")
 
-                # CMS type distribution
+                # CMS type distribution for the service being validated,
+                # not whatever councillors happens to use.
                 cms_type = (
-                    councillors_service.cms_type if councillors_service else None
-                ) or "Unknown"
+                    metadata.get_service_metadata(service_name).cms_type or "Unknown"
+                )
                 results["summary"]["cms_types"][cms_type] = (
                     results["summary"]["cms_types"].get(cms_type, 0) + 1
                 )

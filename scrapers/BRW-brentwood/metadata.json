@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "http://brentwood.moderngov.co.uk",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://brentwood.moderngov.co.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

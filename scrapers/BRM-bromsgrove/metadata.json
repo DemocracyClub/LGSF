@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "http://moderngovwebpublic.bromsgrove.gov.uk",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://moderngovwebpublic.bromsgrove.gov.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

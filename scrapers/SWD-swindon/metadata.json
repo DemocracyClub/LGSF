@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://ww5.swindon.gov.uk/moderngov",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://ww5.swindon.gov.uk/moderngov",
+            "cms_type": "ModernGov"
         }
     }
 }

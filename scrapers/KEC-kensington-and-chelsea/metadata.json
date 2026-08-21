@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://www.rbkc.gov.uk/Committees",
             "cms_type": "ModernGov"
+        },
+        "minutes": {
+            "base_url": "https://www.rbkc.gov.uk/Committees",
+            "cms_type": "ModernGov"
         }
     }
 }
