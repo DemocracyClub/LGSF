@@ -20,6 +20,10 @@
         "minutes": {
             "base_url": "https://democracy.blaenau-gwent.gov.uk",
             "cms_type": "ModernGov"
+        },
+        "decisions": {
+            "base_url": "https://democracy.blaenau-gwent.gov.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

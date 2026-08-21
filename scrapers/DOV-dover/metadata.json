@@ -20,6 +20,10 @@
         "minutes": {
             "base_url": "https://moderngov.dover.gov.uk",
             "cms_type": "ModernGov"
+        },
+        "decisions": {
+            "base_url": "https://moderngov.dover.gov.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

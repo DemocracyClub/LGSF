@@ -17,6 +17,10 @@
         "councillors": {
             "base_url": "http://www.northamptonboroughcouncil.com/councillors",
             "cms_type": "ModernGov"
+        },
+        "decisions": {
+            "base_url": "http://www.northamptonboroughcouncil.com/councillors",
+            "cms_type": "ModernGov"
         }
     }
 }

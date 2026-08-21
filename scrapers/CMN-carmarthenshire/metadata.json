@@ -20,6 +20,10 @@
         "minutes": {
             "base_url": "https://democracy.carmarthenshire.gov.wales",
             "cms_type": "ModernGov"
+        },
+        "decisions": {
+            "base_url": "https://democracy.carmarthenshire.gov.wales",
+            "cms_type": "ModernGov"
         }
     }
 }

@@ -18,6 +18,10 @@
         "councillors": {
             "base_url": "http://www.folkestone-hythe.gov.uk/moderngov/",
             "cms_type": "ModernGov"
+        },
+        "decisions": {
+            "base_url": "http://www.folkestone-hythe.gov.uk/moderngov/",
+            "cms_type": "ModernGov"
         }
     }
 }

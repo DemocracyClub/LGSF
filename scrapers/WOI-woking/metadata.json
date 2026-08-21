@@ -22,6 +22,10 @@
         "minutes": {
             "base_url": "https://moderngov.woking.gov.uk",
             "cms_type": "ModernGov"
+        },
+        "decisions": {
+            "base_url": "https://moderngov.woking.gov.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

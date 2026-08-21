@@ -20,6 +20,10 @@
         "minutes": {
             "base_url": "https://www.fenland.gov.uk/localgov",
             "cms_type": "ModernGov"
+        },
+        "decisions": {
+            "base_url": "https://www.fenland.gov.uk/localgov",
+            "cms_type": "ModernGov"
         }
     }
 }

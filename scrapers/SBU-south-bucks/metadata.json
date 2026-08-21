@@ -17,6 +17,10 @@
         "councillors": {
             "base_url": "http://sbdc-spider2.southbucks.gov.uk/democracy/",
             "cms_type": "ModernGov"
+        },
+        "decisions": {
+            "base_url": "http://sbdc-spider2.southbucks.gov.uk/democracy/",
+            "cms_type": "ModernGov"
         }
     }
 }
