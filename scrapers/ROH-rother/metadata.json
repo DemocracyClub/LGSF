@@ -20,6 +20,10 @@
         "minutes": {
             "base_url": "https://rother.moderngov.co.uk",
             "cms_type": "ModernGov"
+        },
+        "decisions": {
+            "base_url": "https://rother.moderngov.co.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

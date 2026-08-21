@@ -20,6 +20,10 @@
         "minutes": {
             "base_url": "https://bolton.moderngov.co.uk/mgCalendarMonthView.aspx?GL=1&bcr=",
             "cms_type": "ModernGov"
+        },
+        "decisions": {
+            "base_url": "https://bolton.moderngov.co.uk/mgCalendarMonthView.aspx?GL=1&bcr=",
+            "cms_type": "ModernGov"
         }
     }
 }

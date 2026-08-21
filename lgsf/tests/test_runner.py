@@ -31,6 +31,7 @@ def test_runner_no_commands():
         "Available subcommands:\n"
         "\t * councillors\n"
         "\t * minutes\n"
+        "\t * decisions\n"
         "\t * templates\n"
         "\t * metadata\n"
         "\t * sync"

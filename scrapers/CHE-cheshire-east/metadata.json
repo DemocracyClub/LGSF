@@ -20,6 +20,10 @@
         "minutes": {
             "base_url": "https://moderngov.cheshireeast.gov.uk/ecminutes",
             "cms_type": "ModernGov"
+        },
+        "decisions": {
+            "base_url": "https://moderngov.cheshireeast.gov.uk/ecminutes",
+            "cms_type": "ModernGov"
         }
     }
 }

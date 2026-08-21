@@ -17,6 +17,10 @@
         "councillors": {
             "base_url": "https://isa.chiltern.gov.uk/democracy/",
             "cms_type": "ModernGov"
+        },
+        "decisions": {
+            "base_url": "https://isa.chiltern.gov.uk/democracy/",
+            "cms_type": "ModernGov"
         }
     }
 }

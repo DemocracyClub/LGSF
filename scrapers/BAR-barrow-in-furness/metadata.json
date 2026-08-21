@@ -17,6 +17,10 @@
         "councillors": {
             "base_url": "https://democracy.barrowbc.gov.uk",
             "cms_type": "ModernGov"
+        },
+        "decisions": {
+            "base_url": "https://democracy.barrowbc.gov.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

@@ -22,12 +22,13 @@ define a model, a base scraper, CMS-specific subclasses, and a command. Adding
 more types means adding a package like them — see
 [docs/adding-a-scraper-type.md](docs/adding-a-scraper-type.md).
 
-Two types are supported:
+Three types are supported:
 
 | Type | Command | Scrapes | Scraper classes | Storage |
 | --- | --- | --- | --- | --- |
 | [Councillors](docs/councillor-scrapers.md) | `manage.py councillors` | The current set of councillors | ModernGov, CMIS, HTML, paged HTML, JSON | Replaced each run |
 | [Minutes](docs/minutes-scrapers.md) | `manage.py minutes` | Committee meetings and their documents | ModernGov, CMIS, custom HTML | Added to each run |
+| [Decisions](docs/decision-scrapers.md) | `manage.py decisions` | Officer and delegated decisions, their text and documents | ModernGov, custom HTML | Added to each run |
 
 A council's scraper subclasses the base for whatever content management system
 that council uses:
@@ -106,6 +107,7 @@ uv run pre-commit install
 | [docs/running-scrapers.md](docs/running-scrapers.md) | Running scrapers, the options that matter, finding work, fixing a broken scraper |
 | [docs/councillor-scrapers.md](docs/councillor-scrapers.md) | Councillor scraper classes and the objects they produce |
 | [docs/minutes-scrapers.md](docs/minutes-scrapers.md) | Minutes scraper classes, the scrape window, and document storage |
+| [docs/decision-scrapers.md](docs/decision-scrapers.md) | Decision scraper classes, the decision text, and document storage |
 | [docs/adding-a-scraper-type.md](docs/adding-a-scraper-type.md) | Adding a whole new data type, not a council |
 
 ## For LLMs and coding agents
@@ -119,4 +121,5 @@ for one kind of task.
 | [lgsf-run](.claude/skills/lgsf-run/SKILL.md) | Running a scraper, diagnosing a failing one, or finding councils that need work |
 | [lgsf-councillors](.claude/skills/lgsf-councillors/SKILL.md) | Working on a council's `councillors.py`, or on `lgsf/councillors/` |
 | [lgsf-minutes](.claude/skills/lgsf-minutes/SKILL.md) | Working on a council's `minutes.py`, or on meeting and document scraping |
+| [lgsf-decisions](.claude/skills/lgsf-decisions/SKILL.md) | Working on a council's `decisions.py`, or on decision scraping |
 | [lgsf-add-scraper-type](.claude/skills/lgsf-add-scraper-type/SKILL.md) | Adding a new data type, not a scraper for one council |

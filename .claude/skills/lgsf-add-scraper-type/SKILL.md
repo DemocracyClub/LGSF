@@ -1,14 +1,14 @@
 ---
 name: lgsf-add-scraper-type
-description: Add a whole new data type to LGSF - the thing councillors and minutes each are - rather than a scraper for one council. Covers the framework seams a new type has to touch.
+description: Add a whole new data type to LGSF - the thing councillors, minutes and decisions each are - rather than a scraper for one council. Covers the framework seams a new type has to touch.
 when_to_use: Adding a new kind of scraped data such as decisions or committees. Not for adding a scraper for a single council.
 ---
 
 # Adding a scraper type
 
 A data type is a package under `lgsf/` with a model, a base scraper, CMS
-subclasses and a command — `lgsf/councillors/` and `lgsf/minutes/` are the two
-that exist.
+subclasses and a command — `lgsf/councillors/`, `lgsf/minutes/` and
+`lgsf/decisions/` are the ones that exist.
 
 **Read `docs/adding-a-scraper-type.md` before starting.** It lists every file
 and framework seam involved.
@@ -43,4 +43,4 @@ per-service field there.
 ## Related
 
 - `docs/adding-a-scraper-type.md` — the full procedure
-- `.claude/skills/lgsf-minutes` — a worked example of a type
+- `.claude/skills/lgsf-decisions` — a worked example of a type

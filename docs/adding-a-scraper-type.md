@@ -6,8 +6,8 @@ To add a scraper for a **single council** on an existing type, see
 [running-scrapers.md](running-scrapers.md) instead.
 
 Throughout, `<type>` is the lowercase plural name used on the command line
-(`minutes`, `decisions`), and `<Type>` is the capitalised form used for storage
-directories (`Minutes`, `Decisions`).
+(`minutes`, `committees`), and `<Type>` is the capitalised form used for storage
+directories (`Minutes`, `Committees`).
 
 ---
 
@@ -80,26 +80,26 @@ from slugify import slugify
 
 
 @dataclass
-class DecisionBase:
+class CommitteeBase:
     url: str
     identifier: str
     title: str
     date: str
     # Fields the scraper fills in after construction use init=False so they
-    # don't have to be passed to add_decision(). Keep them out of hash and
+    # don't have to be passed to add_committee(). Keep them out of hash and
     # equality: two scrapes of the same record are the same record.
     status: str = field(init=False, hash=False, compare=False)
     documents: list = field(init=False, hash=False, compare=False)
 
     def __repr__(self):
-        return "<Decision: {} on {}>".format(self.title, self.date)
+        return "<Committee: {} on {}>".format(self.title, self.date)
 
     def __hash__(self):
         return hash(self.identifier)
 
     def __eq__(self, other):
         return (
-            issubclass(type(other), DecisionBase)
+            issubclass(type(other), CommitteeBase)
             and self.identifier == other.identifier
         )
 
@@ -155,45 +155,45 @@ class DecisionBase:
 import abc
 
 from lgsf.aws_lambda.run_log import RunLog
-from lgsf.decisions import DecisionBase
-from lgsf.decisions.exceptions import SkipDecisionException
+from lgsf.committees import CommitteeBase
+from lgsf.committees.exceptions import SkipCommitteeException
 from lgsf.scrapers import ScraperBase
 from lgsf.storage.backends.base import StorageMode
 
 
-class BaseDecisionsScraper(ScraperBase):
+class BaseCommitteesScraper(ScraperBase):
     tags = []
     class_tags = []
     ext = "html"
 
     # --- required by ScraperBase.check(), asserted at construction ---
-    scraper_object_type = "Decisions"   # storage directory name
-    service_name = "decisions"          # key in metadata.json services block
+    scraper_object_type = "Committees"   # storage directory name
+    service_name = "committees"          # key in metadata.json services block
 
     # --- see step 0 ---
     storage_mode = StorageMode.ACCUMULATE
 
     def __init__(self, options, console):
         super().__init__(options, console)
-        self.decisions = set()
+        self.committees = set()
         self.new_data = True
 
     @abc.abstractmethod
-    def get_decisions(self):
+    def get_committees(self):
         """Yield raw per-record blobs (Tag, dict, str - your choice)."""
 
     @abc.abstractmethod
-    def get_single_decision(self, decision_data):
-        """Turn one raw blob into a record via self.add_decision()."""
+    def get_single_committee(self, committee_data):
+        """Turn one raw blob into a record via self.add_committee()."""
 
-    def add_decision(self, url, identifier, title, date):
+    def add_committee(self, url, identifier, title, date):
         assert title, f"No title for {url}"
         assert identifier, f"No identifier for {url}"
-        decision = DecisionBase(
+        committee = CommitteeBase(
             url, identifier=identifier, title=title, date=date
         )
-        self.decisions.add(decision)
-        return decision
+        self.committees.add(committee)
+        return committee
 
     @property
     def get_tags(self):
@@ -202,28 +202,28 @@ class BaseDecisionsScraper(ScraperBase):
     @property
     def report_items(self):
         """Feeds the --report flag. Must return a list."""
-        return list(self.decisions)
+        return list(self.committees)
 
     def run(self, run_log: RunLog):
-        for decision_data in self.get_decisions():
+        for committee_data in self.get_committees():
             try:
-                decision = self.get_single_decision(decision_data)
-                self.process_decision(decision, decision_data)
-            except SkipDecisionException:
+                committee = self.get_single_committee(committee_data)
+                self.process_committee(committee, committee_data)
+            except SkipCommitteeException:
                 continue
 
         self.finalize_storage(run_log)
         self.report()
 
-    def process_decision(self, decision, raw):
+    def process_committee(self, committee, raw):
         # Download files HERE, before save_json: storing a document adds its
         # hash and storage key to the record, and the JSON is serialised from
         # those. Saving first records documents with no location.
-        self.save_raw(f"{decision.as_file_name()}.{self.ext}", raw)
-        self.save_json(decision)
+        self.save_raw(f"{committee.as_file_name()}.{self.ext}", raw)
+        self.save_json(committee)
 
     def report(self):
-        self.console.log(f"Found {len(self.decisions)} decisions")
+        self.console.log(f"Found {len(self.committees)} committees")
 ```
 
 ### What you inherit from `ScraperBase`
@@ -254,7 +254,7 @@ Also set on the class: `http_lib` (`wreq` default, or `requests` / `httpx` /
 ## 4. Exceptions — `lgsf/<type>/exceptions.py`
 
 ```python
-class SkipDecisionException(Exception):
+class SkipCommitteeException(Exception):
     """Raised by a scraper to drop a record from the run entirely."""
 ```
 
@@ -273,11 +273,11 @@ from lgsf.commands.base import PerCouncilCommandBase
 
 
 class Command(PerCouncilCommandBase):
-    command_name = "decisions"   # must equal the package name
+    command_name = "committees"   # must equal the package name
 
     def output_report(self):
         """Rich table shown by --report."""
-        table = Table(title="Scraped Decisions")
+        table = Table(title="Scraped Committees")
         table.add_column("Date", style="cyan", no_wrap=True)
         table.add_column("Title", style="green")
 
@@ -287,7 +287,7 @@ class Command(PerCouncilCommandBase):
         if self.scraped_items:
             self.console.print(table)
         else:
-            self.console.print("[yellow]No decisions found[/yellow]")
+            self.console.print("[yellow]No committees found[/yellow]")
 ```
 
 `PerCouncilCommandBase` supplies `--council`, `--all-councils`, `--tags`,
@@ -308,12 +308,12 @@ will run on Lambda.
 subcommand does not exist:
 
 ```python
-self.APPS = ("councillors", "minutes", "decisions", "templates", ...)
+self.APPS = ("councillors", "minutes", "committees", "templates", ...)
 ```
 
 **`lgsf/metadata/models.py`** — nothing. `CouncilMetadata` keys services by
 name, so a new service works as soon as a council's `metadata.json` declares
-it. `get_service_metadata("decisions")` returns a `ServiceData` for any name,
+it. `get_service_metadata("committees")` returns a `ServiceData` for any name,
 empty when the council has no config for it. Do not add a per-service field or
 branch to this model.
 
@@ -329,7 +329,7 @@ Add your subcommand in `settings.APPS` order.
 ```json
 {
     "services": {
-        "decisions": {
+        "committees": {
             "base_url": "https://democracy.example.gov.uk",
             "cms_type": "ModernGov"
         }
@@ -340,10 +340,10 @@ Add your subcommand in `settings.APPS` order.
 `scrapers/<CODE>/<type>.py` — the class must be named `Scraper`:
 
 ```python
-from lgsf.decisions.scrapers import ModGovDecisionsScraper
+from lgsf.committees.scrapers import ModGovCommitteesScraper
 
 
-class Scraper(ModGovDecisionsScraper):
+class Scraper(ModGovCommitteesScraper):
     pass
 ```
 
@@ -394,14 +394,14 @@ and call `document_storage.url_for(key)` when you need a URL.
 ## 9. Scaffolding templates — `lgsf/templates/helpers.py`
 
 ```python
-class ModGovDecisionsTemplate(BaseTemplate):
+class ModGovCommitteesTemplate(BaseTemplate):
     required_fields = ["base_url"]
-    file_name = "decisions.py"
+    file_name = "committees.py"
 
-    template = """from lgsf.decisions.scrapers import ModGovDecisionsScraper
+    template = """from lgsf.committees.scrapers import ModGovCommitteesScraper
 
 
-class Scraper(ModGovDecisionsScraper):
+class Scraper(ModGovCommitteesScraper):
     base_url = "$base_url"
 
     """
@@ -409,11 +409,11 @@ class Scraper(ModGovDecisionsScraper):
 
 TEMPLATES = {
     ...,
-    "decisions_scraper_modgov": ModGovDecisionsTemplate,
+    "committees_scraper_modgov": ModGovCommitteesTemplate,
 }
 ```
 
-Then `python manage.py templates --council ABC --template decisions_scraper_modgov
+Then `python manage.py templates --council ABC --template committees_scraper_modgov
 --context base_url https://...` scaffolds a council file.
 
 ---
@@ -426,9 +426,9 @@ Then `python manage.py templates --council ABC --template decisions_scraper_modg
   wants council metadata, a storage backend and an HTTP client:
 
   ```python
-  scraper = ModGovDecisionsScraper.__new__(ModGovDecisionsScraper)
+  scraper = ModGovCommitteesScraper.__new__(ModGovCommitteesScraper)
   scraper.base_url = "https://democracy.example.gov.uk"
-  scraper.decisions = set()
+  scraper.committees = set()
   scraper.console = FakeConsole()
   scraper.storage_session = FakeStorageSession()
   ```
@@ -449,12 +449,12 @@ uv run ruff check lgsf/ && uv run ruff format --check lgsf/
 uv run pytest lgsf/ -q
 
 python manage.py                             # subcommand listed?
-python manage.py decisions --council ABC -v  # one known-good council
-python manage.py decisions --council ABC     # again: is the second run cheap?
+python manage.py committees --council ABC -v  # one known-good council
+python manage.py committees --council ABC     # again: is the second run cheap?
 
 # Metadata and scraper files agree, across every council at once
-python manage.py metadata validate --service decisions
-python manage.py metadata list-cms --service decisions --csv
+python manage.py metadata validate --service committees
+python manage.py metadata list-cms --service committees --csv
 ```
 
 `metadata validate --service <type>` works for a new type with no changes: it
@@ -465,7 +465,7 @@ as not applicable rather than as failures.
 
 Then check by hand:
 
-- `data/ABC/Decisions/json/` — is the JSON shaped as intended?
+- `data/ABC/Committees/json/` — is the JSON shaped as intended?
 - `data/ABC/documents/` — are files there, and does the JSON point at them?
 - Run twice and confirm `ACCUMULATE` types keep the first run's output.
 - Drop a hand-written file into the data directory and re-run: with

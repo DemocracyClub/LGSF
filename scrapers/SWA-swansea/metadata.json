@@ -20,6 +20,10 @@
         "minutes": {
             "base_url": "https://democracy.swansea.gov.uk",
             "cms_type": "ModernGov"
+        },
+        "decisions": {
+            "base_url": "https://democracy.swansea.gov.uk",
+            "cms_type": "ModernGov"
         }
     }
 }
