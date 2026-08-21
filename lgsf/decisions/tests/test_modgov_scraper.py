@@ -94,7 +94,7 @@ def test_list_dates_are_normalised_to_iso():
 
     rows = list(scraper.decision_rows(soup, f"{BASE_URL}/mgDelegatedDecisions.aspx"))
 
-    assert rows[0]["date"] == "2025-04-01"
+    assert rows[0]["published_date"] == "2025-04-01"
 
 
 def test_both_list_pages_are_read_and_deduplicated():

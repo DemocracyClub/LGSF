@@ -168,6 +168,42 @@ Decisions use `StorageMode.ACCUMULATE`: a decision made last year is still a
 fact once it drops out of the window, so runs add to what is stored rather
 than replacing it. Do not change this to replace.
 
+## What a second run re-fetches
+
+A decision is amended, if at all, in the months just after it is published: a
+status moves on, or a report is attached late. Past that it is settled, so one
+already in storage is not fetched again.
+
+```python
+settled_after_months = 3
+```
+
+The clock runs from the **publication** date, not the date the decision was
+taken — publishing is what starts the amendment window, and a decision
+published last week may have been made years ago. The list page carries that
+date, so a settled decision is identified without fetching its page at all.
+
+Kirklees, a year's window: 454 decisions, 396 settled, 31 seconds instead of
+215.
+
+Three things are never treated as settled, because each would mean losing a
+record rather than saving a request:
+
+- A decision the index does not name a stored file for. A run that failed
+  records validators but never a filename, so a previous failure is always
+  retried however old it is.
+- A decision whose stored file has gone. The index is a cache; the file it
+  names is opened before its word is taken.
+- A decision the list page gives no publication date for.
+
+Set `settled_after_months = None` to re-fetch everything in the window.
+
+This is a fallback for a source that offers nothing better. Conditional
+requests are still made for everything that *is* fetched, so if ModernGov
+starts sending `ETag` or `Last-Modified` the 304s take over for recent
+decisions with no change here — the index records validators and filename
+side by side.
+
 ## One unreadable page does not lose the run
 
 Each decision is its own page fetch and a council can have several hundred in
@@ -179,9 +215,9 @@ and lose every decision scraped up to that point.
 ## Known limitations
 
 - **ModernGov sends no HTTP validators** on decision pages — no `ETag` or
-  `Last-Modified` — so conditional requests never produce a 304 and every run
-  re-fetches every decision page in the window. The plumbing is there for
-  sources that do send them.
+  `Last-Modified` — so conditional requests never produce a 304. Recent
+  decisions are therefore re-fetched and re-parsed in full on every run; see
+  above for what that costs and what avoids it.
 - **No CMIS support.**
 - **No pagination.** A council with more decisions in the window than its list
   page will render in one response will lose the remainder.

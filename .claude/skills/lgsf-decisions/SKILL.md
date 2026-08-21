@@ -76,6 +76,21 @@ Only published decisions are scraped. Forthcoming ones are proposals.
 Widening the window makes some councils time out; the list page is generated
 per request over whatever range is asked for.
 
+## A second run only re-fetches recent decisions
+
+A decision is amended, if at all, in the months just after publication, so one
+older than `settled_after_months` (3) that is already stored is not fetched
+again. The clock runs from the **publication** date, which the list page
+carries, so no request is made to decide this.
+
+Never treated as settled: a decision with no stored file recorded (so a
+previous failure is always retried), one whose stored file has gone, or one
+with no publication date. Set `settled_after_months = None` to re-fetch
+everything.
+
+Conditional requests are still made for whatever is fetched, so `ETag` and
+`Last-Modified` take over automatically if ModernGov ever sends them.
+
 ## The text goes in the record, not the document store
 
 The decision text is small and is the point of the record, so it lands in

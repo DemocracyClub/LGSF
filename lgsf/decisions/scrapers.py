@@ -3,9 +3,11 @@ import datetime
 import json
 import re
 from functools import cached_property
+from pathlib import Path
 from urllib.parse import parse_qs, urljoin, urlparse
 
 from bs4 import BeautifulSoup, Tag
+from dateutil.relativedelta import relativedelta
 
 from lgsf.aws_lambda.run_log import RunLog
 from lgsf.decisions import DecisionBase
@@ -38,6 +40,12 @@ class BaseDecisionsScraper(ScraperBase):
     # decisions are scraped.
     years_back = 1
 
+    # A decision is amended, if at all, in the months just after it is
+    # published: a status moves on, or a report is attached late. Past that
+    # it is settled, so one we already hold is not fetched again. Set to
+    # None to re-fetch every decision in the window on every run.
+    settled_after_months = 3
+
     # When True, every document linked from a decision is downloaded to the
     # document store. The decision text itself is not a document: it goes to
     # the metadata store as part of the record.
@@ -52,6 +60,7 @@ class BaseDecisionsScraper(ScraperBase):
         self.decisions = set()
         self.new_data = True
         self.unchanged_decisions = 0
+        self.settled_decisions = 0
         self.failed_decisions = 0
         self.documents_downloaded = 0
         self.documents_skipped = 0
@@ -124,10 +133,11 @@ class BaseDecisionsScraper(ScraperBase):
             "etag": self.response_header(response, "etag"),
             "last_modified": self.response_header(response, "last-modified"),
         }
-        self.index["decisions"][url] = {
-            "etag": source["etag"],
-            "last_modified": source["last_modified"],
-        }
+        # Updated rather than replaced: the entry also carries where the
+        # record was stored, which a re-fetch must not discard.
+        entry = self.index["decisions"].setdefault(url, {})
+        entry["etag"] = source["etag"]
+        entry["last_modified"] = source["last_modified"]
         return source
 
     @property
@@ -135,6 +145,59 @@ class BaseDecisionsScraper(ScraperBase):
         today = datetime.date.today()
         start = today - datetime.timedelta(days=365 * self.years_back)
         return start, today
+
+    @property
+    def settled_before(self):
+        """
+        Decisions published before this date are treated as final.
+
+        None when ``settled_after_months`` is unset, meaning nothing is
+        treated as settled and every decision in the window is fetched.
+        """
+        if self.settled_after_months is None:
+            return None
+        return datetime.date.today() - relativedelta(months=self.settled_after_months)
+
+    def stored_decision(self, url):
+        """
+        The stored record's filename for ``url``, if we really hold it.
+
+        The index is a cache, not a source of truth, so the file it names is
+        opened before its word is taken: a record deleted from storage costs
+        a re-fetch rather than being lost.
+        """
+        file_name = (self.index["decisions"].get(url) or {}).get("file_name")
+        if not file_name:
+            return None
+        try:
+            self.storage_session.open(Path("json") / file_name)
+        except (FileNotFoundError, ValueError):
+            return None
+        return file_name
+
+    def is_settled(self, row):
+        """
+        True when a decision is old enough not to change again, and we
+        already hold it.
+
+        Publication date is what matters here, not the date the decision was
+        taken: a decision published last week may have been made years ago,
+        and it is the publishing that starts the clock on amendments. The
+        list page carries it, so this is decided without fetching anything.
+        """
+        cutoff = self.settled_before
+        if cutoff is None:
+            return False
+
+        published = row.get("published_date")
+        if not published:
+            # Without a date there is no way to know it has settled.
+            return False
+
+        if published >= cutoff.isoformat():
+            return False
+
+        return bool(self.stored_decision(row["url"]))
 
     @abc.abstractmethod
     def get_decisions(self):
@@ -175,6 +238,9 @@ class BaseDecisionsScraper(ScraperBase):
 
     def run(self, run_log: RunLog):
         for decision_data in self.get_decisions():
+            if self.is_settled(decision_data):
+                self.settled_decisions += 1
+                continue
             try:
                 decision = self.get_single_decision(decision_data)
                 self.process_decision(decision, decision_data)
@@ -248,6 +314,11 @@ class BaseDecisionsScraper(ScraperBase):
         file_name = "{}.{}".format(decision_obj.as_file_name(), self.ext)
         self.save_raw(file_name, raw_content)
         self.save_json(decision_obj)
+
+        # Note where the record went, so a later run can tell that it really
+        # holds this decision before deciding not to fetch it again.
+        entry = self.index["decisions"].setdefault(decision_obj.url, {})
+        entry["file_name"] = "{}.json".format(decision_obj.as_file_name())
 
     def document_key(self, decision_obj, document, index):
         """
@@ -359,7 +430,8 @@ class BaseDecisionsScraper(ScraperBase):
         # don't treat a low count as an error.
         self.console.log(
             f"Found {len(self.decisions)} decisions "
-            f"({self.unchanged_decisions} unchanged since last run)"
+            f"({self.unchanged_decisions} unchanged since last run, "
+            f"{self.settled_decisions} already stored and settled)"
         )
         if self.failed_decisions:
             self.console.log(
@@ -468,7 +540,10 @@ class ModGovDecisionsScraper(BaseDecisionsScraper):
                 "url": url,
                 "identifier": identifier,
                 "title": link.get_text(strip=True),
-                "date": self.iso_date(date),
+                # The list's date column is when the decision was published,
+                # which is not when it was taken. The detail page carries
+                # both; this is the fallback for the second.
+                "published_date": self.iso_date(date),
             }
 
     def iso_date(self, date_str):
@@ -628,7 +703,7 @@ class ModGovDecisionsScraper(BaseDecisionsScraper):
             title = heading.get_text(" ", strip=True) or title
 
         date = self.iso_date(self.label_value(soup, "Date of decision")) or (
-            decision_data.get("date")
+            decision_data.get("published_date")
         )
         if not date:
             raise SkipDecisionException(f"No date for {url}")
