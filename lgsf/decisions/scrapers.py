@@ -52,6 +52,7 @@ class BaseDecisionsScraper(ScraperBase):
         self.decisions = set()
         self.new_data = True
         self.unchanged_decisions = 0
+        self.failed_decisions = 0
         self.documents_downloaded = 0
         self.documents_skipped = 0
         self.documents_linked = 0
@@ -181,6 +182,17 @@ class BaseDecisionsScraper(ScraperBase):
                 self.unchanged_decisions += 1
                 continue
             except SkipDecisionException:
+                continue
+            except Exception as e:
+                # Each decision is a separate page fetch and a council can
+                # have hundreds in the window, so one failing page is
+                # expected rather than exceptional. Letting it propagate
+                # would abandon the run before finalize_storage, losing
+                # every decision scraped so far.
+                self.failed_decisions += 1
+                self.console.log(
+                    f"[yellow]Failed to scrape {decision_data.get('url')}: {e}[/yellow]"
+                )
                 continue
 
         self.save_index()
@@ -349,6 +361,11 @@ class BaseDecisionsScraper(ScraperBase):
             f"Found {len(self.decisions)} decisions "
             f"({self.unchanged_decisions} unchanged since last run)"
         )
+        if self.failed_decisions:
+            self.console.log(
+                f"[yellow]{self.failed_decisions} decision pages could not be "
+                f"read and were skipped[/yellow]"
+            )
         if self.skip_documents:
             self.console.log(
                 f"Documents: {self.documents_linked} found, none downloaded "

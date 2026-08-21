@@ -168,6 +168,14 @@ Decisions use `StorageMode.ACCUMULATE`: a decision made last year is still a
 fact once it drops out of the window, so runs add to what is stored rather
 than replacing it. Do not change this to replace.
 
+## One unreadable page does not lose the run
+
+Each decision is its own page fetch and a council can have several hundred in
+the window, so a transient failure on one is routine. A decision page that
+can't be read is logged, counted and skipped, and the count is reported at the
+end. Letting it propagate would abandon the run before storage was finalised
+and lose every decision scraped up to that point.
+
 ## Known limitations
 
 - **ModernGov sends no HTTP validators** on decision pages — no `ETag` or
