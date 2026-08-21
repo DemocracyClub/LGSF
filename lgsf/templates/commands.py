@@ -37,7 +37,7 @@ class Command(CommandBase):
         template = TEMPLATES[template_name](context)
         scraper_text = template.format_template()
 
-        path, code = scraper_abs_path(options["council"])
+        path = scraper_abs_path(options["council"])
         scraper_path = path / template.file_name
         if scraper_path.exists():
             raise ValueError("Scraper already exists, not overwriting")
