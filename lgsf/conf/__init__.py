@@ -26,6 +26,7 @@ class BaseSettings(object):
 
         self.APPS = (
             "councillors",
+            "minutes",
             "templates",
             "metadata",
             "sync",

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<committees>
+  <committeescount> 3</committeescount>
+  <committee>
+    <committeeid>312</committeeid>
+    <committeetitle>Appointment Sub Committee for Director of Adult Social Services</committeetitle>
+    <committeedeleted>False</committeedeleted>
+    <committeeexpired>True</committeeexpired>
+    <committeecategory>Governance and Decision Making Committees</committeecategory>
+  </committee>
+  <committee>
+    <committeeid>163</committeeid>
+    <committeetitle>Art Galleries Committee</committeetitle>
+    <committeedeleted>False</committeedeleted>
+    <committeeexpired>False</committeeexpired>
+    <committeecategory>Governance and Decision Making Committees</committeecategory>
+  </committee>
+  <committee>
+    <committeeid>144</committeeid>
+    <committeetitle>Audit Committee</committeetitle>
+    <committeedeleted>False</committeedeleted>
+    <committeeexpired>False</committeeexpired>
+    <committeecategory>Governance and Decision Making Committees</committeecategory>
+  </committee>
+</committees>
