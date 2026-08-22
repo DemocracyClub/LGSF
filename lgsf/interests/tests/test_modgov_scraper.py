@@ -1,51 +1,13 @@
+from pathlib import Path
 from unittest.mock import MagicMock
 
 from lgsf.interests.scrapers import ModGovInterestsScraper
 
+FIXTURES = Path(__file__).parent / "fixtures"
 
-SAMPLE_XML = """<?xml version="1.0" encoding="utf-8"?>
-<councillorsbyward>
-  <wards>
-    <ward>
-      <wardtitle>Central</wardtitle>
-      <councillors>
-        <councillor>
-          <councillorid>100</councillorid>
-          <fullusername>Cllr Sample Member</fullusername>
-        </councillor>
-      </councillors>
-    </ward>
-  </wards>
-</councillorsbyward>
-"""
 
-SAMPLE_HTML = """
-<html>
-  <body>
-    <h1>Register of interests</h1>
-    <p>This register of interests was published on Tuesday, 10 March 2026, 11.00 a.m..</p>
-    <table class="mgInterestsTable" summary="Employment">
-      <caption>1. Employment</caption>
-      <thead>
-        <tr><th>Me</th><th>Partner</th></tr>
-      </thead>
-      <tbody>
-        <tr><td>Accountant</td><td>None</td></tr>
-      </tbody>
-    </table>
-    <a href="/forms/declaration.pdf">Download PDF Declaration</a>
-  </body>
-</html>
-"""
-
-SAMPLE_USERINFO_PDF = """
-<html>
-  <body>
-    <h1>Cllr Sample Member</h1>
-    <a href="mgConvert2PDF.aspx?ID=100&T=6">Register of interests PDF 8 KB</a>
-  </body>
-</html>
-"""
+def fixture(name):
+    return (FIXTURES / name).read_text()
 
 
 def test_modgov_interests_scraper_html_parsing(monkeypatch):
@@ -57,8 +19,8 @@ def test_modgov_interests_scraper_html_parsing(monkeypatch):
 
     def mock_get_text(url, **kwargs):
         if "GetCouncillorsByWard" in url:
-            return SAMPLE_XML
-        return SAMPLE_HTML
+            return fixture("modgov_councillors.xml")
+        return fixture("modgov_rofi_html.html")
 
     monkeypatch.setattr(scraper, "get_text", mock_get_text)
 
@@ -90,9 +52,9 @@ def test_modgov_interests_scraper_pdf_parsing(monkeypatch):
 
     def mock_get_text(url, **kwargs):
         if "GetCouncillorsByWard" in url:
-            return SAMPLE_XML
+            return fixture("modgov_councillors.xml")
         if "mgUserInfo.aspx" in url:
-            return SAMPLE_USERINFO_PDF
+            return fixture("modgov_userinfo_pdf.html")
         return ""
 
     monkeypatch.setattr(scraper, "get_text", mock_get_text)
@@ -107,5 +69,8 @@ def test_modgov_interests_scraper_pdf_parsing(monkeypatch):
     assert record.councillor_name == "Cllr Sample Member"
     assert len(record.interests) == 0
     assert len(record.documents) == 1
-    assert record.documents[0]["url"] == "https://example.gov.uk/mgConvert2PDF.aspx?ID=100&T=6"
+    assert (
+        record.documents[0]["url"]
+        == "https://example.gov.uk/mgConvert2PDF.aspx?ID=100&T=6"
+    )
     assert "mgConvert2PDF" in record.url
