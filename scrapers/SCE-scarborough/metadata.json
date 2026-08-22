@@ -21,6 +21,10 @@
         "decisions": {
             "base_url": "https://democracy.scarborough.gov.uk",
             "cms_type": "ModernGov"
+        },
+        "interests": {
+            "base_url": "https://democracy.scarborough.gov.uk",
+            "cms_type": "ModernGov"
         }
     }
 }

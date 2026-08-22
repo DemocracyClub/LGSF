@@ -221,6 +221,19 @@ class Scraper(CustomHTMLDecisionsScraper):
 """
 
 
+class ModGovInterestsTemplate(BaseTemplate):
+    required_fields = ["base_url"]
+    file_name = "interests.py"
+
+    template = """from lgsf.interests.scrapers import ModGovInterestsScraper
+
+
+class Scraper(ModGovInterestsScraper):
+    base_url = "$base_url"
+
+    """
+
+
 TEMPLATES = {
     "councillor_scraper_modgov": ModGovCouncillorTemplate,
     "councillor_scraper_cmis": CMISCouncillorTemplate,
@@ -230,4 +243,5 @@ TEMPLATES = {
     "minutes_scraper_custom": CustomMinutesTemplate,
     "decisions_scraper_modgov": ModGovDecisionsTemplate,
     "decisions_scraper_custom": CustomDecisionsTemplate,
+    "interests_scraper_modgov": ModGovInterestsTemplate,
 }

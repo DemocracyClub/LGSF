@@ -19,11 +19,15 @@
             "base_url": "https://modgov.waverley.gov.uk",
             "cms_type": "ModernGov"
         },
-        "minutes": {
+        "decisions": {
             "base_url": "https://modgov.waverley.gov.uk",
             "cms_type": "ModernGov"
         },
-        "decisions": {
+        "interests": {
+            "base_url": "https://modgov.waverley.gov.uk",
+            "cms_type": "ModernGov"
+        },
+        "minutes": {
             "base_url": "https://modgov.waverley.gov.uk",
             "cms_type": "ModernGov"
         }

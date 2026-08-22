@@ -21,6 +21,10 @@
         "decisions": {
             "base_url": "https://dorset.moderngov.co.uk/",
             "cms_type": "ModernGov"
+        },
+        "interests": {
+            "base_url": "https://dorset.moderngov.co.uk/",
+            "cms_type": "ModernGov"
         }
     }
 }

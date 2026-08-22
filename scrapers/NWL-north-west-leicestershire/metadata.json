@@ -17,11 +17,15 @@
             "base_url": "http://minutes-1.nwleics.gov.uk",
             "cms_type": "ModernGov"
         },
-        "minutes": {
+        "decisions": {
             "base_url": "https://minutes-1.nwleics.gov.uk",
             "cms_type": "ModernGov"
         },
-        "decisions": {
+        "interests": {
+            "base_url": "http://minutes-1.nwleics.gov.uk",
+            "cms_type": "ModernGov"
+        },
+        "minutes": {
             "base_url": "https://minutes-1.nwleics.gov.uk",
             "cms_type": "ModernGov"
         }

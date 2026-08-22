@@ -17,11 +17,15 @@
             "base_url": "https://modgov.cherwell.gov.uk",
             "cms_type": "ModernGov"
         },
-        "minutes": {
+        "decisions": {
             "base_url": "http://modgov.cherwell.gov.uk",
             "cms_type": "ModernGov"
         },
-        "decisions": {
+        "interests": {
+            "base_url": "https://modgov.cherwell.gov.uk",
+            "cms_type": "ModernGov"
+        },
+        "minutes": {
             "base_url": "http://modgov.cherwell.gov.uk",
             "cms_type": "ModernGov"
         }
