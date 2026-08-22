@@ -17,11 +17,15 @@
             "base_url": "http://democracy.carmarthenshire.gov.wales",
             "cms_type": "ModernGov"
         },
-        "minutes": {
+        "decisions": {
             "base_url": "https://democracy.carmarthenshire.gov.wales",
             "cms_type": "ModernGov"
         },
-        "decisions": {
+        "interests": {
+            "base_url": "http://democracy.carmarthenshire.gov.wales",
+            "cms_type": "ModernGov"
+        },
+        "minutes": {
             "base_url": "https://democracy.carmarthenshire.gov.wales",
             "cms_type": "ModernGov"
         }

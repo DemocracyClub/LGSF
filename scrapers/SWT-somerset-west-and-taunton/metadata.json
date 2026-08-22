@@ -21,6 +21,10 @@
         "decisions": {
             "base_url": "http://democracy.somersetwestandtaunton.gov.uk",
             "cms_type": "ModernGov"
+        },
+        "interests": {
+            "base_url": "http://democracy.somersetwestandtaunton.gov.uk",
+            "cms_type": "ModernGov"
         }
     }
 }
