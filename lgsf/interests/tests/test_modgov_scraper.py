@@ -38,8 +38,17 @@ SAMPLE_HTML = """
 </html>
 """
 
+SAMPLE_USERINFO_PDF = """
+<html>
+  <body>
+    <h1>Cllr Sample Member</h1>
+    <a href="mgConvert2PDF.aspx?ID=100&T=6">Register of interests PDF 8 KB</a>
+  </body>
+</html>
+"""
 
-def test_modgov_interests_scraper_parsing(monkeypatch):
+
+def test_modgov_interests_scraper_html_parsing(monkeypatch):
     options = {"council": "CBF"}
     console = MagicMock()
 
@@ -70,3 +79,33 @@ def test_modgov_interests_scraper_parsing(monkeypatch):
     assert record.interests[0]["rows"] == [["Accountant", "None"]]
     assert len(record.documents) == 1
     assert record.documents[0]["url"] == "https://example.gov.uk/forms/declaration.pdf"
+
+
+def test_modgov_interests_scraper_pdf_parsing(monkeypatch):
+    options = {"council": "ABD"}
+    console = MagicMock()
+
+    scraper = ModGovInterestsScraper(options, console)
+    scraper.base_url = "https://example.gov.uk"
+
+    def mock_get_text(url, **kwargs):
+        if "GetCouncillorsByWard" in url:
+            return SAMPLE_XML
+        if "mgUserInfo.aspx" in url:
+            return SAMPLE_USERINFO_PDF
+        return ""
+
+    monkeypatch.setattr(scraper, "get_text", mock_get_text)
+
+    wards = scraper.get_interests_registers()
+    ward = wards[0]
+    councillor_xml = ward.find("councillor")
+
+    record, raw = scraper.get_single_interests_register(ward, councillor_xml)
+
+    assert record.identifier == "100"
+    assert record.councillor_name == "Cllr Sample Member"
+    assert len(record.interests) == 0
+    assert len(record.documents) == 1
+    assert record.documents[0]["url"] == "https://example.gov.uk/mgConvert2PDF.aspx?ID=100&T=6"
+    assert "mgConvert2PDF" in record.url
