@@ -23,6 +23,9 @@ class BaseInterestsScraper(ScraperBase):
         super().__init__(options, console)
         self.interests_registers = set()
         self.new_data = True
+        self.documents_downloaded = 0
+        self.documents_skipped = 0
+        self.documents_linked = 0
 
     @property
     def skip_documents(self):
@@ -79,34 +82,65 @@ class BaseInterestsScraper(ScraperBase):
         self.interests_registers.add(record)
         return record
 
+    def document_extension(self, document):
+        """
+        Guess a file extension from the document URL.
+
+        ModernGov serves interests docs through handler URLs with no extension
+        (mgConvert2PDF.aspx), which are overwhelmingly PDFs, so that's the
+        fallback — matching the minutes scraper convention.
+        """
+        path = document.get("url", "").split("?")[0].lower()
+        for extension in (".pdf", ".docx", ".doc", ".xlsx", ".xls", ".rtf", ".txt"):
+            if path.endswith(extension):
+                return extension
+        return ".pdf"
+
     def save_interest_documents(self, record: RegisterOfInterestsBase):
         """
         Store documents linked to this register of interests in document_storage.
+
+        Skips documents that are already in the store (keyed by councillor +
+        index). A failed download logs a warning but does not fail the whole
+        record — matching the minutes scraper behaviour.
+
+        When a document is skipped because it's already stored, its metadata
+        (storage_key, content_hash, etc.) is still recovered via describe() so
+        the JSON looks identical whether the file was fetched this run or a
+        previous one.
         """
-        if self.skip_documents or not getattr(record, "documents", []):
+        documents = getattr(record, "documents", []) or []
+        self.documents_linked += len(documents)
+
+        if self.skip_documents or not documents:
             return
 
-        for index, document in enumerate(record.documents, start=1):
+        for index, document in enumerate(documents, start=1):
             url = document.get("url")
             if not url:
                 continue
 
+            key = f"{record.as_file_name()}-{index}{self.document_extension(document)}"
+
+            # Skip what we already have, but still backfill storage metadata
+            # so the JSON looks the same as a freshly downloaded document.
+            if self.document_storage.exists(key):
+                stored = self.document_storage.describe(key)
+                if stored:
+                    document.update(stored.as_dict())
+                self.documents_skipped += 1
+                continue
+
             try:
                 content = self.get_bytes(url)
-                extension = ".pdf"
-                path_part = url.split("?")[0].lower()
-                for ext in (".pdf", ".docx", ".doc", ".xlsx", ".rtf", ".txt"):
-                    if path_part.endswith(ext):
-                        extension = ext
-                        break
-
-                key = f"{record.as_file_name()}-{index}{extension}"
                 stored = self.document_storage.write(key, content)
                 document.update(stored.as_dict())
+                self.documents_downloaded += 1
             except Exception as e:
                 self.console.log(
                     f"[yellow]Failed to download document {url}: {e}[/yellow]"
                 )
+
 
     def process_interests_register(
         self, record: RegisterOfInterestsBase, raw: str
@@ -119,6 +153,16 @@ class BaseInterestsScraper(ScraperBase):
         self.console.log(
             f"Found {len(self.interests_registers)} registers of interests"
         )
+        if self.skip_documents:
+            self.console.log(
+                f"Documents: {self.documents_linked} found, none downloaded "
+                "(--skip-documents)"
+            )
+        else:
+            self.console.log(
+                f"Documents: {self.documents_downloaded} downloaded, "
+                f"{self.documents_skipped} already stored"
+            )
 
 
 class ModGovInterestsScraper(BaseInterestsScraper):
@@ -238,13 +282,20 @@ class ModGovInterestsScraper(BaseInterestsScraper):
             rows = []
             for tr in table.find_all("tr"):
                 cells = [td.get_text(strip=True) for td in tr.find_all("td")]
-                if cells:
+                if not cells:
+                    continue
+                if len(headers) == len(cells):
+                    # Map each cell to its column header so the relationship
+                    # is explicit: {"You": "Retired", "Spouse/partner": "N/A"}
+                    rows.append(dict(zip(headers, cells)))
+                else:
+                    # Header count doesn't match cells (shouldn't happen in
+                    # practice, but degrade gracefully).
                     rows.append(cells)
 
             categories.append(
                 {
                     "category": caption,
-                    "headers": headers,
                     "rows": rows,
                 }
             )

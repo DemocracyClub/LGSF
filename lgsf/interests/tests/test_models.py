@@ -15,8 +15,7 @@ def test_model_instantiation():
     record.interests = [
         {
             "category": "Employment",
-            "headers": ["Me", "Partner"],
-            "rows": [["Teacher", "None"]],
+            "rows": [{"Me": "Teacher", "Partner": "None"}],
         }
     ]
     record.published_date = "Monday, 1 January 2026"
@@ -40,8 +39,7 @@ def test_model_serialization_and_deserialization():
     record.interests = [
         {
             "category": "Employment",
-            "headers": ["Me"],
-            "rows": [["Engineer"]],
+            "rows": [{"Me": "Engineer"}],
         }
     ]
     record.published_date = "Monday, 1 January 2026"
