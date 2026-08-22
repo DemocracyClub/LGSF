@@ -121,7 +121,6 @@ def test_save_interest_documents_skips_existing():
     assert scraper.documents_linked == 1
 
 
-
 def test_save_interest_documents_downloads_new():
     """
     New documents (not yet in the store) are fetched and written.

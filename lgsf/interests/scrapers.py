@@ -141,10 +141,7 @@ class BaseInterestsScraper(ScraperBase):
                     f"[yellow]Failed to download document {url}: {e}[/yellow]"
                 )
 
-
-    def process_interests_register(
-        self, record: RegisterOfInterestsBase, raw: str
-    ):
+    def process_interests_register(self, record: RegisterOfInterestsBase, raw: str):
         self.save_interest_documents(record)
         self.save_raw(f"{record.as_file_name()}.{self.ext}", raw)
         self.save_json(record)
@@ -252,18 +249,14 @@ class ModGovInterestsScraper(BaseInterestsScraper):
 
             # Otherwise, fetch and parse HTML
             try:
-                raw_html = self.get_text(
-                    rofi_url, extra_headers=self.extra_headers
-                )
+                raw_html = self.get_text(rofi_url, extra_headers=self.extra_headers)
             except Exception:
                 raise SkipInterestsException()
         else:
             # Fallback: Try direct mgRofI.aspx endpoint
             rofi_url = f"{self.base_url}/mgRofI.aspx?UID={councillor_id}"
             try:
-                raw_html = self.get_text(
-                    rofi_url, extra_headers=self.extra_headers
-                )
+                raw_html = self.get_text(rofi_url, extra_headers=self.extra_headers)
             except Exception:
                 raise SkipInterestsException()
 
@@ -319,8 +312,7 @@ class ModGovInterestsScraper(BaseInterestsScraper):
                 doc_url = urljoin(self.base_url, doc_href)
                 documents.append(
                     {
-                        "title": a.get_text(strip=True)
-                        or "Declaration Document",
+                        "title": a.get_text(strip=True) or "Declaration Document",
                         "url": doc_url,
                     }
                 )
