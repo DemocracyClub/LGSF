@@ -17,11 +17,15 @@
             "base_url": "https://www.southampton.gov.uk/moderngov",
             "cms_type": "Custom HTML"
         },
-        "minutes": {
+        "decisions": {
             "base_url": "https://www.southampton.gov.uk/modernGov",
             "cms_type": "ModernGov"
         },
-        "decisions": {
+        "interests": {
+            "base_url": "https://www.southampton.gov.uk/modernGov",
+            "cms_type": "ModernGov"
+        },
+        "minutes": {
             "base_url": "https://www.southampton.gov.uk/modernGov",
             "cms_type": "ModernGov"
         }

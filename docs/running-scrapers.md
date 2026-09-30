@@ -5,14 +5,15 @@ failing. For what a scraper of each type looks like, see
 [councillor-scrapers.md](councillor-scrapers.md) and
 [minutes-scrapers.md](minutes-scrapers.md).
 
-Two types of scraper are supported: `councillors` and `minutes`. Both take the
-same options.
+Three types of scraper are supported: `councillors`, `minutes`, and `interests`.
+All take the same options.
 
 To run a single council:
 
 ```
 python manage.py councillors --council KIR
 python manage.py minutes --council KIR
+python manage.py interests --council KIR
 ```
 
 Where `KIR` is the council ID from the
@@ -45,7 +46,7 @@ Useful options while working on a scraper:
 | `-v` | Verbose. Logs every URL fetched. Running a **single** council it also re-raises the exception, so the failure reaches the exit code |
 | `--workers N` | How many councils to scrape at once (default 4). `1` streams one scraper's output as it runs |
 | `--report` | Print a table of what was scraped |
-| `--skip-documents` | Minutes only. Find and record documents without downloading them |
+| `--skip-documents` | Minutes and interests only. Find and record documents without downloading them |
 | `--list-missing` | Councils with no scraper of this type |
 | `--list-disabled` | Councils whose scraper is marked `disabled` |
 | `--list-failing` | Councils that failed the last time you ran them here |
@@ -55,12 +56,14 @@ Output lands in a `data` directory:
 ```
 data/KIR/Councillors/     json/ and raw/, one file per councillor
 data/KIR/Minutes/         json/ and raw/, one file per meeting
-data/KIR/documents/       PDFs and other files linked from meetings
+data/KIR/Interests/       json/ and raw/, one file per councillor's register
+data/KIR/documents/       PDFs and other files linked from meetings or interests
 ```
 
 Minutes accumulate: each run adds to what's already stored rather than
 replacing it, because a meeting from last year is still a fact. Councillors
-replace, because someone who has left the council should disappear.
+and interests replace, because someone who has left the council should
+disappear, and the current register is the whole truth.
 
 ## Working on a scraper
 
@@ -73,6 +76,10 @@ Install pre-commit hooks:
 python manage.py minutes --list-missing      # councils with no minutes scraper
 python manage.py minutes --list-disabled     # scrapers someone turned off
 python manage.py metadata validate --service minutes
+
+python manage.py interests --list-missing    # councils with no interests scraper
+python manage.py interests --list-disabled
+python manage.py metadata validate --service interests
 ```
 
 When you've picked a council, its existing `councillors` entry in
@@ -107,7 +114,8 @@ the production dashboard.
 
    Templates: `minutes_scraper_modgov`, `minutes_scraper_cmis`,
    `minutes_scraper_custom`, `councillor_scraper_modgov`,
-   `councillor_scraper_cmis`, `councillor_scraper_html`.
+   `councillor_scraper_cmis`, `councillor_scraper_html`,
+   `interests_scraper_modgov`.
 
 4. Add the service to the council's `metadata.json`:
 

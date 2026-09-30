@@ -22,6 +22,10 @@
         "decisions": {
             "base_url": "http://www.folkestone-hythe.gov.uk/moderngov/",
             "cms_type": "ModernGov"
+        },
+        "interests": {
+            "base_url": "http://www.folkestone-hythe.gov.uk/moderngov/",
+            "cms_type": "ModernGov"
         }
     }
 }

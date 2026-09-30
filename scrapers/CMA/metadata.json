@@ -21,6 +21,10 @@
         "decisions": {
             "base_url": "https://councilportal.cumbria.gov.uk/",
             "cms_type": "ModernGov"
+        },
+        "interests": {
+            "base_url": "https://councilportal.cumbria.gov.uk/",
+            "cms_type": "ModernGov"
         }
     }
 }
