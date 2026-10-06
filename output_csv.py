@@ -10,6 +10,7 @@ Output councillor data as CSV, filtering to current councils only.
 Usage:
     uv run output_csv.py > councillors.csv
     uv run output_csv.py --all > all_councillors.csv  # include non-current
+    uv run output_csv.py --no-email > councillors.csv  # omit the email column
 """
 
 import csv
@@ -66,11 +67,15 @@ field_names = [
     "raw_party",
 ]
 
+# Check for flags
+include_all = "--all" in sys.argv
+include_email = "--no-email" not in sys.argv
+
+if not include_email:
+    field_names.remove("email")
+
 csvout = csv.DictWriter(sys.stdout, fieldnames=field_names)
 csvout.writeheader()
-
-# Check for --all flag
-include_all = "--all" in sys.argv
 
 # Get current councils (unless --all is specified)
 current_council_ids = None if include_all else get_current_council_ids()
