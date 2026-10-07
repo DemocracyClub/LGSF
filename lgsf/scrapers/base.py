@@ -1,9 +1,13 @@
 import abc
 import datetime
+import itertools
 import os
+import threading
+import time
 import traceback
 from functools import cached_property
 from pathlib import Path
+from urllib.parse import urlparse
 
 import httpx
 import requests
@@ -15,6 +19,48 @@ from ..storage.backends import get_storage_backend
 from ..storage.backends.base import StorageMode
 from ..storage.documents import get_document_storage_backend
 from .checks import ScraperChecker
+from .progress import NullProgress
+
+#: Failures that say nothing about the URL itself, only that this attempt
+#: didn't get through, so trying again may well work.
+#:
+#: wreq raises RequestError when the server drops the connection before
+#: the headers are complete (seen from Kirklees mid-run), and DecodingError
+#: when it drops it part way through the body.
+TRANSIENT_ERRORS = (
+    wreq.exceptions.TimeoutError,
+    wreq.exceptions.ConnectionError,
+    wreq.exceptions.ConnectionResetError,
+    wreq.exceptions.RequestError,
+    wreq.exceptions.BodyError,
+    wreq.exceptions.DecodingError,
+    requests.exceptions.Timeout,
+    requests.exceptions.ConnectionError,
+    requests.exceptions.ChunkedEncodingError,
+    httpx.TimeoutException,
+    httpx.NetworkError,
+    httpx.RemoteProtocolError,
+)
+
+# When each host may next be sent a request, shared by every scraper in the
+# process. Several councils can share one site, and a run over many
+# councils runs them in parallel threads, so a per-scraper clock would let
+# them add up to more than request_interval allows.
+_next_request_at = {}
+_next_request_lock = threading.Lock()
+
+
+class RetryableStatus(Exception):
+    """
+    A response whose status means "try again later" rather than "no".
+
+    Raised inside ScraperBase.get so the retry loop sees it; it never
+    escapes get().
+    """
+
+    def __init__(self, response, status):
+        super().__init__(f"HTTP {status}")
+        self.response = response
 
 
 class ScraperBase(metaclass=abc.ABCMeta):
@@ -31,6 +77,30 @@ class ScraperBase(metaclass=abc.ABCMeta):
     scraper_object_type = None
     use_proxy = False
 
+    #: Minimum seconds between the starts of two requests to the same host.
+    #: 0 means no limit.
+    request_interval = 0
+
+    #: How many times to retry a request that timed out, lost its connection
+    #: or got one of RETRY_STATUSES. Off by default: Lambda retries a failed
+    #: invocation as a whole, so most scrapers don't need it. Worth turning
+    #: on for scrapers that catch per-page failures and carry on, where
+    #: nothing would otherwise retry the page.
+    retries = 0
+
+    #: Seconds to wait before the first retry, doubling after each one.
+    retry_backoff = 5
+
+    #: The longest a retry will wait, whatever Retry-After asks for.
+    max_retry_wait = 300
+
+    RETRY_STATUSES = {429, 500, 502, 503, 504}
+
+    #: Where the scraper reports what it is doing. Does nothing unless a
+    #: local run over several councils replaces it with a live display; see
+    #: lgsf.scrapers.progress.
+    progress = NullProgress()
+
     #: How this scraper's storage should treat previous runs.
     #: StorageMode.REPLACE (the default) suits data where the latest scrape is
     #: the whole truth; StorageMode.ACCUMULATE suits append-only historical
@@ -43,6 +113,9 @@ class ScraperBase(metaclass=abc.ABCMeta):
         self.check()
 
         self.council_id = self.options["council"]
+
+        if self.options.get("request_interval") is not None:
+            self.request_interval = self.options["request_interval"]
 
         self.council_metadata = CouncilMetadata.for_council(self.council_id)
         self.base_url = self.council_metadata.get_service_metadata(
@@ -100,11 +173,91 @@ class ScraperBase(metaclass=abc.ABCMeta):
                     tls_verify_hostname=self.verify_requests,
                 )
 
-    def get(self, url, extra_headers=None):
+    def get(self, url, extra_headers=None, raise_for_status=True):
         """
-        Wraps `requests.get`
+        Wraps `requests.get`, spacing requests out by request_interval and
+        retrying transient failures up to `retries` times.
+
+        With raise_for_status=False an error status is returned rather than
+        raised, for callers that want to tell a 404 from other failures.
+        Retryable statuses are still retried first.
         """
 
+        def attempt():
+            response = self._send(url, extra_headers)
+            status = self.response_status(response)
+            if status in self.RETRY_STATUSES:
+                raise RetryableStatus(response, status)
+            return response
+
+        try:
+            response = self.with_retries(url, attempt)
+        except RetryableStatus as e:
+            # Out of retries: handle it like any other error status.
+            response = e.response
+
+        if raise_for_status:
+            response.raise_for_status()
+        return response
+
+    def with_retries(self, url, fn):
+        """
+        Call ``fn`` until it succeeds, a non-transient error is raised, or
+        `retries` retries have been used up. Every attempt is throttled.
+        """
+        for attempt in itertools.count(1):
+            self.throttle(url)
+            self.progress.doing(f"GET {url}", limit=self.timeout + 10)
+            self.progress.add("requests")
+            try:
+                result = fn()
+                self.progress.doing("working")
+                return result
+            except (RetryableStatus, *TRANSIENT_ERRORS) as e:
+                if attempt > self.retries:
+                    self.progress.doing(f"failed: {type(e).__name__} {url}")
+                    raise
+                wait = self.retry_wait(attempt, e)
+                self.console.log(
+                    f"[yellow]{url}: {type(e).__name__}: {str(e)[:100]}. "
+                    f"Retry {attempt} of {self.retries} in {wait:.0f}s[/yellow]"
+                )
+                self.progress.add("retries")
+                self.progress.doing(
+                    f"retry {attempt}/{self.retries} after {type(e).__name__}: {url}",
+                    limit=wait + 10,
+                )
+                time.sleep(wait)
+
+    def retry_wait(self, attempt, error):
+        """
+        Seconds to wait before retry number ``attempt``: what Retry-After
+        asks for if the server sent one, otherwise exponential backoff.
+        """
+        wait = self.retry_backoff * 2 ** (attempt - 1)
+        if isinstance(error, RetryableStatus):
+            retry_after = self.response_header(error.response, "retry-after")
+            # Retry-After can also be an HTTP date, which isn't worth
+            # parsing: backoff is a fine answer then.
+            if retry_after and retry_after.strip().isdigit():
+                wait = int(retry_after.strip())
+        return min(wait, self.max_retry_wait)
+
+    def throttle(self, url):
+        """Block until request_interval has passed since the last request
+        to this host from anywhere in the process."""
+        if not self.request_interval:
+            return
+        host = urlparse(url).netloc
+        with _next_request_lock:
+            now = time.monotonic()
+            slot = max(now, _next_request_at.get(host, 0))
+            _next_request_at[host] = slot + self.request_interval
+        if slot > now:
+            time.sleep(slot - now)
+
+    def _send(self, url, extra_headers=None):
+        """Make one request, without throttling, retries or status checks."""
         if self.options.get("verbose"):
             self.console.log(f"Scraping from {url}")
 
@@ -133,7 +286,6 @@ class ScraperBase(metaclass=abc.ABCMeta):
                 headers.update(extra_headers)
             response = self.http_client.get(url, headers=headers, timeout=self.timeout)
 
-        response.raise_for_status()
         return response
 
     def response_status(self, response) -> int:

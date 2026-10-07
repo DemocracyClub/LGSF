@@ -148,6 +148,8 @@ class LocalFilesystemStorage(BaseStorage):
             session.write(Path("output.csv"), processed)
     """
 
+    supports_checkpoints = True
+
     def __init__(
         self,
         council_code: str,

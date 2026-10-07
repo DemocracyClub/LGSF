@@ -1,3 +1,5 @@
+import datetime
+
 from rich.table import Table
 
 from lgsf.commands.base import PerCouncilCommandBase
@@ -12,6 +14,27 @@ class Command(PerCouncilCommandBase):
             action="store_true",
             help="Find and record documents but don't download them. Useful "
             "for checking a scraper works without pulling every PDF.",
+        )
+        since = parser.add_mutually_exclusive_group()
+        since.add_argument(
+            "--since",
+            type=lambda value: datetime.date.fromisoformat(value).isoformat(),
+            help="Scrape decisions published since this date (YYYY-MM-DD) "
+            "rather than the default year. Use for a backfill: slices of it "
+            "already read completely are skipped, so it can be stopped and "
+            "rerun.",
+        )
+        since.add_argument(
+            "--discover-since",
+            action="store_true",
+            help="Like --since, from the oldest decision each council lists. "
+            "Found once per council and remembered.",
+        )
+        parser.add_argument(
+            "--request-interval",
+            type=float,
+            help="Minimum seconds between requests to one host. Overrides "
+            "the scraper's request_interval.",
         )
 
     def output_report(self):

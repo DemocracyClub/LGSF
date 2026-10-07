@@ -34,6 +34,10 @@ class FakeResponse:
         self.headers = headers or {}
 
 
+class NoCheckpoints:
+    supports_checkpoints = False
+
+
 def make_scraper(pages=None):
     """
     A scraper with the HTTP layer faked, driving the real parsing methods.
@@ -47,6 +51,17 @@ def make_scraper(pages=None):
     scraper.console = FakeConsole()
     scraper.extra_headers = {}
     scraper.options = {}
+    scraper.index = {"decisions": {}, "documents": {}, "windows": {}}
+    scraper.storage_backend = NoCheckpoints()
+    for counter in (
+        "failed_decisions",
+        "incomplete_decisions",
+        "windows_read",
+        "windows_skipped",
+        "windows_incomplete",
+        "consecutive_failures",
+    ):
+        setattr(scraper, counter, 0)
     pages = pages or {}
 
     scraper.get_text = lambda url, **kwargs: pages[url]
@@ -97,6 +112,26 @@ def test_list_dates_are_normalised_to_iso():
     assert rows[0]["published_date"] == "2025-04-01"
 
 
+def serve_lists(scraper, delegated, officer):
+    """
+    Answer list requests by which page they are for, whatever the range.
+
+    Each of ``delegated`` and ``officer`` is a page body, an HTTP status to
+    answer with, or an exception to raise.
+    """
+
+    def get(url, **kwargs):
+        page = officer if ModGovDecisionsScraper.OFFICER_PATH in url else delegated
+        if isinstance(page, Exception):
+            raise page
+        if isinstance(page, int):
+            return FakeResponse("", status_code=page)
+        return FakeResponse(page)
+
+    scraper.get = get
+    scraper.response_status = lambda r: r.status_code
+
+
 def test_both_list_pages_are_read_and_deduplicated():
     """
     A decision on both pages is one decision, not two.
@@ -105,10 +140,8 @@ def test_both_list_pages_are_read_and_deduplicated():
     normal case rather than an edge case.
     """
     scraper = make_scraper()
-    pages = {
-        url: fixture("modgov_decisions_list.html") for url, _ in scraper.list_urls()
-    }
-    scraper.get_text = lambda url, **kwargs: pages[url]
+    page = fixture("modgov_decisions_list.html")
+    serve_lists(scraper, page, page)
 
     rows = list(scraper.get_decisions())
 
@@ -118,16 +151,18 @@ def test_both_list_pages_are_read_and_deduplicated():
 
 def test_a_list_page_a_council_does_not_have_is_not_fatal():
     scraper = make_scraper()
-    (working, _), (missing, _) = scraper.list_urls()
-
-    def get_text(url, **kwargs):
-        if url == missing:
-            raise OSError("404")
-        return fixture("modgov_decisions_list.html")
-
-    scraper.get_text = get_text
+    serve_lists(scraper, fixture("modgov_decisions_list.html"), 404)
 
     assert len(list(scraper.get_decisions())) == 2
+    assert scraper.windows_incomplete == 0
+
+
+def test_a_list_page_that_fails_is_not_fatal_but_leaves_the_slice_open():
+    scraper = make_scraper()
+    serve_lists(scraper, fixture("modgov_decisions_list.html"), OSError("reset"))
+
+    assert len(list(scraper.get_decisions())) == 2
+    assert scraper.windows_incomplete == scraper.windows_read
 
 
 def test_a_decision_on_the_officer_list_is_marked_as_one():
@@ -136,12 +171,11 @@ def test_a_decision_on_the_officer_list_is_marked_as_one():
     which delegated decisions were taken by an officer.
     """
     scraper = make_scraper()
-    (delegated, _), (officer, _) = scraper.list_urls()
-    pages = {
-        delegated: fixture("modgov_decisions_list.html"),
-        officer: fixture("modgov_officer_decisions_list.html"),
-    }
-    scraper.get_text = lambda url, **kwargs: pages[url]
+    serve_lists(
+        scraper,
+        fixture("modgov_decisions_list.html"),
+        fixture("modgov_officer_decisions_list.html"),
+    )
 
     by_id = {r["identifier"]: r for r in scraper.get_decisions()}
 
@@ -155,14 +189,7 @@ def test_a_council_with_no_officer_list_marks_nothing_as_officer():
     but False is the only honest answer the source supports.
     """
     scraper = make_scraper()
-    (delegated, _), (officer, _) = scraper.list_urls()
-
-    def get_text(url, **kwargs):
-        if url == officer:
-            raise OSError("404")
-        return fixture("modgov_decisions_list.html")
-
-    scraper.get_text = get_text
+    serve_lists(scraper, fixture("modgov_decisions_list.html"), 404)
 
     assert all(not r["is_officer_decision"] for r in scraper.get_decisions())
 

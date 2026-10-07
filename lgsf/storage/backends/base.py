@@ -216,6 +216,12 @@ class BaseStorage(abc.ABC):
     - Session objects should not be shared across threads
     """
 
+    #: True when ending a session and starting another is cheap enough to do
+    #: mid-run, so a long scrape can commit its progress as it goes rather
+    #: than losing it all to a crash. False where each commit is expensive
+    #: or visible, such as a pull request per session.
+    supports_checkpoints = False
+
     def __init__(
         self, council_code: str, storage_mode: StorageMode = StorageMode.REPLACE
     ):
