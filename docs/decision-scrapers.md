@@ -140,8 +140,8 @@ Gaps in a council's history don't matter, since the first chunk with
 anything on it holds the oldest decision whatever follows. For Kirklees that
 is seven chunks, fourteen fast requests.
 
-Before searching, discovery checks that a list page can be read for the
-last six months. Some sites answer every page with an error — Enfield and
+Before searching, discovery checks that one of the list pages returns a
+real page (not a 404) for the last month. Some sites answer every page with an error — Enfield and
 Somerset redirect everything to `mgError.aspx` — and searching their history
 would only send the backfill back to 2000 to fail there. A council that fails
 the check gets the default window and nothing is remembered.
@@ -168,6 +168,52 @@ decisions since the last checkpoint.
 `--skip-documents` works for a backfill, but every decision it stores with
 documents is marked incomplete, and so is its slice, so a later run without
 the flag goes back for them.
+
+## Writing to S3
+
+For a long run that others should be able to follow, write to S3 instead of
+`data/`. The layout under the prefix is exactly that of `data/`, so anyone
+with read access can sync it at any point and get a data directory LGSF can
+read, or carry on scraping into:
+
+```bash
+export LGSF_STORAGE_BACKEND=s3
+export LGSF_S3_BUCKET=<bucket>
+export LGSF_S3_PREFIX=data          # optional
+export AWS_PROFILE=<profile>        # or any other way boto3 finds credentials
+uv run python manage.py decisions --all-councils --discover-since --workers 12
+```
+
+```bash
+aws s3 sync s3://<bucket>/data ./data     # repeat to pick up new data
+```
+
+Documents go to S3 too, beside the metadata, unless
+`LGSF_DOCUMENT_STORAGE_BACKEND` says otherwise.
+
+It behaves as local storage does. Records are staged in memory and uploaded
+at each checkpoint (every 50 decisions and each slice), so S3 is a few
+minutes behind the scrape; documents are uploaded as they are downloaded.
+The index goes up only after the records it names, so a sync mid-run never
+has an index pointing at files that aren't there. There are no commits or
+pull requests as with GitHub: a checkpoint is just uploads.
+
+Each council's keys are listed once, on first use, and existence checks are
+answered from that listing, so a run makes about one request to S3 per file
+it writes, plus a listing per council. Each document records its SHA-256 in
+the object's metadata, so recovering one after a crash is a HEAD rather than
+a download.
+
+The runner needs `s3:ListBucket` on the bucket and `s3:GetObject` and
+`s3:PutObject` under the prefix, plus `s3:DeleteObject` only for data types
+stored in REPLACE mode (not decisions). Readers need `s3:ListBucket` and
+`s3:GetObject`.
+
+Don't run two machines on the same council at once: each would overwrite
+the other's index.
+
+`--list-failing` reads run logs from `data/` and doesn't see ones on S3;
+they are at `<prefix>/<COUNCIL>/Decisions/runlog.json`.
 
 ## Watching a long run
 

@@ -121,6 +121,19 @@ class StorageSession(abc.ABC):
         """
         ...
 
+    def exists(self, filename: Path) -> bool:
+        """
+        True if ``filename`` is staged in this session or already stored.
+
+        Backends where reading a file is expensive should override this:
+        scrapers ask it of every record they consider skipping.
+        """
+        try:
+            self.open(filename, "rb")
+        except FileNotFoundError:
+            return False
+        return True
+
     @abc.abstractmethod
     def open(self, filename: Path, mode: Literal["r", "rb"] = "r") -> Union[str, bytes]:
         """

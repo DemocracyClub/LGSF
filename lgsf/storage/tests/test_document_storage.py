@@ -181,7 +181,7 @@ def test_document_backend_is_independent_of_metadata_backend(data_dir, monkeypat
 
 
 def test_available_backends_listed(data_dir):
-    assert get_available_document_backends() == ["local"]
+    assert get_available_document_backends() == ["local", "s3"]
 
 
 def test_hash_content_is_stable(data_dir):

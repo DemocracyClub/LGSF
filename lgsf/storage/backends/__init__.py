@@ -48,6 +48,7 @@ def get_storage_backend(
                    StorageMode.ACCUMULATE
                  - organization: For github backend, the organization name
                  - github_token: For github backend, the authentication token
+                 The s3 backend reads LGSF_S3_BUCKET and LGSF_S3_PREFIX.
 
     Returns:
         An instance of the requested storage backend tied to the specified council.
@@ -84,13 +85,21 @@ def get_storage_backend(
             github_token=kwargs.get("github_token"),
             storage_mode=storage_mode,
         )
+    elif backend_type == "s3":
+        from lgsf.storage.backends.s3 import S3Storage
+
+        return S3Storage(
+            council_code=council_code,
+            scraper_object_type=kwargs.get("scraper_object_type"),
+            storage_mode=storage_mode,
+        )
     else:
         raise ValueError(f"Unsupported storage backend: {backend_type}")
 
 
 def get_available_backends() -> list[str]:
     """Return a list of available storage backend types."""
-    return ["local", "github"]
+    return ["local", "github", "s3"]
 
 
 if __name__ == "__main__":

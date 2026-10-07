@@ -18,7 +18,10 @@ from lgsf.decisions.scrapers import BaseDecisionsScraper, ModGovDecisionsScraper
 from lgsf.scrapers.base import ScraperBase
 from lgsf.storage.backends.base import StorageMode
 from lgsf.storage.backends.local import LocalFilesystemStorage
+from lgsf.storage.backends.s3 import S3Storage
 from lgsf.storage.documents.local import LocalDocumentStorage
+from lgsf.storage.documents.s3 import S3DocumentStorage
+from lgsf.storage.tests.test_s3_storage import FakeS3
 
 FIXTURES = Path(__file__).parent / "fixtures"
 BASE_URL = "https://democracy.example.gov.uk"
@@ -83,16 +86,31 @@ def make_scraper(monkeypatch):
         self.console = console
         self.council_id = options["council"]
         self.base_url = BASE_URL
-        self.storage_backend = LocalFilesystemStorage(
-            council_code=self.council_id,
-            scraper_object_type="Decisions",
-            storage_mode=StorageMode.ACCUMULATE,
-        )
+        bucket = options.pop("s3", None)
+        if bucket is None:
+            self.storage_backend = LocalFilesystemStorage(
+                council_code=self.council_id,
+                scraper_object_type="Decisions",
+                storage_mode=StorageMode.ACCUMULATE,
+            )
+        else:
+            self.storage_backend = S3Storage(
+                council_code=self.council_id,
+                scraper_object_type="Decisions",
+                storage_mode=StorageMode.ACCUMULATE,
+                bucket="bucket",
+                prefix="data",
+                client=bucket,
+            )
+            self.document_storage = S3DocumentStorage(
+                self.council_id, bucket="bucket", prefix="data", client=bucket
+            )
         self.storage_session = self.storage_backend.start_session()
 
     monkeypatch.setattr(ScraperBase, "__init__", base_init)
 
     def build(route, **options):
+        """Pass s3=FakeS3() to store in a fake bucket rather than locally."""
         scraper = ModGovDecisionsScraper({"council": "TST", **options}, FakeConsole())
         scraper.requests = []
 
@@ -636,3 +654,62 @@ def test_a_site_with_only_one_working_list_is_still_searched(make_scraper):
     # The officer list failing for a chunk is a chunk that can't be read,
     # so discovery stops at the first one: early, but never late.
     assert scraper.discover_since() == datetime.date(2000, 1, 1)
+
+
+# ---- on S3 ----
+
+
+def test_a_backfill_on_s3_is_visible_as_it_goes_and_resumes(make_scraper):
+    """
+    The point of S3 for a long run: others can sync it while it runs, and
+    a run that stops part way carries on without redoing anything.
+    """
+    bucket = FakeS3()
+    ids = [str(i) for i in range(1, 8)]
+
+    def route(url):
+        if url == DOC:
+            return FakeResponse(content=b"%PDF")
+        if "ieDecisionDetails" in url:
+            if url.endswith("ID=6"):
+                raise KeyboardInterrupt
+            return FakeResponse(detail_page([DOC]))
+        return history(ids=ids)(url)
+
+    scraper = make_scraper(route, since="2019-06-01", s3=bucket)
+    scraper.checkpoint_every = 2
+    with pytest.raises(KeyboardInterrupt):
+        run(scraper)
+
+    # Checkpointed records are on S3, with an index naming only those.
+    index = json.loads(bucket.objects["data/TST/Decisions/_index.json"]["Body"])
+    named = {e["file_name"] for e in index["decisions"].values() if "file_name" in e}
+    assert named
+    for name in named:
+        assert f"data/TST/Decisions/json/{name}" in bucket.objects
+    assert any(k.startswith("data/TST/documents/") for k in bucket.objects)
+
+    def must_not_download(url):
+        if url == DOC:
+            raise AssertionError("document downloaded twice")
+        if "ieDecisionDetails" in url:
+            return FakeResponse(detail_page([DOC]))
+        return route(url)
+
+    resumed = run(make_scraper(must_not_download, since="2019-06-01", s3=bucket))
+
+    fetched = [u for u in resumed.requests if "ieDecisionDetails" in u]
+    assert len(fetched) == len(ids) - len(named)
+    stored = {k for k in bucket.objects if "/Decisions/json/" in k}
+    assert len(stored) == len(ids)
+
+
+def test_a_site_answering_everything_with_a_quick_404_is_not_searched(make_scraper):
+    """
+    Somerset answers some pages with a quick 404 error page. read_list
+    takes that as a missing page, which would pass a check built on it.
+    """
+    scraper = make_scraper(lambda url: FakeResponse(status_code=404))
+
+    assert scraper.discover_since() is None
+    assert len(scraper.requests) == 2

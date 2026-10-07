@@ -350,15 +350,16 @@ class BaseDecisionsScraper(ScraperBase):
         The stored record's filename for ``url``, if we really hold it.
 
         The index is a cache, not a source of truth, so the file it names is
-        opened before its word is taken: a record deleted from storage costs
-        a re-fetch rather than being lost.
+        checked for before its word is taken: a record deleted from storage
+        costs a re-fetch rather than being lost.
         """
         file_name = (self.index["decisions"].get(url) or {}).get("file_name")
         if not file_name:
             return None
         try:
-            self.storage_session.open(Path("json") / file_name)
-        except (FileNotFoundError, ValueError):
+            if not self.storage_session.exists(Path("json") / file_name):
+                return None
+        except ValueError:
             return None
         return file_name
 
@@ -902,6 +903,30 @@ class ModGovDecisionsScraper(BaseDecisionsScraper):
         except ValueError:
             return None
 
+    def site_answers(self):
+        """
+        True if either list page returns a page at all for the last month.
+
+        Unlike read_list, a 404 is not good enough: read_list takes a quick
+        one as a council without that page, but a site whose every page is
+        an error answers some of them quickly too.
+        """
+        today = datetime.date.today()
+        start = today - relativedelta(months=1)
+        self.progress.set(window="finding start: checking site")
+        for is_officer_list in (False, True):
+            try:
+                response = self.get(
+                    self.list_url(start, today, is_officer_list),
+                    extra_headers=self.extra_headers,
+                    raise_for_status=False,
+                )
+            except Exception:
+                continue
+            if self.response_status(response) < 400:
+                return True
+        return False
+
     #: How many years each --discover-since probe covers.
     discover_chunk_years = 2
 
@@ -924,18 +949,12 @@ class ModGovDecisionsScraper(BaseDecisionsScraper):
 
         # Check the present first. Some sites answer every page with an
         # error (Enfield and Somerset redirect everything to mgError.aspx),
-        # and there the first chunk would fail, sending the backfill back to
-        # discover_floor through decades of failures. A council with
-        # neither list page working now has nothing to discover.
-        recent = today - relativedelta(months=self.window_months)
-        self.progress.set(window="finding start: checking site")
-        if not any(
-            self.read_list(recent, today, is_officer_list)[1]
-            for is_officer_list in (False, True)
-        ):
+        # and there the search would fail at the first chunk, sending the
+        # backfill back to discover_floor through decades of failures.
+        if not self.site_answers():
             self.console.log(
-                "[yellow]Neither decision list can be read for the last "
-                f"{self.window_months} months, so not looking further back[/yellow]"
+                "[yellow]Neither decision list returns a page for the last "
+                "month, so not looking further back[/yellow]"
             )
             return None
 

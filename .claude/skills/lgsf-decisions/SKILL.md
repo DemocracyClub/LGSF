@@ -110,6 +110,14 @@ everything.
 Conditional requests are still made for whatever is fetched, so `ETag` and
 `Last-Modified` take over automatically if ModernGov ever sends them.
 
+## S3
+
+`LGSF_STORAGE_BACKEND=s3` with `LGSF_S3_BUCKET` (and optional
+`LGSF_S3_PREFIX`) writes to S3 in the same layout as `data/`; documents
+follow unless `LGSF_DOCUMENT_STORAGE_BACKEND` is set. It checkpoints like
+local (`supports_checkpoints`), uploading the index after the records it
+names. Existence checks use one listing per council, not a request each.
+
 ## Progress is local only
 
 A local run of several councils in a terminal shows a live Rich table

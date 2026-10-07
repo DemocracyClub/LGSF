@@ -474,7 +474,8 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
             return
 
         path = self.run_log_path(scraper)
-        if path is None:
+        write_now = getattr(scraper.storage_backend, "write_now", None)
+        if path is None and write_now is None:
             return
 
         entry = {
@@ -488,9 +489,16 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
         }
         if run_log.error and run_log.log:
             entry["log"] = run_log.log
+        content = json.dumps(entry, indent=2, default=str)
+
+        if path is None:
+            # Data that doesn't live on this machine, such as on S3: the log
+            # goes beside it there instead.
+            write_now(self.RUN_LOG_FILE_NAME, content)
+            return
 
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(entry, indent=2, default=str))
+        path.write_text(content)
 
     def run_councils(self):
         self._run_councils(progress=False)
