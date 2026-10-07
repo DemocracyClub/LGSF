@@ -172,9 +172,17 @@ the flag goes back for them.
 ## Writing to S3
 
 For a long run that others should be able to follow, write to S3 instead of
-`data/`. The layout under the prefix is exactly that of `data/`, so anyone
-with read access can sync it at any point and get a data directory LGSF can
-read, or carry on scraping into:
+`data/`. Every data type shares the bucket, so each council's decisions
+and their documents sit together under `<prefix>/<COUNCIL>/Decisions/`:
+
+```
+<prefix>/<COUNCIL>/Decisions/json/...
+<prefix>/<COUNCIL>/Decisions/_index.json
+<prefix>/<COUNCIL>/Decisions/documents/...
+```
+
+The metadata is laid out as in `data/`, so anyone with read access can sync
+it at any point and get a data directory LGSF can read:
 
 ```bash
 export LGSF_STORAGE_BACKEND=s3
@@ -188,8 +196,11 @@ uv run python manage.py decisions --all-councils --discover-since --workers 12
 aws s3 sync s3://<bucket>/data ./data     # repeat to pick up new data
 ```
 
-Documents go to S3 too, beside the metadata, unless
-`LGSF_DOCUMENT_STORAGE_BACKEND` says otherwise.
+Documents go to S3 too, under `Decisions/documents/` beside the metadata,
+unless `LGSF_DOCUMENT_STORAGE_BACKEND` says otherwise. That differs from
+`data/`, where every type shares `data/<COUNCIL>/documents/`, so a synced
+copy carries on scraping without re-fetching documents only if they are
+moved there.
 
 It behaves as local storage does. Records are staged in memory and uploaded
 at each checkpoint (every 50 decisions and each slice), so S3 is a few

@@ -269,16 +269,42 @@ def test_a_bucket_is_required(monkeypatch, fake):
 
 
 def document_store(fake):
-    return S3DocumentStorage("KIR", bucket="bucket", prefix="data", client=fake)
+    return S3DocumentStorage(
+        "KIR",
+        scraper_object_type="Decisions",
+        bucket="bucket",
+        prefix="data",
+        client=fake,
+    )
 
 
-def test_documents_sit_beside_the_metadata(fake):
+def test_documents_sit_beside_the_metadata_of_their_type(fake):
     stored = document_store(fake).write("2026-01-01-1-s123.pdf", b"%PDF")
 
-    obj = fake.objects["data/KIR/documents/2026-01-01-1-s123.pdf"]
+    obj = fake.objects["data/KIR/Decisions/documents/2026-01-01-1-s123.pdf"]
     assert obj["ContentType"] == "application/pdf"
-    assert stored.url == "s3://bucket/data/KIR/documents/2026-01-01-1-s123.pdf"
+    assert (
+        stored.url == "s3://bucket/data/KIR/Decisions/documents/2026-01-01-1-s123.pdf"
+    )
     assert stored.backend == "s3"
+
+
+def test_each_type_keeps_its_own_documents(fake):
+    """Every data type shares the bucket."""
+    S3DocumentStorage(
+        "KIR", scraper_object_type="Minutes", bucket="bucket", client=fake
+    ).write("a.pdf", b"%PDF")
+
+    assert not document_store(fake).exists("a.pdf")
+
+
+def test_replace_leaves_the_documents_beside_it_alone(fake):
+    document_store(fake).write("a.pdf", b"%PDF")
+    store = metadata_store(fake, mode=StorageMode.REPLACE)
+    with store.session("run") as session:
+        session.write(Path("json/current.json"), "{}")
+
+    assert "data/KIR/Decisions/documents/a.pdf" in fake.objects
 
 
 def test_describing_a_document_does_not_download_it(fake):
@@ -295,7 +321,10 @@ def test_describing_a_document_does_not_download_it(fake):
 
 
 def test_a_document_put_there_some_other_way_is_hashed_the_slow_way(fake):
-    fake.objects["data/KIR/documents/a.pdf"] = {"Body": b"%PDF", "Metadata": {}}
+    fake.objects["data/KIR/Decisions/documents/a.pdf"] = {
+        "Body": b"%PDF",
+        "Metadata": {},
+    }
 
     described = document_store(fake).describe("a.pdf")
 
@@ -303,7 +332,7 @@ def test_a_document_put_there_some_other_way_is_hashed_the_slow_way(fake):
 
 
 def test_document_existence_is_answered_from_one_listing(fake):
-    fake.objects["data/KIR/documents/a.pdf"] = {"Body": b"%PDF"}
+    fake.objects["data/KIR/Decisions/documents/a.pdf"] = {"Body": b"%PDF"}
     store = document_store(fake)
 
     assert store.exists("a.pdf")
@@ -311,7 +340,7 @@ def test_document_existence_is_answered_from_one_listing(fake):
     store.write("b.pdf", b"x")
     assert store.exists("b.pdf")
 
-    assert fake.ops("list") == ["data/KIR/documents/"]
+    assert fake.ops("list") == ["data/KIR/Decisions/documents/"]
     assert fake.ops("head") == []
 
 
@@ -337,7 +366,9 @@ def test_s3_is_chosen_from_the_environment(monkeypatch, fake):
         scraper_object_type="Decisions",
         storage_mode=StorageMode.ACCUMULATE,
     )
-    documents = get_document_storage_backend("KIR", options={"council": "KIR"})
+    documents = get_document_storage_backend(
+        "KIR", options={"council": "KIR"}, scraper_object_type="Decisions"
+    )
 
     assert isinstance(store, S3Storage)
     assert store.root == "runs/2026/KIR/Decisions"
@@ -345,7 +376,7 @@ def test_s3_is_chosen_from_the_environment(monkeypatch, fake):
     # Documents follow the metadata to S3 unless told otherwise: hundreds
     # of gigabytes of PDFs on the local disk is never what was meant.
     assert isinstance(documents, S3DocumentStorage)
-    assert documents.root == "runs/2026/KIR/documents"
+    assert documents.root == "runs/2026/KIR/Decisions/documents"
 
 
 def test_documents_can_still_be_sent_elsewhere(monkeypatch, fake):

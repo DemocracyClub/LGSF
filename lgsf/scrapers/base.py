@@ -367,6 +367,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
         return get_document_storage_backend(
             council_code=self.council_id,
             options=self.options,
+            scraper_object_type=self.scraper_object_type,
         )
 
     @property

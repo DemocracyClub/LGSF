@@ -13,9 +13,11 @@ from lgsf.storage.documents.base import BaseDocumentStorage, StoredDocument
 
 class S3DocumentStorage(BaseDocumentStorage):
     """
-    Stores documents under ``s3://<bucket>/<prefix>/<COUNCIL>/documents/``,
-    alongside the council's metadata just as data/<COUNCIL>/documents/ is
-    locally.
+    Stores documents under
+    ``s3://<bucket>/<prefix>/<COUNCIL>/<Type>/documents/``, beside the
+    metadata of the data type that fetched them, so that every type can
+    share a bucket and each keeps to its own prefix. Without a type they go
+    under ``<COUNCIL>/documents/``.
 
     Each object carries its SHA-256 in its metadata, so describing a stored
     document is a HEAD request rather than downloading it to hash it.
@@ -26,6 +28,7 @@ class S3DocumentStorage(BaseDocumentStorage):
     def __init__(
         self,
         council_code: str,
+        scraper_object_type: Optional[str] = None,
         bucket: Optional[str] = None,
         prefix: Optional[str] = None,
         client=None,
@@ -34,9 +37,10 @@ class S3DocumentStorage(BaseDocumentStorage):
         self.bucket = s3.bucket_from_environment(bucket)
         self.prefix = s3.prefix_from_environment(prefix)
         self.client = client or s3.get_client()
-        self.root = s3.join_key(
-            self.prefix, s3.safe_name(self.council_code, "council_code"), "documents"
-        )
+        parts = [self.prefix, s3.safe_name(self.council_code, "council_code")]
+        if scraper_object_type:
+            parts.append(s3.safe_name(scraper_object_type, "scraper_object_type"))
+        self.root = s3.join_key(*parts, s3.DOCUMENTS_DIR)
         self.listing = s3.KeyListing(self.client, self.bucket, self.root)
 
     def object_key(self, key: str) -> str:

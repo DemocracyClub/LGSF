@@ -2,13 +2,17 @@
 What the S3 metadata and document backends share: where to write, a client,
 and a listing of what is already there.
 
-The layout under the bucket and prefix is exactly that of the local data
-directory, so ``aws s3 sync s3://<bucket>/<prefix> data/`` gives anyone a
-data directory LGSF can read, or carry on scraping into:
+Everything for one data type of one council sits under one prefix, since
+every data type shares the bucket:
 
-    <prefix>/<COUNCIL>/<Type>/json/...      metadata (S3Storage)
+    <prefix>/<COUNCIL>/<Type>/json/...         metadata (S3Storage)
     <prefix>/<COUNCIL>/<Type>/_index.json
-    <prefix>/<COUNCIL>/documents/...         documents (S3DocumentStorage)
+    <prefix>/<COUNCIL>/<Type>/documents/...    documents (S3DocumentStorage)
+
+The metadata is laid out as in the local data directory, so
+``aws s3 sync s3://<bucket>/<prefix> data/`` gives a data directory LGSF can
+read. Documents differ: locally they are shared by every type at
+data/<COUNCIL>/documents/.
 
 Configured with LGSF_S3_BUCKET and LGSF_S3_PREFIX. Credentials and region
 come from the usual AWS chain: AWS_PROFILE, environment, instance role.
@@ -63,6 +67,11 @@ def prefix_from_environment(prefix=None):
     if prefix is None:
         prefix = os.environ.get("LGSF_S3_PREFIX", "")
     return prefix.strip("/")
+
+
+#: The directory under a council's type that holds its documents. The
+#: metadata store leaves it alone.
+DOCUMENTS_DIR = "documents"
 
 
 def safe_name(value, what):
