@@ -1,0 +1,31 @@
+{
+    "documents": [
+        {
+            "attachment_id": "30490",
+            "category": "other",
+            "content_hash": "sha256:15c580cd79117bf635bcccabd27dc40ade59e32fcc902786a396f65f9d4e41f7",
+            "content_length": 219456,
+            "content_type": "application/pdf",
+            "etag": "\"15c580cd79117bf635bcccabd27dc40ade59e32fcc902786a396f65f9d4e41f7\"",
+            "last_modified": "Mon, 23 Mar 2026 15:44:47 GMT",
+            "storage_backend": "local",
+            "storage_key": "2026-03-30-2681-community-grant-panel-30490.pdf",
+            "title": "Report for CGP 30 March 2026",
+            "url": "https://democracy.eastdevon.gov.uk/mgConvert2PDF.aspx?ID=30490"
+        }
+    ],
+    "location": "Council Chamber, Blackdown House",
+    "minutes_published": true,
+    "raw_committee": "Community Grant Panel",
+    "raw_committee_id": "207",
+    "raw_date": "2026-03-30",
+    "raw_identifier": "2681",
+    "raw_title": "Community Grant Panel - 2026-03-30",
+    "source": {
+        "etag": null,
+        "last_modified": null,
+        "url": "https://democracy.eastdevon.gov.uk/mgWebService.asmx/GetMeeting?lMeetingId=2681"
+    },
+    "status": "Confirmed",
+    "url": "https://democracy.eastdevon.gov.uk/ieListDocuments.aspx?CId=207&MId=2681"
+}

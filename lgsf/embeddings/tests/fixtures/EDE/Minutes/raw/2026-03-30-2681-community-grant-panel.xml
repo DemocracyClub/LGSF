@@ -1,0 +1,1868 @@
+<meeting>
+ <meetingid>
+  2681
+ </meetingid>
+ <meetingdate>
+  30/03/2026
+ </meetingdate>
+ <meetingstatus>
+  Confirmed
+ </meetingstatus>
+ <isdisplayallowed>
+  True
+ </isdisplayallowed>
+ <meetingtime>
+  6.00 pm
+ </meetingtime>
+ <meetingactualstarttime>
+  6.00 pm
+ </meetingactualstarttime>
+ <meetingplannedfinishtime>
+  8.00 pm
+ </meetingplannedfinishtime>
+ <meetingactualfinishtime>
+  10.36 pm
+ </meetingactualfinishtime>
+ <meetinglocation>
+  Council Chamber, Blackdown House
+ </meetinglocation>
+ <iswebcast>
+  False
+ </iswebcast>
+ <agendaid>
+  2681
+ </agendaid>
+ <agendapublished>
+  True
+ </agendapublished>
+ <decisionpublished>
+  False
+ </decisionpublished>
+ <minutepublished>
+  True
+ </minutepublished>
+ <meetingroom>
+ </meetingroom>
+ <agendaitems>
+  <agendaitem>
+   <agendaitemid>
+    17537
+   </agendaitemid>
+   <agendaitemtitle>
+    Declarations of Interest
+   </agendaitemtitle>
+   <agendatext>
+    &lt;div class="WordSection1"&gt;
+&lt;p class="MsoNormal"&gt;Guidance is available online to Councillors
+and co-opted members on making &lt;a href=
+"https://eastdevon.gov.uk/council-and-democracy/councillor-conduct/councillor-reminder-for-declaring-interests/"&gt;
+&lt;span style=""&gt;declarations of interest&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/div&gt;
+   </agendatext>
+   <actualmeetingdate>
+    30/03/2026
+   </actualmeetingdate>
+   <agendaitemnumber>
+    2
+   </agendaitemnumber>
+   <agendaitemsubnumber>
+   </agendaitemsubnumber>
+   <fulldisplaynumberformat>
+    6.
+   </fulldisplaynumberformat>
+   <authorusername>
+   </authorusername>
+   <commentlabel1>
+    Presented By
+   </commentlabel1>
+   <commenttext1>
+   </commenttext1>
+   <commentlabel2>
+    Actions
+   </commentlabel2>
+   <commenttext2>
+   </commenttext2>
+   <minutesnonemptyhtmlbody>
+    &lt;div class="WordSection1"&gt;
+&lt;p class="MsoNormal"&gt;None.&lt;/p&gt;
+&lt;/div&gt;
+   </minutesnonemptyhtmlbody>
+   <declarationcount>
+    0
+   </declarationcount>
+   <iscallin>
+    False
+   </iscallin>
+   <iscomment>
+    False
+   </iscomment>
+   <isdecision>
+    False
+   </isdecision>
+   <isdecisionpublished>
+    False
+   </isdecisionpublished>
+   <isminutepublished>
+    True
+   </isminutepublished>
+   <ispubliccanspeak>
+    False
+   </ispubliccanspeak>
+   <isrestricted>
+    False
+   </isrestricted>
+   <isdisplayallowed>
+    True
+   </isdisplayallowed>
+   <meetingdate>
+    30/03/2026
+   </meetingdate>
+   <meetingtime>
+    6.00 pm
+   </meetingtime>
+   <minutesitemnumber>
+    6
+   </minutesitemnumber>
+   <minutesitemsubnumber>
+   </minutesitemsubnumber>
+   <preferreddate>
+    30/03/2026
+   </preferreddate>
+   <refertocommittee>
+    Community Grant Panel
+   </refertocommittee>
+  </agendaitem>
+  <agendaitem>
+   <agendaitemid>
+    17538
+   </agendaitemid>
+   <agendaitemtitle>
+    Public Speaking
+   </agendaitemtitle>
+   <agendatext>
+    &lt;div class="WordSection1"&gt;
+&lt;p class="MsoNormal"&gt;Information on &lt;a href=
+"https://eastdevon.gov.uk/council-and-democracy/public-speaking/have-your-say-at-meetings/all-other-virtual-public-meetings/#article-content"&gt;
+&lt;span style=""&gt;public speaking is available online&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/div&gt;
+   </agendatext>
+   <actualmeetingdate>
+    30/03/2026
+   </actualmeetingdate>
+   <agendaitemnumber>
+    3
+   </agendaitemnumber>
+   <agendaitemsubnumber>
+   </agendaitemsubnumber>
+   <fulldisplaynumberformat>
+    7.
+   </fulldisplaynumberformat>
+   <authorusername>
+   </authorusername>
+   <commentlabel1>
+    Presented By
+   </commentlabel1>
+   <commenttext1>
+   </commenttext1>
+   <commentlabel2>
+    Actions
+   </commentlabel2>
+   <commenttext2>
+   </commenttext2>
+   <minutesnonemptyhtmlbody>
+    &lt;div class="WordSection1"&gt;
+&lt;p class="MsoNormal"&gt;None.&lt;/p&gt;
+&lt;/div&gt;
+   </minutesnonemptyhtmlbody>
+   <declarationcount>
+    0
+   </declarationcount>
+   <iscallin>
+    False
+   </iscallin>
+   <iscomment>
+    False
+   </iscomment>
+   <isdecision>
+    False
+   </isdecision>
+   <isdecisionpublished>
+    False
+   </isdecisionpublished>
+   <isminutepublished>
+    True
+   </isminutepublished>
+   <ispubliccanspeak>
+    False
+   </ispubliccanspeak>
+   <isrestricted>
+    False
+   </isrestricted>
+   <isdisplayallowed>
+    True
+   </isdisplayallowed>
+   <meetingdate>
+    30/03/2026
+   </meetingdate>
+   <meetingtime>
+    6.00 pm
+   </meetingtime>
+   <minutesitemnumber>
+    7
+   </minutesitemnumber>
+   <minutesitemsubnumber>
+   </minutesitemsubnumber>
+   <preferreddate>
+    30/03/2026
+   </preferreddate>
+   <refertocommittee>
+    Community Grant Panel
+   </refertocommittee>
+  </agendaitem>
+  <agendaitem>
+   <agendaitemid>
+    17539
+   </agendaitemid>
+   <agendaitemtitle>
+    Matters of Urgency
+   </agendaitemtitle>
+   <agendatext>
+    &lt;div class="WordSection1"&gt;
+&lt;p class="MsoNormal"&gt;Information on &lt;a href=
+"https://eastdevon.gov.uk/council-and-democracy/matters-of-urgency/"&gt;
+&lt;span style=""&gt;matters of urgency&lt;/span&gt;&lt;/a&gt; is available
+online&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/div&gt;
+   </agendatext>
+   <actualmeetingdate>
+    30/03/2026
+   </actualmeetingdate>
+   <agendaitemnumber>
+    4
+   </agendaitemnumber>
+   <agendaitemsubnumber>
+   </agendaitemsubnumber>
+   <fulldisplaynumberformat>
+    8.
+   </fulldisplaynumberformat>
+   <authorusername>
+   </authorusername>
+   <commentlabel1>
+    Presented By
+   </commentlabel1>
+   <commenttext1>
+   </commenttext1>
+   <commentlabel2>
+    Actions
+   </commentlabel2>
+   <commenttext2>
+   </commenttext2>
+   <minutesnonemptyhtmlbody>
+    &lt;div class="WordSection1"&gt;
+&lt;p class="MsoNormal"&gt;None.&lt;/p&gt;
+&lt;/div&gt;
+   </minutesnonemptyhtmlbody>
+   <declarationcount>
+    0
+   </declarationcount>
+   <iscallin>
+    False
+   </iscallin>
+   <iscomment>
+    False
+   </iscomment>
+   <isdecision>
+    False
+   </isdecision>
+   <isdecisionpublished>
+    False
+   </isdecisionpublished>
+   <isminutepublished>
+    True
+   </isminutepublished>
+   <ispubliccanspeak>
+    False
+   </ispubliccanspeak>
+   <isrestricted>
+    False
+   </isrestricted>
+   <isdisplayallowed>
+    True
+   </isdisplayallowed>
+   <meetingdate>
+    30/03/2026
+   </meetingdate>
+   <meetingtime>
+    6.00 pm
+   </meetingtime>
+   <minutesitemnumber>
+    8
+   </minutesitemnumber>
+   <minutesitemsubnumber>
+   </minutesitemsubnumber>
+   <preferreddate>
+    30/03/2026
+   </preferreddate>
+   <refertocommittee>
+    Community Grant Panel
+   </refertocommittee>
+  </agendaitem>
+  <agendaitem>
+   <agendaitemid>
+    17540
+   </agendaitemid>
+   <agendaitemtitle>
+    Confidential or exempt items
+   </agendaitemtitle>
+   <agendatext>
+    &lt;div class="WordSection1"&gt;
+&lt;p class="MsoNormal"&gt;To agree any items to be dealt with after the
+public (including the press) have been excluded.&lt;span style=
+""&gt;&amp;nbsp;&amp;nbsp;&lt;/span&gt; There are no items which Officers recommend
+should be dealt with in this way; &lt;span class=
+"GramE"&gt;however&lt;/span&gt; the Panel are reminded that application
+scoring detail and application submission paperwork is excluded for
+discussion in public.&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/div&gt;
+   </agendatext>
+   <actualmeetingdate>
+    30/03/2026
+   </actualmeetingdate>
+   <agendaitemnumber>
+    5
+   </agendaitemnumber>
+   <agendaitemsubnumber>
+   </agendaitemsubnumber>
+   <fulldisplaynumberformat>
+    9.
+   </fulldisplaynumberformat>
+   <authorusername>
+   </authorusername>
+   <commentlabel1>
+    Presented By
+   </commentlabel1>
+   <commenttext1>
+   </commenttext1>
+   <commentlabel2>
+    Actions
+   </commentlabel2>
+   <commenttext2>
+   </commenttext2>
+   <minutesnonemptyhtmlbody>
+    &lt;div class="WordSection1"&gt;
+&lt;p class="MsoNormal"&gt;None.&lt;/p&gt;
+&lt;/div&gt;
+   </minutesnonemptyhtmlbody>
+   <declarationcount>
+    0
+   </declarationcount>
+   <iscallin>
+    False
+   </iscallin>
+   <iscomment>
+    False
+   </iscomment>
+   <isdecision>
+    False
+   </isdecision>
+   <isdecisionpublished>
+    False
+   </isdecisionpublished>
+   <isminutepublished>
+    True
+   </isminutepublished>
+   <ispubliccanspeak>
+    False
+   </ispubliccanspeak>
+   <isrestricted>
+    False
+   </isrestricted>
+   <isdisplayallowed>
+    True
+   </isdisplayallowed>
+   <meetingdate>
+    30/03/2026
+   </meetingdate>
+   <meetingtime>
+    6.00 pm
+   </meetingtime>
+   <minutesitemnumber>
+    9
+   </minutesitemnumber>
+   <minutesitemsubnumber>
+   </minutesitemsubnumber>
+   <preferreddate>
+    30/03/2026
+   </preferreddate>
+   <refertocommittee>
+    Community Grant Panel
+   </refertocommittee>
+  </agendaitem>
+  <agendaitem>
+   <agendaitemid>
+    17543
+   </agendaitemid>
+   <agendaitemtitle>
+    Community Grant Funding Awards 2025/26
+   </agendaitemtitle>
+   <agendatext>
+   </agendatext>
+   <actualmeetingdate>
+    30/03/2026
+   </actualmeetingdate>
+   <agendaitemnumber>
+    6
+   </agendaitemnumber>
+   <agendaitemsubnumber>
+   </agendaitemsubnumber>
+   <fulldisplaynumberformat>
+    10.
+   </fulldisplaynumberformat>
+   <authorusername>
+   </authorusername>
+   <commentlabel1>
+    Presented By
+   </commentlabel1>
+   <commenttext1>
+   </commenttext1>
+   <commentlabel2>
+    Actions
+   </commentlabel2>
+   <commenttext2>
+   </commenttext2>
+   <minutesnonemptyhtmlbody>
+    &lt;div class="WordSection1"&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;The Panel considered the following small
+community grants that met the criteria and awarded grants as
+follows:&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;p style="font-weight: bold" class="MsoNormal"&gt;RESOLVED:&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;table class="MsoNormalTable" border="0" cellspacing="0"
+cellpadding="0" style="border-collapse:collapse"&gt;
+&lt;tbody&gt;
+&lt;tr style="height:45.0pt"&gt;
+&lt;td style="padding:0cm 5.4pt 0cm 5.4pt; height:45.0pt"&gt;
+&lt;table class="MsoTableGrid" border="1" cellspacing="0" cellpadding=
+"0" style="border-collapse:collapse; border:none"&gt;
+&lt;tbody&gt;
+&lt;tr style="height:29.05pt"&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:29.05pt"&gt;
+&lt;p style="font-weight: bold" class="MsoNormal"&gt;Group&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-left:none; padding:0cm 5.4pt 0cm 5.4pt; height:29.05pt"&gt;
+&lt;p style="font-weight: bold" class="MsoNormal"&gt;Area&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-left:none; padding:0cm 5.4pt 0cm 5.4pt; height:29.05pt"&gt;
+&lt;p style="font-weight: bold" class="MsoNormal"&gt;Funding
+requested&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-left:none; padding:0cm 5.4pt 0cm 5.4pt; height:29.05pt"&gt;
+&lt;p style="font-weight: bold" class="MsoNormal"&gt;Panel decision&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style="height:11.35pt"&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt; height:11.35pt"&gt;
+&lt;p class="MsoNormal"&gt;Action East Devon&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:11.35pt"&gt;
+&lt;p class="MsoNormal"&gt;Axminster and surrounding areas&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:11.35pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;1,500&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:11.35pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style="height:45.0pt"&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt; height:45.0pt"&gt;
+&lt;p class="MsoNormal"&gt;&lt;span class="SpellE"&gt;Axewoods&lt;/span&gt; Co-Op&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:45.0pt"&gt;
+&lt;p class="MsoNormal"&gt;East Devon&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:45.0pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;1,395&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:45.0pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style="height:11.35pt"&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt; height:11.35pt"&gt;
+&lt;p class="MsoNormal"&gt;Bright Bridge Enabling SW CIC&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:11.35pt"&gt;
+&lt;p class="MsoNormal"&gt;Exmouth Area&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:11.35pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;1,500&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:11.35pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style="height:11.35pt"&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt; height:11.35pt"&gt;
+&lt;p class="MsoNormal"&gt;Budleigh Salterton Information Centre&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:11.35pt"&gt;
+&lt;p class="MsoNormal"&gt;Budleigh Salterton&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:11.35pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;1,320&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:11.35pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style="height:11.35pt"&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt; height:11.35pt"&gt;
+&lt;p class="MsoNormal"&gt;Clyst St George and &lt;span class=
+"SpellE"&gt;Ebford&lt;/span&gt; Parish Hall&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:11.35pt"&gt;
+&lt;p class="MsoNormal"&gt;Clyst St George and &lt;span class=
+"SpellE"&gt;Ebford&lt;/span&gt;&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:11.35pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;700&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:11.35pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style="height:12.3pt"&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Devon Dig and Donate CIC&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;East Devon&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;1,499&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style="height:12.3pt"&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Devon Healing Horsemanship&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;East Devon&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;1,500&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style="height:12.3pt"&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Discover Your Doorstep CIC&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Exmouth and surrounding areas&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;1,500&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style="height:12.3pt"&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;East Devon All Stars&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Seaton and surrounding areas&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;1,500&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style="height:12.3pt"&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Emma Molony Wallpaper&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Cranbrook&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;950&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style="height:12.3pt"&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Exmouth Bosom Buddies CIC&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Exmouth Area&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;1,482&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style="height:12.3pt"&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Happi Beats&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;East Devon villages&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;1,200&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style="height:12.3pt"&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Honiton Carers Support Group&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Honiton, Ottery, Combe Raleigh, &lt;span class=
+"SpellE"&gt;Collaton&lt;/span&gt; Raleigh, &lt;span class=
+"SpellE"&gt;Offwell&lt;/span&gt;, &lt;span class="SpellE"&gt;Feniton&lt;/span&gt;,
+Sidmouth &amp;amp; Pinhoe&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;1,500&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style="height:12.3pt"&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Inspiring Connections SW CIC&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;East Devon&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;1,500&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style="height:12.3pt"&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Little Green Change&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Axminster, Seaton, &lt;span class=
+"SpellE"&gt;Kilmington&lt;/span&gt; and Honiton.&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;1,499.95&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style="height:12.3pt"&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Make Lunch partnered with All Saints
+Church&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Sidmouth and surrounding areas&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;800&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style="height:12.3pt"&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;North Devon Deaf Children's Society&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;East Devon&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;1,500&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style="height:12.3pt"&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Ottery Help Scheme&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;&lt;span class="SpellE"&gt;Whimple&lt;/span&gt;&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;1,500&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style="height:12.3pt"&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Seaton &amp;amp; District Hospital League of
+Friends&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Seaton District&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;1,500&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style="height:12.3pt"&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Sidmouth Coastal Community Hub CIC&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Sidmouth and surrounding areas&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;1,500&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style="height:12.3pt"&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;The Devon Centre of Birth&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Exmouth Area&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;1,200&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style="height:12.3pt"&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Wellbeing Workshops Devon&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Exmouth, Budleigh Salterton&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;1,500&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style="height:12.3pt"&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p style="font-weight: bold" class="MsoNormal"&gt;&amp;pound;30,045.95&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt; height:12.3pt"&gt;
+&lt;p style="font-weight: bold" class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/td&gt;
+&lt;td style="padding:0cm 5.4pt 0cm 5.4pt; height:45.0pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style="padding:0cm 5.4pt 0cm 5.4pt; height:45.0pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style="padding:0cm 5.4pt 0cm 5.4pt; height:45.0pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style="padding:0cm 5.4pt 0cm 5.4pt; height:45.0pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style="padding:0cm 5.4pt 0cm 5.4pt; height:45.0pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style="padding:0cm 5.4pt 0cm 5.4pt; height:45.0pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;The Panel considered the following
+applications that still required further evidence and&lt;/p&gt;
+&lt;p style="font-weight: bold" class="MsoNormal"&gt;RESOLVED&lt;/p&gt;
+&lt;p class="MsoListParagraphCxSpFirst" style="text-indent:-18.0pt"&gt;
+&lt;span style=""&gt;&lt;span style=""&gt;1.&lt;span style=
+"font:7.0pt &amp;quot;Times New Roman&amp;quot;"&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
+that the remaining four applications that required further evidence
+should be referred to officers to obtain the outstanding
+&lt;span class="GramE"&gt;evidence;&lt;/span&gt;&lt;/p&gt;
+&lt;p class="MsoListParagraphCxSpLast" style="text-indent:-18.0pt"&gt;
+&lt;span style=""&gt;&lt;span style=""&gt;2.&lt;span style=
+"font:7.0pt &amp;quot;Times New Roman&amp;quot;"&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
+that subject to the necessary evidence being obtained, the
+applications met the criteria and therefore were agreed in
+principle by the Panel; giving delegated authority as set out in
+the Community Grants Fund policy for the Chair, as Portfolio Holder
+for Finance, to make the final decision on the applications as the
+amount fell under the &amp;pound;3000 limit (paragraph 6.4 of the
+policy refers)&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;The Panel considered the following Community
+Buildings applications.&lt;span style=""&gt;&amp;nbsp;&lt;/span&gt; After
+discussion, the Panel agreed that some applications could be
+granted but that further information and consideration was
+required.&lt;span style=""&gt;&amp;nbsp;&lt;/span&gt; The Chair therefore agreed
+that after this resolution, the meeting be adjourned and the
+remaining applications be considered by the Panel on the
+15&lt;sup&gt;th&lt;/sup&gt; April 2026 at 5.30pm.&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;p style="font-weight: bold" class="MsoNormal"&gt;RESOLVED that&lt;/p&gt;
+&lt;p class="MsoListParagraphCxSpFirst" style="text-indent:-18.0pt"&gt;
+&lt;b&gt;&lt;span style=""&gt;&lt;span style=""&gt;1.&lt;span style=
+"font:7.0pt &amp;quot;Times New Roman&amp;quot;"&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/b&gt;
+The applications for village halls listed in the table below,
+namely &lt;span class="SpellE"&gt;Dunkeswell&lt;/span&gt;, Escot, &lt;span class=
+"SpellE"&gt;Aylesbeare&lt;/span&gt;, &lt;span class="SpellE"&gt;Umborne&lt;/span&gt; and
+Netherton Club &lt;span class="SpellE"&gt;Farway&lt;/span&gt;, be granted&lt;/p&gt;
+&lt;p class="MsoListParagraphCxSpLast" style="text-indent:-18.0pt"&gt;
+&lt;b&gt;&lt;span style=""&gt;&lt;span style=""&gt;2.&lt;span style=
+"font:7.0pt &amp;quot;Times New Roman&amp;quot;"&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/b&gt;
+The remaining applications be deferred for further information and
+consideration by the Panel&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;table class="MsoTableGrid" border="1" cellspacing="0" cellpadding=
+"0" style="border-collapse:collapse; border:none"&gt;
+&lt;tbody&gt;
+&lt;tr style=""&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p style="font-weight: bold" class="MsoNormal"&gt;Building&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-left:none; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p style="font-weight: bold" class="MsoNormal"&gt;Total Amount of
+Funding Required&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-left:none; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p style="font-weight: bold" class="MsoNormal"&gt;Amount of Funding
+Requested from EDDC&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-left:none; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p style="font-weight: bold" class="MsoNormal"&gt;Difference in
+funding in place&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-left:none; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p style="font-weight: bold" class="MsoNormal"&gt;Panel decision&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style=""&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&lt;span class="SpellE"&gt;Dunkeswell&lt;/span&gt; Village
+Hall&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;21,053&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;10,000&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;Yes&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style=""&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;Netherton Club - &lt;span class=
+"SpellE"&gt;Farway&lt;/span&gt; Village Hall&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;15,371&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;10,000&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;Yes&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style=""&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;Escot Village Hall&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;14,121&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;10,000&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;Yes&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style=""&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&lt;span class="SpellE"&gt;Northleigh&lt;/span&gt; Parish
+Hall&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;2,290.49&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;2,000&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;Yes&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;Defer for further information&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style=""&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;1&lt;sup&gt;st&lt;/sup&gt; Beer Scout Group&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;5,849.56&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;4,428.17&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;Yes&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;Defer for further information&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style=""&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&lt;span class="SpellE"&gt;Offwell&lt;/span&gt; Recreation
+Ground and Village Hall&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;3,875&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;2,712&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;Yes&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;Defer for further information&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style=""&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&lt;span class="SpellE"&gt;Aylesbeare&lt;/span&gt; Village
+Hall&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;74,000&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;10,000&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;Yes&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style=""&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&lt;span class="SpellE"&gt;Umborne&lt;/span&gt; Village
+Hall&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;26,735.04&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;10,000&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;Yes&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;Agreed&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style=""&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;Musbury Village Hall&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;1,816&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;1,816&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;Not required&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;Defer for further information&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style=""&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&lt;span class="SpellE"&gt;Gittisham&lt;/span&gt; Parish
+Hall&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;2,835.81&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;2,835.81&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;Not Required&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;Defer for further information&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;tr style=""&gt;
+&lt;td style=
+"border:solid windowtext 1.0pt; border-top:none; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&lt;span class="SpellE"&gt;Awliscombe&lt;/span&gt; Parish
+Hall&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;2,720.50&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;&amp;pound;2,720.50&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;Not Required&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style=
+"border-top:none; border-left:none; border-bottom:solid windowtext 1.0pt; border-right:solid windowtext 1.0pt; padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal"&gt;Defer for further information&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/div&gt;
+   </minutesnonemptyhtmlbody>
+   <declarationcount>
+    0
+   </declarationcount>
+   <iscallin>
+    False
+   </iscallin>
+   <iscomment>
+    False
+   </iscomment>
+   <isdecision>
+    False
+   </isdecision>
+   <isdecisionpublished>
+    False
+   </isdecisionpublished>
+   <isminutepublished>
+    True
+   </isminutepublished>
+   <ispubliccanspeak>
+    False
+   </ispubliccanspeak>
+   <isrestricted>
+    False
+   </isrestricted>
+   <isdisplayallowed>
+    True
+   </isdisplayallowed>
+   <meetingdate>
+    30/03/2026
+   </meetingdate>
+   <meetingtime>
+    6.00 pm
+   </meetingtime>
+   <minutesitemnumber>
+    10
+   </minutesitemnumber>
+   <minutesitemsubnumber>
+   </minutesitemsubnumber>
+   <preferreddate>
+    30/03/2026
+   </preferreddate>
+   <refertocommittee>
+    Community Grant Panel
+   </refertocommittee>
+   <linkeddocuments>
+    <linkeddoc>
+     <attachmentid>
+      30490
+     </attachmentid>
+     <title>
+      Report for CGP 30 March 2026
+     </title>
+     <isurl>
+      False
+     </isurl>
+     <url>
+      https://democracy.eastdevon.gov.uk/mgConvert2PDF.aspx?ID=30490
+     </url>
+     <isrestricted>
+      False
+     </isrestricted>
+     <restrictionsRef>
+     </restrictionsRef>
+     <itemnum>
+      1
+     </itemnum>
+     <publicationdate>
+      23/03/2026
+     </publicationdate>
+     <meetingdate>
+      30/03/2026
+     </meetingdate>
+     <decisiondate>
+      30/03/2026
+     </decisiondate>
+     <committeetitle>
+      Community Grant Panel
+     </committeetitle>
+     <isdecisionattachment>
+      False
+     </isdecisionattachment>
+     <ownertitle>
+      Community Grant Funding Awards 2025/26
+     </ownertitle>
+    </linkeddoc>
+    <linkeddoc>
+     <attachmentid>
+      30492
+     </attachmentid>
+     <title>
+      Appendix C Dunkeswell_redacted
+     </title>
+     <isurl>
+      False
+     </isurl>
+     <url>
+     </url>
+     <isrestricted>
+      True
+     </isrestricted>
+     <restrictionsRef>
+     </restrictionsRef>
+     <itemnum>
+      2
+     </itemnum>
+     <publicationdate>
+      23/03/2026
+     </publicationdate>
+     <meetingdate>
+      30/03/2026
+     </meetingdate>
+     <decisiondate>
+      30/03/2026
+     </decisiondate>
+     <committeetitle>
+      Community Grant Panel
+     </committeetitle>
+     <isdecisionattachment>
+      False
+     </isdecisionattachment>
+     <ownertitle>
+      Community Grant Funding Awards 2025/26
+     </ownertitle>
+    </linkeddoc>
+    <linkeddoc>
+     <attachmentid>
+      30493
+     </attachmentid>
+     <title>
+      Appendix D Netherton Club Farway Village Hall_redacted
+     </title>
+     <isurl>
+      False
+     </isurl>
+     <url>
+     </url>
+     <isrestricted>
+      True
+     </isrestricted>
+     <restrictionsRef>
+     </restrictionsRef>
+     <itemnum>
+      3
+     </itemnum>
+     <publicationdate>
+      23/03/2026
+     </publicationdate>
+     <meetingdate>
+      30/03/2026
+     </meetingdate>
+     <decisiondate>
+      30/03/2026
+     </decisiondate>
+     <committeetitle>
+      Community Grant Panel
+     </committeetitle>
+     <isdecisionattachment>
+      False
+     </isdecisionattachment>
+     <ownertitle>
+      Community Grant Funding Awards 2025/26
+     </ownertitle>
+    </linkeddoc>
+    <linkeddoc>
+     <attachmentid>
+      30494
+     </attachmentid>
+     <title>
+      Appendix E Escot Village Hall_redacted
+     </title>
+     <isurl>
+      False
+     </isurl>
+     <url>
+     </url>
+     <isrestricted>
+      True
+     </isrestricted>
+     <restrictionsRef>
+     </restrictionsRef>
+     <itemnum>
+      4
+     </itemnum>
+     <publicationdate>
+      23/03/2026
+     </publicationdate>
+     <meetingdate>
+      30/03/2026
+     </meetingdate>
+     <decisiondate>
+      30/03/2026
+     </decisiondate>
+     <committeetitle>
+      Community Grant Panel
+     </committeetitle>
+     <isdecisionattachment>
+      False
+     </isdecisionattachment>
+     <ownertitle>
+      Community Grant Funding Awards 2025/26
+     </ownertitle>
+    </linkeddoc>
+    <linkeddoc>
+     <attachmentid>
+      30495
+     </attachmentid>
+     <title>
+      Appendix F Northleigh_redacted
+     </title>
+     <isurl>
+      False
+     </isurl>
+     <url>
+     </url>
+     <isrestricted>
+      True
+     </isrestricted>
+     <restrictionsRef>
+     </restrictionsRef>
+     <itemnum>
+      5
+     </itemnum>
+     <publicationdate>
+      23/03/2026
+     </publicationdate>
+     <meetingdate>
+      30/03/2026
+     </meetingdate>
+     <decisiondate>
+      30/03/2026
+     </decisiondate>
+     <committeetitle>
+      Community Grant Panel
+     </committeetitle>
+     <isdecisionattachment>
+      False
+     </isdecisionattachment>
+     <ownertitle>
+      Community Grant Funding Awards 2025/26
+     </ownertitle>
+    </linkeddoc>
+    <linkeddoc>
+     <attachmentid>
+      30496
+     </attachmentid>
+     <title>
+      Appendix G 1 Beer Scouts Group_redacted
+     </title>
+     <isurl>
+      False
+     </isurl>
+     <url>
+     </url>
+     <isrestricted>
+      True
+     </isrestricted>
+     <restrictionsRef>
+     </restrictionsRef>
+     <itemnum>
+      6
+     </itemnum>
+     <publicationdate>
+      23/03/2026
+     </publicationdate>
+     <meetingdate>
+      30/03/2026
+     </meetingdate>
+     <decisiondate>
+      30/03/2026
+     </decisiondate>
+     <committeetitle>
+      Community Grant Panel
+     </committeetitle>
+     <isdecisionattachment>
+      False
+     </isdecisionattachment>
+     <ownertitle>
+      Community Grant Funding Awards 2025/26
+     </ownertitle>
+    </linkeddoc>
+    <linkeddoc>
+     <attachmentid>
+      30497
+     </attachmentid>
+     <title>
+      Appendix H Offwell_redacted
+     </title>
+     <isurl>
+      False
+     </isurl>
+     <url>
+     </url>
+     <isrestricted>
+      True
+     </isrestricted>
+     <restrictionsRef>
+     </restrictionsRef>
+     <itemnum>
+      7
+     </itemnum>
+     <publicationdate>
+      23/03/2026
+     </publicationdate>
+     <meetingdate>
+      30/03/2026
+     </meetingdate>
+     <decisiondate>
+      30/03/2026
+     </decisiondate>
+     <committeetitle>
+      Community Grant Panel
+     </committeetitle>
+     <isdecisionattachment>
+      False
+     </isdecisionattachment>
+     <ownertitle>
+      Community Grant Funding Awards 2025/26
+     </ownertitle>
+    </linkeddoc>
+    <linkeddoc>
+     <attachmentid>
+      30498
+     </attachmentid>
+     <title>
+      Appendix I Aylesbeare_redacted
+     </title>
+     <isurl>
+      False
+     </isurl>
+     <url>
+     </url>
+     <isrestricted>
+      True
+     </isrestricted>
+     <restrictionsRef>
+     </restrictionsRef>
+     <itemnum>
+      8
+     </itemnum>
+     <publicationdate>
+      23/03/2026
+     </publicationdate>
+     <meetingdate>
+      30/03/2026
+     </meetingdate>
+     <decisiondate>
+      30/03/2026
+     </decisiondate>
+     <committeetitle>
+      Community Grant Panel
+     </committeetitle>
+     <isdecisionattachment>
+      False
+     </isdecisionattachment>
+     <ownertitle>
+      Community Grant Funding Awards 2025/26
+     </ownertitle>
+    </linkeddoc>
+    <linkeddoc>
+     <attachmentid>
+      30499
+     </attachmentid>
+     <title>
+      Appendix J Umbourne_redacted
+     </title>
+     <isurl>
+      False
+     </isurl>
+     <url>
+     </url>
+     <isrestricted>
+      True
+     </isrestricted>
+     <restrictionsRef>
+     </restrictionsRef>
+     <itemnum>
+      9
+     </itemnum>
+     <publicationdate>
+      23/03/2026
+     </publicationdate>
+     <meetingdate>
+      30/03/2026
+     </meetingdate>
+     <decisiondate>
+      30/03/2026
+     </decisiondate>
+     <committeetitle>
+      Community Grant Panel
+     </committeetitle>
+     <isdecisionattachment>
+      False
+     </isdecisionattachment>
+     <ownertitle>
+      Community Grant Funding Awards 2025/26
+     </ownertitle>
+    </linkeddoc>
+    <linkeddoc>
+     <attachmentid>
+      30500
+     </attachmentid>
+     <title>
+      Appendix K Musbury_redacted
+     </title>
+     <isurl>
+      False
+     </isurl>
+     <url>
+     </url>
+     <isrestricted>
+      True
+     </isrestricted>
+     <restrictionsRef>
+     </restrictionsRef>
+     <itemnum>
+      10
+     </itemnum>
+     <publicationdate>
+      23/03/2026
+     </publicationdate>
+     <meetingdate>
+      30/03/2026
+     </meetingdate>
+     <decisiondate>
+      30/03/2026
+     </decisiondate>
+     <committeetitle>
+      Community Grant Panel
+     </committeetitle>
+     <isdecisionattachment>
+      False
+     </isdecisionattachment>
+     <ownertitle>
+      Community Grant Funding Awards 2025/26
+     </ownertitle>
+    </linkeddoc>
+    <linkeddoc>
+     <attachmentid>
+      30501
+     </attachmentid>
+     <title>
+      Appendix L Gittisham_redacted
+     </title>
+     <isurl>
+      False
+     </isurl>
+     <url>
+     </url>
+     <isrestricted>
+      True
+     </isrestricted>
+     <restrictionsRef>
+     </restrictionsRef>
+     <itemnum>
+      11
+     </itemnum>
+     <publicationdate>
+      23/03/2026
+     </publicationdate>
+     <meetingdate>
+      30/03/2026
+     </meetingdate>
+     <decisiondate>
+      30/03/2026
+     </decisiondate>
+     <committeetitle>
+      Community Grant Panel
+     </committeetitle>
+     <isdecisionattachment>
+      False
+     </isdecisionattachment>
+     <ownertitle>
+      Community Grant Funding Awards 2025/26
+     </ownertitle>
+    </linkeddoc>
+   </linkeddocuments>
+  </agendaitem>
+ </agendaitems>
+ <attendees>
+  <attendee attendance="Present, as expected" keyposts="Portfolio Holder Finance" memberid="478" membertype="U" name="Councillor Sam Hawkins" politicalparty="I" roledescription="Chair" ward="C">
+   <url>
+    https://democracy.eastdevon.gov.uk/mgUserInfo.aspx?UID=478
+   </url>
+   <photosmallurl>
+    https://democracy.eastdevon.gov.uk/UserData/8/7/4/Info00000478/smallpic.jpg
+   </photosmallurl>
+   <photobigurl>
+    https://democracy.eastdevon.gov.uk/UserData/8/7/4/Info00000478/bigpic.jpg
+   </photobigurl>
+  </attendee>
+  <attendee attendance="Present, as expected" memberid="495" membertype="U" name="Councillor Jessica Bailey" politicalparty="I" roledescription="Committee Member" ward="WHA">
+   <url>
+    https://democracy.eastdevon.gov.uk/mgUserInfo.aspx?UID=495
+   </url>
+   <photosmallurl>
+    https://democracy.eastdevon.gov.uk/UserData/5/9/4/Info00000495/smallpic.jpg
+   </photosmallurl>
+   <photobigurl>
+    https://democracy.eastdevon.gov.uk/UserData/5/9/4/Info00000495/bigpic.jpg
+   </photobigurl>
+  </attendee>
+  <attendee attendance="Present, as expected" keyposts="Deputy Leader of Conservative Group" memberid="144" membertype="U" name="Councillor Stuart Hughes" politicalparty="CON" roledescription="Committee Member" ward="ss">
+   <url>
+    https://democracy.eastdevon.gov.uk/mgUserInfo.aspx?UID=144
+   </url>
+   <photosmallurl>
+    https://democracy.eastdevon.gov.uk/UserData/4/4/1/Info00000144/smallpic.jpg
+   </photosmallurl>
+   <photobigurl>
+    https://democracy.eastdevon.gov.uk/UserData/4/4/1/Info00000144/bigpic.jpg
+   </photobigurl>
+  </attendee>
+  <attendee attendance="Present, as expected" keyposts="Deputy Leader &amp; Portfolio Holder Corporate, Council &amp; External Engagement" memberid="493" membertype="U" name="Councillor John Loudoun" politicalparty="I" roledescription="Committee Member" ward="sr">
+   <url>
+    https://democracy.eastdevon.gov.uk/mgUserInfo.aspx?UID=493
+   </url>
+   <photosmallurl>
+    https://democracy.eastdevon.gov.uk/UserData/3/9/4/Info00000493/smallpic.jpg
+   </photosmallurl>
+   <photobigurl>
+    https://democracy.eastdevon.gov.uk/UserData/3/9/4/Info00000493/bigpic.jpg
+   </photobigurl>
+  </attendee>
+  <attendee attendance="Present, as expected" memberid="157" membertype="U" name="Councillor Helen Parr" politicalparty="CON" roledescription="Committee Member" ward="CoV">
+   <url>
+    https://democracy.eastdevon.gov.uk/mgUserInfo.aspx?UID=157
+   </url>
+   <photosmallurl>
+    https://democracy.eastdevon.gov.uk/UserData/7/5/1/Info00000157/smallpic.jpg
+   </photosmallurl>
+   <photobigurl>
+    https://democracy.eastdevon.gov.uk/UserData/7/5/1/Info00000157/bigpic.jpg
+   </photobigurl>
+  </attendee>
+  <attendee attendance="Present, as expected" keyposts="Portfolio Holder Communications and Democracy" memberid="472" membertype="U" name="Councillor Sarah Jackson" politicalparty="I" roledescription="Committee Member" ward="A">
+   <url>
+    https://democracy.eastdevon.gov.uk/mgUserInfo.aspx?UID=472
+   </url>
+   <photosmallurl>
+    https://democracy.eastdevon.gov.uk/UserData/2/7/4/Info00000472/smallpic.jpg
+   </photosmallurl>
+   <photobigurl>
+    https://democracy.eastdevon.gov.uk/UserData/2/7/4/Info00000472/bigpic.jpg
+   </photobigurl>
+  </attendee>
+  <attendee attendance="Apologies" keyposts="Member Champion for Sports and Leisure" memberid="820" membertype="U" name="Councillor Simon Smith" politicalparty="I" roledescription="Committee Member" ward="A">
+   <url>
+    https://democracy.eastdevon.gov.uk/mgUserInfo.aspx?UID=820
+   </url>
+   <photosmallurl>
+    https://democracy.eastdevon.gov.uk/UserData/0/2/8/Info00000820/smallpic.jpg
+   </photosmallurl>
+   <photobigurl>
+    https://democracy.eastdevon.gov.uk/UserData/0/2/8/Info00000820/bigpic.jpg
+   </photobigurl>
+  </attendee>
+  <attendee attendance="In attendance" keyposts="Benefits Manager" memberid="572" membertype="U" name="Sharon Church" roledescription="Officer">
+  </attendee>
+  <attendee attendance="In attendance" keyposts="Democratic Services Officer" memberid="111" membertype="U" name="Debbie Meakin" roledescription="Officer">
+  </attendee>
+ </attendees>
+</meeting>

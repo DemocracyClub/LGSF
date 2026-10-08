@@ -28,6 +28,7 @@ class BaseSettings(object):
             "councillors",
             "minutes",
             "decisions",
+            "embeddings",
             "templates",
             "metadata",
             "sync",
