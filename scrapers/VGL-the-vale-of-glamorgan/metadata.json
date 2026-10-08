@@ -16,6 +16,10 @@
         "councillors": {
             "base_url": "https://www.valeofglamorgan.gov.uk/en/our_council/Council-Structure/councillors/Councillors.aspx",
             "cms_type": "Custom HTML"
+        },
+        "decisions": {
+            "base_url": "https://www.valeofglamorgan.gov.uk/en/our_council/Council-Structure/minutes,_agendas_and_reports/Decision-Notices/Council/Council.aspx",
+            "cms_type": "Custom HTML"
         }
     }
 }
