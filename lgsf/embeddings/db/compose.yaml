@@ -1,0 +1,23 @@
+# Postgres with pgvector, for loading LGSF chunks and embeddings into.
+#
+#   docker compose -f lgsf/embeddings/db/compose.yaml up -d
+#
+# On port 5433, so it doesn't clash with a system Postgres on 5432.
+#
+# The project name would otherwise be this directory's name, "db". It
+# names the container and the data volume (embeddings-db_pgdata).
+name: embeddings-db
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: embeddings
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
