@@ -106,9 +106,11 @@ class BgeM3Embedder(EmbedderBase):
     """
     BAAI/bge-m3, run locally on the CPU with sentence-transformers.
 
-    The first run downloads the model, about 2.3GB, to
-    ~/.cache/huggingface. bge-m3's dense vectors don't use a query
-    instruction, so queries are encoded the same way as documents.
+    The first run downloads about 4.5GB to ~/.cache/huggingface. That
+    is two copies of the weights: pytorch_model.bin from the main
+    branch, and model.safetensors from a conversion pull request on the
+    Hub. bge-m3's dense vectors don't use a query instruction, so
+    queries are encoded the same way as documents.
     """
 
     name = "bge-m3"

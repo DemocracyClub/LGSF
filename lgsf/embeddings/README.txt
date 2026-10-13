@@ -87,8 +87,11 @@ Writes data/<COUNCIL>/Embeddings/minutes.jsonl, one chunk per line.
             about 20 seconds.
 
   bge-m3    BAAI/bge-m3, run locally on the CPU. The first run downloads
-            about 2.3GB to ~/.cache/huggingface. EDE takes about 4 minutes
-            on a 16-core CPU, and all councils about 50 minutes.
+            about 4.5GB to ~/.cache/huggingface: two copies of the
+            weights, pytorch_model.bin from the main branch and
+            model.safetensors from a conversion pull request on the Hub.
+            EDE takes about 4 minutes on a 16-core CPU, and all councils
+            about 50 minutes.
 
 Both models give vectors of 1024 dimensions, normalised to unit length, so
 compare them by cosine distance.

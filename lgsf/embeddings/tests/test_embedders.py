@@ -1,7 +1,7 @@
 """
 TitanV2Embedder against a fake Bedrock client.
 
-BgeM3Embedder isn't tested here: it needs the 2.3GB model download.
+BgeM3Embedder isn't tested here: it needs the 4.5GB model download.
 """
 
 import io
