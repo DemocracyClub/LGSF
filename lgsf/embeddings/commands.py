@@ -1,5 +1,10 @@
+import datetime
+import os
+import sys
 import time
 
+from rich.markup import escape
+from rich.padding import Padding
 from rich.progress import BarColumn, Progress, TimeElapsedColumn
 from rich.table import Table
 
@@ -7,6 +12,15 @@ from lgsf.commands.base import Council, CouncilFilteringCommandBase
 from lgsf.conf import settings
 from lgsf.embeddings.chunkers import ChunkerBase, ModGovMinutesChunker
 from lgsf.embeddings.embedders import EMBEDDERS, EmbedderBase
+from lgsf.embeddings.search import (
+    DEFAULT_DATABASE_URL,
+    SearchFilters,
+    connect,
+    has_table,
+    search,
+    snippet,
+    table_name,
+)
 from lgsf.embeddings.vectors import (
     embed_chunks,
     embeddings_path,
@@ -19,7 +33,8 @@ from lgsf.path_utils import data_abs_path
 
 class Command(CouncilFilteringCommandBase):
     """
-    Chunk councils' scraped minutes, and create embeddings of the chunks.
+    Chunk councils' scraped minutes, create embeddings of the chunks, and
+    search them.
 
     `chunk` reads the data already in data/<COUNCIL>/ and writes
     data/<COUNCIL>/Embeddings/<type>.jsonl. Nothing is fetched.
@@ -27,14 +42,26 @@ class Command(CouncilFilteringCommandBase):
     `embed` reads those chunk files and writes
     data/<COUNCIL>/Embeddings/<model>/<type>.jsonl. A chunk embedded
     before, by the same model and with the same text, keeps its embedding
-    rather than being sent to the model again. It needs the embeddings
-    dependency group: `uv sync --group embeddings`.
+    rather than being sent to the model again.
+
+    `search` searches the embeddings loaded by lgsf/embeddings/db/load.py
+    with a question. It shows the closest agenda items first, one chunk
+    from each, with the start of its text and a link to the meeting. With
+    no question, it asks for one question after another until it's given
+    a blank line. bge-m3 takes several seconds to load, so this loads it
+    once for all of them. It needs the database from
+    lgsf/embeddings/db/compose.yaml or DATABASE_URL.
+
+    `embed` and `search` need the embeddings dependency group:
+    `uv sync --group embeddings`.
 
     Usage:
         python manage.py embeddings chunk --council EDE
         python manage.py embeddings chunk --all-councils
         AWS_PROFILE=dev-lgsf-dc python manage.py embeddings embed --model titan-v2 --council EDE
         python manage.py embeddings embed --model bge-m3 --all-councils
+        AWS_PROFILE=dev-lgsf-dc python manage.py embeddings search --model titan-v2 "how much is council tax going up"
+        python manage.py embeddings search --model bge-m3 --council EDE --since 2026-01-01
     """
 
     command_name = "embeddings"
@@ -45,22 +72,28 @@ class Command(CouncilFilteringCommandBase):
         "ModernGov": ModGovMinutesChunker,
     }
 
+    #: How much of each search result's text is shown, in characters,
+    #: unless --full is given.
+    snippet_length = 300
+
     def add_arguments(self, parser):
         # So that the subcommands' usage reads "manage.py embeddings chunk".
         parser.prog = f"{parser.prog} {self.command_name}"
         subparsers = parser.add_subparsers(dest="subcommand", required=True)
 
-        chunk = subparsers.add_parser("chunk", help="Chunk councils' scraped minutes")
-        embed = subparsers.add_parser(
+        chunk_parser = subparsers.add_parser(
+            "chunk", help="Chunk councils' scraped minutes"
+        )
+        embed_parser = subparsers.add_parser(
             "embed", help="Create embeddings of councils' chunks with one model"
         )
-        embed.add_argument(
+        embed_parser.add_argument(
             "--model",
             required=True,
             choices=sorted(EMBEDDERS),
             help="The embedding model to use",
         )
-        for subparser, verb in ((chunk, "chunk"), (embed, "embed")):
+        for subparser, verb in ((chunk_parser, "chunk"), (embed_parser, "embed")):
             councils = subparser.add_mutually_exclusive_group(required=True)
             councils.add_argument(
                 "--council",
@@ -72,6 +105,53 @@ class Command(CouncilFilteringCommandBase):
                 action="store_true",
                 help=f"{verb.capitalize()} all current councils",
             )
+
+        search_parser = subparsers.add_parser(
+            "search", help="Search the embeddings in Postgres with a question"
+        )
+        search_parser.add_argument(
+            "question",
+            nargs="?",
+            help="What to search for. Leave out to be asked for questions "
+            "one after another.",
+        )
+        search_parser.add_argument(
+            "--model",
+            required=True,
+            choices=sorted(EMBEDDERS),
+            help="The model whose embeddings to search",
+        )
+        search_parser.add_argument(
+            "--council",
+            help="Only these council codes (comma-separated)",
+        )
+        search_parser.add_argument(
+            "--since",
+            type=datetime.date.fromisoformat,
+            help="Only meetings on or after this date (YYYY-MM-DD)",
+        )
+        search_parser.add_argument(
+            "--until",
+            type=datetime.date.fromisoformat,
+            help="Only meetings on or before this date (YYYY-MM-DD)",
+        )
+        search_parser.add_argument(
+            "--limit",
+            type=int,
+            default=10,
+            help="How many results to show (default 10)",
+        )
+        search_parser.add_argument(
+            "--every-chunk",
+            action="store_true",
+            help="Show every matching chunk, not just the closest one from "
+            "each agenda item",
+        )
+        search_parser.add_argument(
+            "--full",
+            action="store_true",
+            help="Show each result's whole text",
+        )
 
     @property
     def councils_to_run(self) -> list[Council]:
@@ -85,9 +165,12 @@ class Command(CouncilFilteringCommandBase):
 
     def handle(self, options):
         self.options = options
-        if options["subcommand"] == "chunk":
-            return self.chunk()
-        return self.embed()
+        handlers = {
+            "chunk": self.handle_chunk,
+            "embed": self.handle_embed,
+            "search": self.handle_search,
+        }
+        return handlers[options["subcommand"]]()
 
     def run_councils(self, description, run_council):
         """
@@ -129,7 +212,7 @@ class Command(CouncilFilteringCommandBase):
 
     # manage.py embeddings chunk
 
-    def chunk(self):
+    def handle_chunk(self):
         results = self.run_councils("Chunking", self.chunk_council)
         self.output_chunk_summary(results)
         return 0
@@ -201,7 +284,7 @@ class Command(CouncilFilteringCommandBase):
 
     # manage.py embeddings embed
 
-    def embed(self):
+    def handle_embed(self):
         try:
             embedder = EMBEDDERS[self.options["model"]]()
         except ImportError as error:
@@ -297,3 +380,94 @@ class Command(CouncilFilteringCommandBase):
             )
 
         self.output_skipped(results)
+
+    # manage.py embeddings search
+
+    def handle_search(self):
+        try:
+            import psycopg
+        except ImportError as error:
+            self.parser.error(
+                f"{error.name} isn't installed. Run: uv sync --group embeddings"
+            )
+
+        model_name = self.options["model"]
+        filters = SearchFilters(
+            councils=[
+                code.strip().upper()
+                for code in (self.options["council"] or "").split(",")
+                if code.strip()
+            ],
+            since=self.options["since"],
+            until=self.options["until"],
+        )
+
+        try:
+            conn = connect(os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL))
+        except psycopg.OperationalError as error:
+            sys.exit(
+                f"Couldn't connect to the database: {error}\n"
+                "Start it with: docker compose -f lgsf/embeddings/db/compose.yaml up -d"
+            )
+        with conn:
+            # Checked before loading the model, which can take a while.
+            if not has_table(conn, model_name):
+                sys.exit(
+                    f"There's no {table_name(model_name)} table. Load it with:\n"
+                    f"  uv run lgsf/embeddings/db/load.py --data-dir data "
+                    f"--model {model_name}"
+                )
+            embedder = EMBEDDERS[model_name]()
+
+            if self.options["question"]:
+                self.output_search_results(
+                    conn, embedder, self.options["question"], filters
+                )
+                return 0
+
+            self.console.print(
+                f"[dim]Searching {table_name(model_name)}. A blank line stops.[/dim]"
+            )
+            while True:
+                try:
+                    question = self.console.input("[bold]Search:[/bold] ").strip()
+                except (EOFError, KeyboardInterrupt):
+                    self.console.print()
+                    break
+                if not question:
+                    break
+                self.output_search_results(conn, embedder, question, filters)
+        return 0
+
+    def output_search_results(self, conn, embedder, question, filters):
+        results = search(
+            conn,
+            embedder,
+            question,
+            filters=filters,
+            limit=self.options["limit"],
+            one_per_source=not self.options["every_chunk"],
+        )
+        if not results:
+            self.console.print("[yellow]No results[/yellow]\n")
+            return
+
+        for rank, result in enumerate(results, start=1):
+            # The context header: "<council> · <committee> · <date>", then
+            # "Minute <n>: <title>".
+            heading, _, detail = result.context.partition("\n")
+            self.console.print(
+                f"[bold]{rank:>2}.[/bold] [dim]{result.distance:.3f}[/dim]  "
+                f"[bold]{escape(heading)}[/bold]"
+            )
+            text = (
+                result.text
+                if self.options["full"]
+                else snippet(result.text, self.snippet_length)
+            )
+            lines = [escape(line) for line in (detail, text) if line]
+            url = result.metadata.get("meeting_url")
+            if url:
+                lines.append(f"[blue]{escape(url)}[/blue]")
+            lines.append(f"[dim]{escape(result.chunk_id)}[/dim]")
+            self.console.print(Padding("\n".join(lines), (0, 0, 1, 4)))
