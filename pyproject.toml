@@ -36,10 +36,27 @@ cdk = [
     "constructs>=10.5.0,<11.0.0",
     "aws-cdk-aws-lambda-python-alpha>=2.253.0,<3.0.0",
 ]
+embeddings = [
+    "boto3==1.43.109",
+    "psycopg[binary]==3.3.6",
+    "sentence-transformers==6.1.0",
+    "torch==2.14.1",
+]
 
 [tool.uv]
 package = false
 required-version = "==0.11.*"
+
+# torch from PyPI is the CUDA build on Linux, which brings several GB of
+# NVIDIA libraries. Embeddings run on CPU, so take torch from PyTorch's
+# CPU-only index instead.
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
 
 [tool.pytest.ini_options]
 testpaths = ["lgsf", "scrapers"]
