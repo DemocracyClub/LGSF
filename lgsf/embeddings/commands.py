@@ -1,3 +1,4 @@
+import argparse
 import datetime
 import os
 import sys
@@ -12,6 +13,7 @@ from lgsf.commands.base import Council, CouncilFilteringCommandBase
 from lgsf.conf import settings
 from lgsf.embeddings.chunkers import ChunkerBase, ModGovMinutesChunker
 from lgsf.embeddings.embedders import EMBEDDERS, EmbedderBase
+from lgsf.embeddings.models import ChunkType
 from lgsf.embeddings.search import (
     DEFAULT_DATABASE_URL,
     SearchFilters,
@@ -31,13 +33,31 @@ from lgsf.embeddings.vectors import (
 from lgsf.path_utils import data_abs_path
 
 
+def chunk_types(value: str) -> list[ChunkType]:
+    """The value of `chunk --type`: chunk types, comma-separated."""
+    types = []
+    for name in value.split(","):
+        name = name.strip()
+        if not name:
+            continue
+        try:
+            types.append(ChunkType(name))
+        except ValueError:
+            raise argparse.ArgumentTypeError(
+                f"{name!r} isn't a chunk type. Choose from: {', '.join(ChunkType)}"
+            )
+    return types
+
+
 class Command(CouncilFilteringCommandBase):
     """
-    Chunk councils' scraped minutes, create embeddings of the chunks, and
+    Chunk councils' scraped data, create embeddings of the chunks, and
     search them.
 
     `chunk` reads the data already in data/<COUNCIL>/ and writes
-    data/<COUNCIL>/Embeddings/<type>.jsonl. Nothing is fetched.
+    data/<COUNCIL>/Embeddings/<type>.jsonl, one file for each type of
+    data. Each run of `chunk` replaces the files of the types it's run
+    for, and leaves the others alone. Nothing is fetched.
 
     `embed` reads those chunk files and writes
     data/<COUNCIL>/Embeddings/<model>/<type>.jsonl. A chunk embedded
@@ -58,6 +78,7 @@ class Command(CouncilFilteringCommandBase):
     Usage:
         python manage.py embeddings chunk --council EDE
         python manage.py embeddings chunk --all-councils
+        python manage.py embeddings chunk --type minutes --since 2026-01-01 --council EDE
         AWS_PROFILE=dev-lgsf-dc python manage.py embeddings embed --model titan-v2 --council EDE
         python manage.py embeddings embed --model bge-m3 --all-councils
         AWS_PROFILE=dev-lgsf-dc python manage.py embeddings search --model titan-v2 "how much is council tax going up"
@@ -68,9 +89,12 @@ class Command(CouncilFilteringCommandBase):
 
     #: Chunker for each minutes CMS, from services.minutes.cms_type in the
     #: council's metadata.json.
-    CHUNKERS = {
+    MINUTES_CHUNKERS = {
         "ModernGov": ModGovMinutesChunker,
     }
+
+    #: Chunker for each other type of data. These don't depend on the CMS.
+    CHUNKERS = {}
 
     #: How much of each search result's text is shown, in characters,
     #: unless --full is given.
@@ -82,7 +106,24 @@ class Command(CouncilFilteringCommandBase):
         subparsers = parser.add_subparsers(dest="subcommand", required=True)
 
         chunk_parser = subparsers.add_parser(
-            "chunk", help="Chunk councils' scraped minutes"
+            "chunk", help="Chunk councils' scraped data"
+        )
+        chunk_parser.add_argument(
+            "--type",
+            type=chunk_types,
+            default=list(ChunkType),
+            help="The types of data to chunk, comma-separated, from: "
+            f"{', '.join(ChunkType)}. Default: all of them.",
+        )
+        chunk_parser.add_argument(
+            "--since",
+            type=datetime.date.fromisoformat,
+            help="Only chunk what's dated on or after this date (YYYY-MM-DD)",
+        )
+        chunk_parser.add_argument(
+            "--until",
+            type=datetime.date.fromisoformat,
+            help="Only chunk what's dated on or before this date (YYYY-MM-DD)",
         )
         embed_parser = subparsers.add_parser(
             "embed", help="Create embeddings of councils' chunks with one model"
@@ -203,36 +244,69 @@ class Command(CouncilFilteringCommandBase):
     def output_skipped(self, results):
         skipped = [r for r in results if "skipped" in r]
         if skipped:
+            with_type = any("type" in r for r in skipped)
             table = Table(title="Skipped")
             table.add_column("Council", style="magenta")
+            if with_type:
+                table.add_column("Type")
             table.add_column("Reason", style="yellow")
             for result in skipped:
-                table.add_row(result["council"], result["skipped"])
+                type_cell = [result.get("type", "")] if with_type else []
+                table.add_row(result["council"], *type_cell, result["skipped"])
             self.console.print(table)
 
     # manage.py embeddings chunk
 
     def handle_chunk(self):
-        results = self.run_councils("Chunking", self.chunk_council)
+        results = [
+            result
+            for council_results in self.run_councils("Chunking", self.chunk_council)
+            for result in council_results
+        ]
         self.output_chunk_summary(results)
         return 0
 
-    def chunk_council(self, council: Council) -> dict:
-        """Chunk and write one council's data, returning what to report."""
-        result = {"council": council.council_id}
+    def chunk_council(self, council: Council) -> list[dict]:
+        """
+        Chunk and write each type of one council's data chosen with --type,
+        returning what to report for each.
+        """
         try:
-            cms_type = council.service_metadata("minutes").get("cms_type")
+            council.metadata
         except FileNotFoundError:
-            result["skipped"] = "no such council"
-            return result
+            return [{"council": council.council_id, "skipped": "no such council"}]
+        return [
+            self.chunk_council_type(council, chunk_type)
+            for chunk_type in self.options["type"]
+        ]
 
-        chunker_cls = self.CHUNKERS.get(cms_type)
+    def chunker_for(self, council: Council, chunk_type: ChunkType):
+        """
+        The chunker class for one type of a council's data, or why there
+        isn't one.
+        """
+        if chunk_type == ChunkType.MINUTES:
+            cms_type = council.service_metadata("minutes").get("cms_type")
+            chunker_cls = self.MINUTES_CHUNKERS.get(cms_type)
+            if not chunker_cls:
+                return None, f"no chunker for {cms_type or 'unknown'} minutes"
+            return chunker_cls, None
+        return self.CHUNKERS[chunk_type], None
+
+    def chunk_council_type(self, council: Council, chunk_type: ChunkType) -> dict:
+        """Chunk and write one type of one council's data."""
+        result = {"council": council.council_id, "type": str(chunk_type)}
+        chunker_cls, reason = self.chunker_for(council, chunk_type)
         if not chunker_cls:
-            result["skipped"] = f"no chunker for {cms_type or 'unknown'} minutes"
+            result["skipped"] = reason
             return result
 
         try:
-            chunker = chunker_cls(council.council_id)
+            chunker = chunker_cls(
+                council.council_id,
+                since=self.options["since"],
+                until=self.options["until"],
+            )
         except FileNotFoundError:
             result["skipped"] = "no data"
             return result
@@ -245,6 +319,7 @@ class Command(CouncilFilteringCommandBase):
         result.update(
             {
                 "sources_read": chunker.sources_read,
+                "sources_name": chunker.sources_name,
                 "items": len({c.parent_id for c in chunks}),
                 "chunks": len(chunks),
                 "split_items": len({c.parent_id for c in chunks if c.chunk_count > 1}),
@@ -254,13 +329,14 @@ class Command(CouncilFilteringCommandBase):
         return result
 
     def output_chunk_summary(self, results):
-        results = sorted(results, key=lambda r: r["council"])
+        results = sorted(results, key=lambda r: (r["council"], r.get("type", "")))
         chunked = [r for r in results if "skipped" not in r]
 
         if chunked:
-            table = Table(title="Chunked minutes")
+            table = Table(title="Chunked")
             table.add_column("Council", style="magenta")
-            table.add_column("Meetings read", justify="right")
+            table.add_column("Type")
+            table.add_column("Read", justify="right")
             table.add_column("Items", justify="right")
             table.add_column("Chunks", justify="right")
             table.add_column("Items split", justify="right")
@@ -268,7 +344,8 @@ class Command(CouncilFilteringCommandBase):
             for result in chunked:
                 table.add_row(
                     result["council"],
-                    str(result["sources_read"]),
+                    result["type"],
+                    f"{result['sources_read']} {result['sources_name']}",
                     str(result["items"]),
                     str(result["chunks"]),
                     str(result["split_items"]),

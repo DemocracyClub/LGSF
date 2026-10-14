@@ -36,10 +36,23 @@ class ChunkerBase(abc.ABC):
     #: Where chunks are written, under the council's data directory.
     OUTPUT_DIR_NAME = "Embeddings"
 
-    def __init__(self, council_code: str, data_path: Path = None):
+    #: What one source record is, in the plural, for the summary.
+    sources_name = "sources"
+
+    def __init__(
+        self,
+        council_code: str,
+        data_path: Path = None,
+        since: datetime.date = None,
+        until: datetime.date = None,
+    ):
         self.council = council_code.upper()
         self.council_name = Council(self.council).name
         self.data_path = Path(data_path) if data_path else data_abs_path(self.council)
+        #: Only sources dated on or after `since` and on or before `until`
+        #: are chunked. Either can be None.
+        self.since = since
+        self.until = until
         #: How many source records (meetings, for minutes) the last call
         #: to get_chunks() read.
         self.sources_read = 0
@@ -55,6 +68,23 @@ class ChunkerBase(abc.ABC):
     @abc.abstractmethod
     def get_chunks(self) -> Sequence[Chunk]:
         """Every chunk for this council from this kind of source."""
+
+    def in_range(self, date: str | None) -> bool:
+        """
+        Whether an ISO date is within `since` and `until`.
+
+        A source with no date is in range only if neither is set.
+        """
+        if self.since is None and self.until is None:
+            return True
+        if not date:
+            return False
+        day = datetime.date.fromisoformat(date)
+        if self.since is not None and day < self.since:
+            return False
+        if self.until is not None and day > self.until:
+            return False
+        return True
 
     def parent_id(self, *parts) -> str:
         return ":".join([self.council, str(self.type), *parts])
@@ -132,6 +162,7 @@ class ModGovMinutesChunker(ChunkerBase):
 
     type = ChunkType.MINUTES
     source_type = SourceType.MODERNGOV_XML
+    sources_name = "meetings"
 
     #: Items with fewer words than this are mostly procedural ("There were
     #: none.") and aren't embedded, unless they're declarations of interest.
@@ -155,7 +186,8 @@ class ModGovMinutesChunker(ChunkerBase):
 
     def meetings(self):
         """
-        (meeting JSON, meeting XML) for each meeting with published minutes.
+        (meeting JSON, meeting XML) for each meeting in range with
+        published minutes.
 
         The JSON has what the XML lacks: the committee name and ID, and
         the meeting's web page.
@@ -163,6 +195,8 @@ class ModGovMinutesChunker(ChunkerBase):
         for json_path in sorted((self.minutes_path / "json").glob("*.json")):
             meeting = json.loads(json_path.read_text())
             if not meeting.get("minutes_published"):
+                continue
+            if not self.in_range(meeting.get("raw_date")):
                 continue
             xml_path = self.minutes_path / "raw" / f"{json_path.stem}.xml"
             if not xml_path.exists():

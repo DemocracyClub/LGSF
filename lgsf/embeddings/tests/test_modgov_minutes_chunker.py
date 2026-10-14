@@ -8,6 +8,7 @@ long item with a table, RESOLVED blocks and Word-numbered lists that's
 split into several chunks.
 """
 
+import datetime
 import json
 import shutil
 from pathlib import Path
@@ -157,3 +158,25 @@ def test_agenda_item_markers_are_removed(data_path):
         "minutesnonemptyhtmlbody"
     ).string = "<p><span>&lt;/AI5&gt;</span></p><p>&lt;AI6&gt;None.</p>"
     assert [c.text for c in chunker.chunks_for_item(meeting, item)] == ["None."]
+
+
+def test_date_range(data_path):
+    def read(**dates):
+        chunker = ModGovMinutesChunker("EDE", data_path=data_path, **dates)
+        return chunker.get_chunks(), chunker.sources_read
+
+    chunks, read_count = read(since=datetime.date(2026, 3, 30))
+    assert read_count == 1
+    assert len(by_item(chunks)) == 5
+    assert read(until=datetime.date(2026, 3, 30))[1] == 1
+    assert read(since=datetime.date(2026, 3, 31)) == ([], 0)
+    assert read(until=datetime.date(2026, 3, 29)) == ([], 0)
+
+
+def test_undated_sources_are_only_in_range_with_no_range(data_path):
+    chunker = ModGovMinutesChunker("EDE", data_path=data_path)
+    assert chunker.in_range(None)
+    chunker.until = datetime.date(2026, 12, 31)
+    assert not chunker.in_range(None)
+    assert chunker.in_range("2026-12-31")
+    assert not chunker.in_range("2027-01-01")
