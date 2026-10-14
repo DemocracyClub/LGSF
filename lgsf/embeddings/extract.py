@@ -284,12 +284,16 @@ def init_worker(threads: int, timeout: float):
     """
     for name in ("OMP_NUM_THREADS", "MKL_NUM_THREADS"):
         os.environ[name] = str(threads)
-    # The parent shows progress, so progress bars and informational
-    # messages from the workers only get in its way.
-    os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
-    os.environ["TRANSFORMERS_VERBOSITY"] = "error"
 
-    import logging
+    # Docling and the models it uses print their own messages: RapidOCR
+    # four lines each time it loads, and TableFormer warnings such as "1
+    # of 248 pdf cells matched neither a row nor a column band", some
+    # through loggers that set their own level. The parent shows progress,
+    # and the log has each file's errors, so the workers' output is
+    # thrown away.
+    devnull = os.open(os.devnull, os.O_WRONLY)
+    os.dup2(devnull, 1)
+    os.dup2(devnull, 2)
 
     import torch
     from docling.datamodel.accelerator_options import AcceleratorOptions
@@ -297,9 +301,6 @@ def init_worker(threads: int, timeout: float):
     from docling.datamodel.pipeline_options import PdfPipelineOptions
     from docling.document_converter import DocumentConverter, PdfFormatOption
 
-    # Such as "1 of 248 pdf cells matched neither a row nor a column band".
-    for name in ("", "docling", "RapidOCR"):
-        logging.getLogger(name).setLevel(logging.ERROR)
     torch.set_num_threads(threads)
 
     # Docling's default pipeline: its layout model, TableFormer for
