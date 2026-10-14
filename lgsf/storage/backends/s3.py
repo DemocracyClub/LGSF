@@ -146,6 +146,31 @@ class S3Storage(BaseStorage):
         """
         self.put(s3.relative_key(key), content.encode(self.encoding))
 
+    def read_now(self, key: str) -> Optional[str]:
+        """
+        One file's content straight from S3, outside any session, or None
+        if it isn't there.
+        """
+        try:
+            return self.get(s3.relative_key(key)).decode(self.encoding)
+        except FileNotFoundError:
+            return None
+
+    def exists_now(self, key: str) -> bool:
+        """
+        Whether one file is in S3, without listing the council's keys
+        (thousands of documents, for decisions) as a session would.
+        """
+        try:
+            self.client.head_object(
+                Bucket=self.bucket, Key=self.object_key(s3.relative_key(key))
+            )
+        except ClientError as e:
+            if s3.is_not_found(e):
+                return False
+            raise
+        return True
+
     def _start_session(self, **kwargs) -> StorageSession:
         if self._active is not None:
             raise RuntimeError("A session is already active on this S3Storage.")

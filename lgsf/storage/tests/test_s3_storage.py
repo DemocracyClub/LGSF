@@ -389,3 +389,18 @@ def test_documents_can_still_be_sent_elsewhere(monkeypatch, fake):
     assert isinstance(
         get_document_storage_backend("KIR", options={}), LocalDocumentStorage
     )
+
+
+def test_one_file_can_be_read_and_checked_without_listing(fake):
+    """For looking across hundreds of councils before a run starts."""
+    store = metadata_store(fake)
+    fake.objects["data/KIR/Decisions/_last-run"] = {
+        "Body": b"2026-10-01T10:00:00",
+        "Metadata": {},
+    }
+
+    assert store.read_now("_last-run") == "2026-10-01T10:00:00"
+    assert store.read_now("_index.json") is None
+    assert store.exists_now("_last-run")
+    assert not store.exists_now("_index.json")
+    assert fake.ops("list") == []
