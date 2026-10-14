@@ -25,6 +25,8 @@ def data_dir(tmp_path, monkeypatch):
     path = tmp_path / "data"
     shutil.copytree(FIXTURES, path)
     monkeypatch.setattr(settings, "DATA_DIR_NAME", str(path))
+    # Wide enough that Rich doesn't wrap the tables' cells.
+    monkeypatch.setenv("COLUMNS", "200")
     return path
 
 
@@ -40,15 +42,30 @@ def read_lines(path):
 
 def test_chunk_types():
     assert chunk_types("minutes") == [ChunkType.MINUTES]
+    assert chunk_types("decisions,minutes") == [ChunkType.DECISIONS, ChunkType.MINUTES]
     assert chunk_types(" minutes, ") == [ChunkType.MINUTES]
     with pytest.raises(argparse.ArgumentTypeError):
         chunk_types("agendas")
 
 
 def test_chunk_runs_every_type_by_default(data_dir):
-    output = run("chunk", "--council", "EDE")
+    output = run("chunk", "--council", "EDE,MAN")
     assert len(read_lines(data_dir / "EDE" / "Embeddings" / "minutes.jsonl")) > 1
+    assert len(read_lines(data_dir / "MAN" / "Embeddings" / "decisions.jsonl")) == 3
     assert "1 meetings" in output
+    assert "3 decisions" in output
+    # EDE has no decisions, and MAN no minutes, in the fixtures.
+    assert "no decisions data" in output
+    assert "no minutes data" in output
+
+
+def test_chunk_type_leaves_other_types_files_alone(data_dir):
+    embeddings_dir = data_dir / "MAN" / "Embeddings"
+    embeddings_dir.mkdir()
+    (embeddings_dir / "minutes.jsonl").write_text("not replaced\n")
+    run("chunk", "--council", "MAN", "--type", "decisions")
+    assert read_lines(embeddings_dir / "minutes.jsonl") == ["not replaced"]
+    assert len(read_lines(embeddings_dir / "decisions.jsonl")) == 3
 
 
 def test_chunk_since_and_until(data_dir):
@@ -57,3 +74,7 @@ def test_chunk_since_and_until(data_dir):
     assert read_lines(minutes_path) == []
     run("chunk", "--council", "EDE", "--until", "2026-03-30")
     assert len(read_lines(minutes_path)) > 1
+
+    decisions_path = data_dir / "MAN" / "Embeddings" / "decisions.jsonl"
+    run("chunk", "--council", "MAN", "--type", "decisions", "--since", "2026-01-01")
+    assert len(read_lines(decisions_path)) == 2

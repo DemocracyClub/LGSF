@@ -1,0 +1,33 @@
+{
+    "documents": [
+        {
+            "attachment_id": "s82290",
+            "content_hash": "sha256:c2f4f610deeeeb638b8d41f213d034837c8dbef17eab7c1aa05295845061ba3d",
+            "content_length": 265526,
+            "content_type": "application/pdf",
+            "etag": "\"c2f4f610deeeeb638b8d41f213d034837c8dbef17eab7c1aa05295845061ba3d\"",
+            "last_modified": "Tue, 06 Jan 2026 15:20:22 GMT",
+            "storage_backend": "s3",
+            "storage_key": "2026-01-12-3064-s82290.pdf",
+            "title": "Minutes of Previous Meeting",
+            "url": "https://mgenglish.pembrokeshire.gov.uk/documents/s82290/Minutes of Previous Meeting.pdf?LLL=0"
+        }
+    ],
+    "is_key_decision": false,
+    "is_officer_decision": false,
+    "is_subject_to_call_in": false,
+    "publication_date": "2026-01-12",
+    "purpose": null,
+    "raw_date": "2026-01-12",
+    "raw_decision_maker": "12/01/2026 - Cabinet",
+    "raw_identifier": "3064",
+    "raw_title": "Minutes of Previous Meeting",
+    "source": {
+        "etag": null,
+        "last_modified": null,
+        "url": "https://mgenglish.pembrokeshire.gov.uk/ieDecisionDetails.aspx?ID=3064&LLL=0"
+    },
+    "status": "Recommendations Approved",
+    "text": "The vote was taken by way of a show of hands and carried.\n\nDECISION\n\nThat the Minutes of the Cabinet Meeting held on 1 December 2025 be approved as a correct record.",
+    "url": "https://mgenglish.pembrokeshire.gov.uk/ieDecisionDetails.aspx?ID=3064&LLL=0"
+}

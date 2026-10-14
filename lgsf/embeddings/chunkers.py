@@ -98,13 +98,18 @@ class ChunkerBase(abc.ABC):
         metadata: dict = None,
         embed: bool = True,
     ) -> list[Chunk]:
-        """Split one source's text and wrap each part in a Chunk."""
+        """
+        Split one source's text and wrap each part in a Chunk.
+
+        A source with no text gets one chunk with no text, so that its
+        header can still be found.
+        """
         parts = split_text(
             text,
             max_length=self.max_length,
             overlap=self.overlap,
             length=self.length,
-        )
+        ) or [""]
         return [
             Chunk(
                 chunk_id=f"{parent_id}:{index}",
@@ -286,6 +291,139 @@ class ModGovMinutesChunker(ChunkerBase):
             if attachment_id and attachment_id not in ids:
                 ids.append(attachment_id)
         return ids
+
+
+class DecisionChunker(ChunkerBase):
+    """
+    Chunks the decisions the decisions scraper stores as
+    `Decisions/json/<date>-<identifier>.json`.
+
+    Every decisions scraper writes the same JSON, whatever the CMS, so
+    this one chunker reads them all. Each decision becomes one or more
+    chunks of its `purpose` followed by its `text`, which the scraper
+    writes as plain text with a blank line between paragraphs.
+    """
+
+    type = ChunkType.DECISIONS
+    source_type = SourceType.DECISION_JSON
+    sources_name = "decisions"
+
+    @property
+    def decisions_path(self) -> Path:
+        return self.data_path / "Decisions"
+
+    def has_data(self) -> bool:
+        return (self.decisions_path / "json").is_dir()
+
+    def decisions(self):
+        """Each decision taken on a date in range, as the scraper stored it."""
+        for json_path in sorted((self.decisions_path / "json").glob("*.json")):
+            decision = json.loads(json_path.read_text())
+            if self.in_range(decision.get("raw_date")):
+                yield decision
+
+    def get_chunks(self) -> list[Chunk]:
+        self.sources_read = 0
+        chunks = []
+        for decision in self.decisions():
+            self.sources_read += 1
+            chunks.extend(self.chunks_for_decision(decision))
+        return chunks
+
+    def chunks_for_decision(self, decision) -> list[Chunk]:
+        """
+        A decision with neither a purpose nor text gets one chunk of its
+        header alone. Its title and decision maker are all it has, apart
+        from the documents linked from it.
+        """
+        title = decision.get("raw_title") or ""
+        text = "\n\n".join(
+            part.strip()
+            for part in (decision.get("purpose"), decision.get("text"))
+            if part and part.strip()
+        )
+        metadata = {
+            "url": decision.get("url"),
+            "title": title,
+            "decision_maker": decision.get("raw_decision_maker"),
+            "status": decision.get("status"),
+            "publication_date": decision.get("publication_date"),
+            "is_key_decision": decision.get("is_key_decision"),
+            "is_officer_decision": decision.get("is_officer_decision"),
+            "is_subject_to_call_in": decision.get("is_subject_to_call_in"),
+            "document_hashes": self.document_hashes(decision),
+        }
+        return self.make_chunks(
+            parent_id=self.parent_id(decision["raw_identifier"]),
+            date=decision.get("raw_date"),
+            context=self.context(decision),
+            text=text,
+            metadata=metadata,
+            embed=not _PROCEDURAL_TITLE.match(" ".join(title.split())),
+        )
+
+    def context(self, decision):
+        """
+        For example:
+
+            Manchester City Council · Strategic Director (Corporate Services) & City Treasurer · 6 August 2026
+            Decision: P-1475 Domestic Abuse - Intersecting Needs Safe Accommodation (2026/06/09A)
+
+        A decision taken at a meeting has the meeting's date in front of
+        its decision maker, as in "12/01/2026 - Cabinet". That's left out,
+        because the header already has the date.
+        """
+        decision_maker = _MEETING_DATE.sub("", decision.get("raw_decision_maker") or "")
+        first_line = " · ".join(
+            part
+            for part in (
+                self.council_name,
+                decision_maker.strip(),
+                _date_in_words(decision.get("raw_date")),
+            )
+            if part
+        )
+        title = (decision.get("raw_title") or "").strip()
+        second_line = f"Decision: {title}" if title else ""
+        return "\n".join(line for line in (first_line, second_line) if line)
+
+    def document_hashes(self, decision):
+        """
+        The content_hash of each document linked from the decision, in the
+        order listed. These connect a decision to the chunks of its
+        documents. Documents that weren't downloaded have no hash.
+        """
+        hashes = []
+        for document in decision.get("documents") or []:
+            content_hash = document.get("content_hash")
+            if content_hash and content_hash not in hashes:
+                hashes.append(content_hash)
+        return hashes
+
+
+#: Titles of decisions that are part of running a meeting rather than a
+#: decision about anything: apologies, declarations of interest, approving
+#: the minutes and urgent business. These decisions aren't embedded. A
+#: title can start with an item number, as in "3. Minutes".
+_PROCEDURAL_TITLE = re.compile(
+    r"""
+    ^(?:[\d.()a-z]{1,4}\s*[-.:]?\s+)?
+    (?:
+        apologies(?:\s+for\s+absence)?
+        | (?:declarations?|disclosures?)\s+of\s+
+          (?:personal\s+(?:and|&)\s+prejudicial\s+)?interests?(?:\s*\(.*\))?
+        | minutes(?:\s+of\s+(?:the\s+)?previous\s+meetings?)?
+        | urgent\s+(?:items|matters|business)(?:\s+as\s+agreed\s+by\s+the\s+chair)?
+        | any\s+items\s+that\s+the\s+chair\s+has\s+decided\s+are\s+urgent
+    )
+    \.?$
+    """,
+    re.IGNORECASE | re.VERBOSE,
+)
+
+#: The date of the meeting a decision was taken at, in front of its
+#: decision maker: "12/01/2026 - Cabinet".
+_MEETING_DATE = re.compile(r"^\s*\d{1,2}/\d{1,2}/\d{4}\s*-\s*")
 
 
 #: ModernGov marks where each agenda item starts and ends in the document

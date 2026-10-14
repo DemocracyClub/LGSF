@@ -8,6 +8,7 @@ class ChunkType(StrEnum):
     """The kind of council record a chunk's text comes from."""
 
     MINUTES = "minutes"
+    DECISIONS = "decisions"
 
 
 class SourceType(StrEnum):
@@ -15,6 +16,9 @@ class SourceType(StrEnum):
 
     #: Agenda item minutes embedded as HTML in ModernGov's GetMeeting XML.
     MODERNGOV_XML = "moderngov_xml"
+    #: The JSON the decisions scraper writes for each decision. Every
+    #: decisions scraper writes the same fields, whatever the CMS.
+    DECISION_JSON = "decision_json"
 
 
 @dataclass
@@ -53,7 +57,9 @@ class Chunk:
 
     @property
     def embed_text(self):
-        return f"{self.context}\n\n{self.text}"
+        # A chunk can be the header alone, for a source with nothing more
+        # than its title.
+        return "\n\n".join(part for part in (self.context, self.text) if part)
 
     @property
     def text_hash(self):

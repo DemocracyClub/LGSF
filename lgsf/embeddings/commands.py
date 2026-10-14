@@ -11,7 +11,11 @@ from rich.table import Table
 
 from lgsf.commands.base import Council, CouncilFilteringCommandBase
 from lgsf.conf import settings
-from lgsf.embeddings.chunkers import ChunkerBase, ModGovMinutesChunker
+from lgsf.embeddings.chunkers import (
+    ChunkerBase,
+    DecisionChunker,
+    ModGovMinutesChunker,
+)
 from lgsf.embeddings.embedders import EMBEDDERS, EmbedderBase
 from lgsf.embeddings.models import ChunkType
 from lgsf.embeddings.search import (
@@ -78,7 +82,7 @@ class Command(CouncilFilteringCommandBase):
     Usage:
         python manage.py embeddings chunk --council EDE
         python manage.py embeddings chunk --all-councils
-        python manage.py embeddings chunk --type minutes --since 2026-01-01 --council EDE
+        python manage.py embeddings chunk --type decisions --since 2026-01-01 --council MAN,PEM
         AWS_PROFILE=dev-lgsf-dc python manage.py embeddings embed --model titan-v2 --council EDE
         python manage.py embeddings embed --model bge-m3 --all-councils
         AWS_PROFILE=dev-lgsf-dc python manage.py embeddings search --model titan-v2 "how much is council tax going up"
@@ -93,8 +97,11 @@ class Command(CouncilFilteringCommandBase):
         "ModernGov": ModGovMinutesChunker,
     }
 
-    #: Chunker for each other type of data. These don't depend on the CMS.
-    CHUNKERS = {}
+    #: Chunker for each other type of data. These don't depend on the CMS:
+    #: every decisions scraper writes the same JSON.
+    CHUNKERS = {
+        ChunkType.DECISIONS: DecisionChunker,
+    }
 
     #: How much of each search result's text is shown, in characters,
     #: unless --full is given.

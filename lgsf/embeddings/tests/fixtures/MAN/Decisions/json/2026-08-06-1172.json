@@ -1,0 +1,33 @@
+{
+    "documents": [
+        {
+            "attachment_id": "s65106",
+            "content_hash": "sha256:98e2faaa9eb4bb6ef4228d195741b9e86422805963dd641cc9a4fa72869ecee7",
+            "content_length": 90680,
+            "content_type": "application/pdf",
+            "etag": "\"98e2faaa9eb4bb6ef4228d195741b9e86422805963dd641cc9a4fa72869ecee7\"",
+            "last_modified": "Wed, 19 Aug 2026 10:14:32 GMT",
+            "storage_backend": "s3",
+            "storage_key": "2026-08-06-1172-s65106.pdf",
+            "title": "D3 P-1475 Domestic Abuse - Intersecting Needs Safe Accommodation",
+            "url": "https://democracy.manchester.gov.uk/documents/s65106/D3 P-1475 Domestic Abuse - Intersecting Needs Safe Accommodation.pdf"
+        }
+    ],
+    "is_key_decision": true,
+    "is_officer_decision": true,
+    "is_subject_to_call_in": true,
+    "publication_date": "2026-08-19",
+    "purpose": "A contract for the provision of safe accommodation for victims and survivors of domestic violence and abuse, who have needs intersecting to their experience of domestic violence and abuse. The provision consists of twenty units of self-contained accommodation, with domestic violence and abuse recovery support.",
+    "raw_date": "2026-08-06",
+    "raw_decision_maker": "Strategic Director (Corporate Services) & City Treasurer",
+    "raw_identifier": "1172",
+    "raw_title": "P-1475 Domestic Abuse - Intersecting Needs Safe Accommodation (2026/06/09A)",
+    "source": {
+        "etag": null,
+        "last_modified": null,
+        "url": "https://democracy.manchester.gov.uk/ieDecisionDetails.aspx?ID=1172"
+    },
+    "status": "Recommendations Approved",
+    "text": "The appointment of a provider to provide Domestic Abuse - Intersecting Needs Safe Accommodation in response to unmet need identified through the Council's Domestic Abuse Needs Assessment and Domestic Abuse Strategy, with particular attention to victims and survivors whose experience of domestic abuse is compounded by complex or intersecting support needs.\n\nThe award of this contract will provide specialist safe accommodation and support for victims and survivors with intersecting needs.",
+    "url": "https://democracy.manchester.gov.uk/ieDecisionDetails.aspx?ID=1172"
+}

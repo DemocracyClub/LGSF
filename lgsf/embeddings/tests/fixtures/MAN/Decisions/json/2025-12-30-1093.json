@@ -1,0 +1,33 @@
+{
+    "documents": [
+        {
+            "attachment_id": "s60050",
+            "content_hash": "sha256:41e0b4f6d5a9f9e10eb6b655b363fe74436bd4becd2a72c46ddee98373fd3552",
+            "content_length": 150466,
+            "content_type": "application/pdf",
+            "etag": "\"41e0b4f6d5a9f9e10eb6b655b363fe74436bd4becd2a72c46ddee98373fd3552\"",
+            "last_modified": "Fri, 09 Jan 2026 12:46:21 GMT",
+            "storage_backend": "s3",
+            "storage_key": "2025-12-30-1093-s60050.pdf",
+            "title": "D3 Data Centre Facilities",
+            "url": "https://democracy.manchester.gov.uk/documents/s60050/D3 Data Centre Facilities.pdf"
+        }
+    ],
+    "is_key_decision": true,
+    "is_officer_decision": true,
+    "is_subject_to_call_in": true,
+    "publication_date": "2026-01-09",
+    "purpose": "To let a contract for 2+1 years for MCC's use of data centre facilities (head office in Hulme).",
+    "raw_date": "2025-12-30",
+    "raw_decision_maker": "Deputy Chief Executive",
+    "raw_identifier": "1093",
+    "raw_title": "Contract for the Provision of Data Centre Facilities (2025/10/31A)",
+    "source": {
+        "etag": null,
+        "last_modified": null,
+        "url": "https://democracy.manchester.gov.uk/ieDecisionDetails.aspx?ID=1093"
+    },
+    "status": "Recommendations Approved",
+    "text": "Approval granted to let a contract for 2+1 years for Manchester City Council's use of data centre facilities for secure and resilient hosting of critical ICT systems.",
+    "url": "https://democracy.manchester.gov.uk/ieDecisionDetails.aspx?ID=1093"
+}

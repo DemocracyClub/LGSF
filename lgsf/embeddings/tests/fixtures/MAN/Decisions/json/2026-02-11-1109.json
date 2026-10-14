@@ -1,0 +1,93 @@
+{
+    "documents": [
+        {
+            "attachment_id": "s60879",
+            "content_hash": "sha256:fba13397e9f0f4d1dc5b434198ebc4eb1c4145054142f65b84a529ce0963a1a0",
+            "content_length": 290079,
+            "content_type": "application/pdf",
+            "etag": "\"fba13397e9f0f4d1dc5b434198ebc4eb1c4145054142f65b84a529ce0963a1a0\"",
+            "last_modified": "Tue, 03 Feb 2026 13:02:39 GMT",
+            "storage_backend": "s3",
+            "storage_key": "2026-02-11-1109-s60879.pdf",
+            "title": "Adult Social Care 2026 Budget",
+            "url": "https://democracy.manchester.gov.uk/documents/s60879/Adult Social Care 2026 Budget.pdf"
+        },
+        {
+            "attachment_id": "s60880",
+            "content_hash": "sha256:5e800841bb655745b66bbfda0f14f914710ceae964f3e45c47acf58c4df7b4bb",
+            "content_length": 58799,
+            "content_type": "application/pdf",
+            "etag": "\"5e800841bb655745b66bbfda0f14f914710ceae964f3e45c47acf58c4df7b4bb\"",
+            "last_modified": "Tue, 03 Feb 2026 13:02:40 GMT",
+            "storage_backend": "s3",
+            "storage_key": "2026-02-11-1109-s60880.pdf",
+            "title": "Appendix 1 - Investment Already Assumed in the MTFP",
+            "url": "https://democracy.manchester.gov.uk/documents/s60880/Appendix 1 - Investment Already Assumed in the MTFP.pdf"
+        },
+        {
+            "attachment_id": "s60881",
+            "content_hash": "sha256:fd6ffe97c071f7c4fae0625476c68ab87964df472282a1a5862c3b2fa42f1123",
+            "content_length": 61538,
+            "content_type": "application/pdf",
+            "etag": "\"fd6ffe97c071f7c4fae0625476c68ab87964df472282a1a5862c3b2fa42f1123\"",
+            "last_modified": "Tue, 03 Feb 2026 13:02:40 GMT",
+            "storage_backend": "s3",
+            "storage_key": "2026-02-11-1109-s60881.pdf",
+            "title": "Appendix 2 - Value for Money Proposals",
+            "url": "https://democracy.manchester.gov.uk/documents/s60881/Appendix 2 - Value for Money Proposals.pdf"
+        },
+        {
+            "attachment_id": "s60882",
+            "content_hash": "sha256:3638ae81fd9a2192a6572b4af4aa6b695002773af3b929557153ab4958a745e0",
+            "content_length": 81193,
+            "content_type": "application/pdf",
+            "etag": "\"3638ae81fd9a2192a6572b4af4aa6b695002773af3b929557153ab4958a745e0\"",
+            "last_modified": "Tue, 03 Feb 2026 13:02:41 GMT",
+            "storage_backend": "s3",
+            "storage_key": "2026-02-11-1109-s60882.pdf",
+            "title": "Appendix 3 - Indicative Medium-Term Budget by Service Area",
+            "url": "https://democracy.manchester.gov.uk/documents/s60882/Appendix 3 - Indicative Medium-Term Budget by Service Area.pdf"
+        },
+        {
+            "attachment_id": "s60883",
+            "content_hash": "sha256:2257b34464ae567068e84bdb211b8576abdd0101660f2c409b7742ba5bb8107a",
+            "content_length": 61533,
+            "content_type": "application/pdf",
+            "etag": "\"2257b34464ae567068e84bdb211b8576abdd0101660f2c409b7742ba5bb8107a\"",
+            "last_modified": "Tue, 03 Feb 2026 13:02:41 GMT",
+            "storage_backend": "s3",
+            "storage_key": "2026-02-11-1109-s60883.pdf",
+            "title": "Appendix 4 - Indicative Grant Income",
+            "url": "https://democracy.manchester.gov.uk/documents/s60883/Appendix 4 - Indicative Grant Income.pdf"
+        },
+        {
+            "attachment_id": "s60884",
+            "content_hash": "sha256:510b8101f9f7f1406fb98e196b2b3ac6aec04c9f6dea8a5cd7b9d872bd193c52",
+            "content_length": 454363,
+            "content_type": "application/pdf",
+            "etag": "\"510b8101f9f7f1406fb98e196b2b3ac6aec04c9f6dea8a5cd7b9d872bd193c52\"",
+            "last_modified": "Tue, 03 Feb 2026 13:02:42 GMT",
+            "storage_backend": "s3",
+            "storage_key": "2026-02-11-1109-s60884.pdf",
+            "title": "Appendix 5 - Proposed ICB Uplifts",
+            "url": "https://democracy.manchester.gov.uk/documents/s60884/Appendix 5 - Proposed ICB Uplifts.pdf"
+        }
+    ],
+    "is_key_decision": false,
+    "is_officer_decision": false,
+    "is_subject_to_call_in": false,
+    "publication_date": "2026-02-21",
+    "purpose": null,
+    "raw_date": "2026-02-11",
+    "raw_decision_maker": "Executive",
+    "raw_identifier": "1109",
+    "raw_title": "Adult Social Care Budget 2026/27 - 2028/29",
+    "source": {
+        "etag": null,
+        "last_modified": null,
+        "url": "https://democracy.manchester.gov.uk/ieDecisionDetails.aspx?ID=1109"
+    },
+    "status": "For Determination",
+    "text": null,
+    "url": "https://democracy.manchester.gov.uk/ieDecisionDetails.aspx?ID=1109"
+}
