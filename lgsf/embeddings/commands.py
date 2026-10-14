@@ -6,6 +6,7 @@ import importlib.util
 import os
 import sys
 import time
+from concurrent.futures.process import BrokenProcessPool
 
 from rich.markup import escape
 from rich.padding import Padding
@@ -494,13 +495,28 @@ class Command(CouncilFilteringCommandBase):
 
         results = collections.defaultdict(collections.Counter)
         start = time.monotonic()
+        stopped = None
         if tasks:
             options = self.options
-            with worker_pool(
-                options["workers"], options["threads"], options["timeout"]
-            ) as executor:
-                self.run_extraction(tasks, executor, docling_version, results)
+            try:
+                with worker_pool(
+                    options["workers"], options["threads"], options["timeout"]
+                ) as executor:
+                    self.run_extraction(tasks, executor, docling_version, results)
+            except KeyboardInterrupt:
+                stopped = "Stopped."
+            except BrokenProcessPool:
+                stopped = (
+                    "A worker process stopped, perhaps because it ran out of "
+                    "memory. Fewer --workers use less."
+                )
         self.output_extraction_summary(plans, results, time.monotonic() - start)
+        if stopped:
+            self.console.print(
+                f"[yellow]{stopped} What's logged is kept: run the same "
+                "command again to carry on.[/yellow]"
+            )
+            return 1
         return 0
 
     def plan_extraction(self, council: Council, docling_version: str) -> dict:
