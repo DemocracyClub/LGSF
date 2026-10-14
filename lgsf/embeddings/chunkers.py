@@ -1,4 +1,5 @@
 import abc
+import collections
 import datetime
 import json
 import re
@@ -57,6 +58,9 @@ class ChunkerBase(abc.ABC):
         #: How many source records (meetings, for minutes) the last call
         #: to get_chunks() read.
         self.sources_read = 0
+        #: Sources the last call to get_chunks() found but had no text for,
+        #: counted by why not.
+        self.not_chunked = collections.Counter()
 
     @abc.abstractmethod
     def has_data(self) -> bool:
@@ -432,6 +436,127 @@ class DecisionChunker(ChunkerBase):
             if content_hash and content_hash not in hashes:
                 hashes.append(content_hash)
         return hashes
+
+
+class DocumentChunker(ChunkerBase):
+    """
+    Chunks the PDFs linked from decisions, from the DoclingDocuments that
+    `manage.py embeddings extract` saved in Embeddings/extracted/.
+
+    The documents are those linked from decisions in range, found in the
+    extraction log by content_hash. Each is split by docling-core's
+    HybridChunker (see documents.py), which needs the embeddings
+    dependency group.
+
+    Each chunk's header names the earliest decision in range linking to
+    the document, then the document and the section the chunk is from.
+    The metadata lists every decision in range linking to it.
+
+    A linked document with no text is counted in `not_chunked` by its last
+    status in the extraction log, "not extracted" if it isn't in the log,
+    or "no text" if Docling found none.
+    """
+
+    type = ChunkType.DOCUMENTS
+    source_type = SourceType.PDF_DOCLING
+    sources_name = "documents"
+
+    #: Chunks with fewer words than this aren't embedded, as for minutes.
+    min_embed_words = 15
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.decision_chunker = DecisionChunker(
+            self.council, data_path=self.data_path, since=self.since, until=self.until
+        )
+
+    @property
+    def extraction_log(self):
+        from lgsf.embeddings.extract import ExtractionLog, extracted_path
+
+        return ExtractionLog(extracted_path(self.data_path))
+
+    def has_data(self) -> bool:
+        return self.extraction_log.path.exists() and self.decision_chunker.has_data()
+
+    def get_chunks(self) -> list[Chunk]:
+        from docling_core.types.doc import DoclingDocument
+
+        log = self.extraction_log
+        entries = log.read()
+        self.sources_read = 0
+        self.not_chunked = collections.Counter()
+        chunks = []
+        for document in self.decision_chunker.linked_documents().values():
+            entry = entries.get(document.content_hash)
+            path = log.extracted_file(entry)
+            if path is None:
+                self.not_chunked[entry["status"] if entry else "not extracted"] += 1
+                continue
+            self.sources_read += 1
+            document_chunks = self.chunks_for_document(
+                document, DoclingDocument.load_from_json(path)
+            )
+            if not document_chunks:
+                self.not_chunked["no text"] += 1
+            chunks.extend(document_chunks)
+        return chunks
+
+    def chunks_for_document(self, document, docling_document) -> list[Chunk]:
+        from lgsf.embeddings.documents import split_document
+
+        parts = split_document(docling_document, max_words=self.max_length)
+        parent_id = self.parent_id(document.content_hash.removeprefix("sha256:"))
+        first_decision = document.decisions[0]
+        metadata = {
+            "url": document.url,
+            "content_hash": document.content_hash,
+            "storage_key": document.storage_key,
+            "document_title": document.title,
+            "decisions": [
+                {
+                    "identifier": decision.get("raw_identifier"),
+                    "title": decision.get("raw_title"),
+                    "url": decision.get("url"),
+                    "date": decision.get("raw_date"),
+                }
+                for decision in document.decisions
+            ],
+        }
+        return [
+            Chunk(
+                chunk_id=f"{parent_id}:{index}",
+                parent_id=parent_id,
+                council=self.council,
+                type=self.type,
+                source_type=self.source_type,
+                date=first_decision.get("raw_date"),
+                context=self.context(first_decision, document.title, part.headings),
+                text=part.text,
+                chunk_index=index,
+                chunk_count=len(parts),
+                embed=count_words(part.text) >= self.min_embed_words,
+                metadata={**metadata, "pages": part.pages, "headings": part.headings},
+            )
+            for index, part in enumerate(parts)
+        ]
+
+    def context(self, decision, document_title, headings):
+        """
+        The decision's header, then the document and section. For example:
+
+            Manchester City Council · Strategic Director (Corporate Services) & City Treasurer · 6 August 2026
+            Decision: P-1475 Domestic Abuse - Intersecting Needs Safe Accommodation (2026/06/09A)
+            D3 P-1475 Domestic Abuse - Intersecting Needs Safe Accommodation · Notice of Decision Made
+        """
+        document_line = " · ".join(
+            part for part in (document_title.strip(), *headings) if part
+        )
+        return "\n".join(
+            line
+            for line in (self.decision_chunker.context(decision), document_line)
+            if line
+        )
 
 
 @dataclass

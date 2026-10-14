@@ -23,6 +23,7 @@ from lgsf.conf import settings
 from lgsf.embeddings.chunkers import (
     ChunkerBase,
     DecisionChunker,
+    DocumentChunker,
     ModGovMinutesChunker,
 )
 from lgsf.embeddings.embedders import EMBEDDERS, EmbedderBase
@@ -98,9 +99,9 @@ class Command(CouncilFilteringCommandBase):
     rather than being sent to the model again.
 
     `search` searches the embeddings loaded by lgsf/embeddings/db/load.py
-    with a question. It shows the closest sources (agenda items and
-    decisions) first, one chunk from each, with the start of its text and
-    a link to its page. With no question, it asks for one question after
+    with a question. It shows the closest sources (agenda items, decisions
+    and documents) first, one chunk from each, with the start of its text
+    and a link to its page, and for a document, to its decision. With no question, it asks for one question after
     another until it's given a blank line. bge-m3 takes several seconds
     to load, so this loads it once for all of them. It needs the database
     from lgsf/embeddings/db/compose.yaml or DATABASE_URL.
@@ -132,6 +133,7 @@ class Command(CouncilFilteringCommandBase):
     #: every decisions scraper writes the same JSON.
     CHUNKERS = {
         ChunkType.DECISIONS: DecisionChunker,
+        ChunkType.DOCUMENTS: DocumentChunker,
     }
 
     #: How much of each search result's text is shown, in characters,
@@ -278,7 +280,7 @@ class Command(CouncilFilteringCommandBase):
             "--every-chunk",
             action="store_true",
             help="Show every matching chunk, not just the closest one from "
-            "each agenda item or decision",
+            "each agenda item, decision or document",
         )
         search_parser.add_argument(
             "--full",
@@ -407,10 +409,17 @@ class Command(CouncilFilteringCommandBase):
             result["skipped"] = f"no {chunker.type} data"
             return result
 
-        chunks = chunker.get_chunks()
+        try:
+            chunks = chunker.get_chunks()
+        except ImportError as error:
+            result["skipped"] = (
+                f"{error.name} isn't installed. Run: uv sync --group embeddings"
+            )
+            return result
         chunker.write(chunks)
         result.update(
             {
+                "not_chunked": dict(chunker.not_chunked),
                 "sources_read": chunker.sources_read,
                 "sources_name": chunker.sources_name,
                 "items": len({c.parent_id for c in chunks}),
@@ -449,6 +458,17 @@ class Command(CouncilFilteringCommandBase):
                 f"[dim]Written to {settings.DATA_DIR_NAME}/<COUNCIL>/"
                 f"{ChunkerBase.OUTPUT_DIR_NAME}/[/dim]"
             )
+            not_chunked = [r for r in chunked if r["not_chunked"]]
+            if not_chunked:
+                self.console.print("Found but not chunked:")
+                for result in not_chunked:
+                    reasons = ", ".join(
+                        f"{count} {reason}"
+                        for reason, count in sorted(result["not_chunked"].items())
+                    )
+                    self.console.print(
+                        f"  {result['council']} {result['type']}: {reasons}"
+                    )
 
         self.output_skipped(results)
 
@@ -790,7 +810,8 @@ class Command(CouncilFilteringCommandBase):
 
         for rank, result in enumerate(results, start=1):
             # The context header: "<council> · <committee> · <date>", then
-            # "Minute <n>: <title>" or "Decision: <title>".
+            # "Minute <n>: <title>" or "Decision: <title>", and for a
+            # document, "<document title> · <section>".
             heading, _, detail = result.context.partition("\n")
             self.console.print(
                 f"[bold]{rank:>2}.[/bold] [dim]{result.distance:.3f}[/dim]  "
@@ -805,5 +826,13 @@ class Command(CouncilFilteringCommandBase):
             url = result.metadata.get("url")
             if url:
                 lines.append(f"[blue]{escape(url)}[/blue]")
+            # A document's chunks also link to the decision it's from, the
+            # first one in the header.
+            decisions = result.metadata.get("decisions") or []
+            if decisions and decisions[0].get("url"):
+                more = f" and {len(decisions) - 1} more" if len(decisions) > 1 else ""
+                lines.append(
+                    f"Decision: [blue]{escape(decisions[0]['url'])}[/blue]{more}"
+                )
             lines.append(f"[dim]{escape(result.chunk_id)}[/dim]")
             self.console.print(Padding("\n".join(lines), (0, 0, 1, 4)))

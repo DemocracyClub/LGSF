@@ -113,7 +113,8 @@ def search(
     The chunks closest to `question`, closest first.
 
     With one_per_source, only the closest chunk of each source (each
-    agenda item, for minutes, and each decision) is returned.
+    agenda item, for minutes, each decision and each document) is
+    returned.
     """
     from psycopg import sql
 

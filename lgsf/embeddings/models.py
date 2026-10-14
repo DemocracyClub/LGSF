@@ -9,6 +9,8 @@ class ChunkType(StrEnum):
 
     MINUTES = "minutes"
     DECISIONS = "decisions"
+    #: Documents linked from decisions.
+    DOCUMENTS = "documents"
 
 
 class SourceType(StrEnum):
@@ -19,6 +21,9 @@ class SourceType(StrEnum):
     #: The JSON the decisions scraper writes for each decision. Every
     #: decisions scraper writes the same fields, whatever the CMS.
     DECISION_JSON = "decision_json"
+    #: A PDF converted by Docling, and saved as a DoclingDocument by
+    #: `manage.py embeddings extract`.
+    PDF_DOCLING = "pdf_docling"
 
 
 @dataclass

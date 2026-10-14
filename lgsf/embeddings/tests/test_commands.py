@@ -61,7 +61,7 @@ def test_chunk_runs_every_type_by_default(data_dir):
 
 def test_chunk_type_leaves_other_types_files_alone(data_dir):
     embeddings_dir = data_dir / "MAN" / "Embeddings"
-    embeddings_dir.mkdir()
+    embeddings_dir.mkdir(exist_ok=True)
     (embeddings_dir / "minutes.jsonl").write_text("not replaced\n")
     run("chunk", "--council", "MAN", "--type", "decisions")
     assert read_lines(embeddings_dir / "minutes.jsonl") == ["not replaced"]
