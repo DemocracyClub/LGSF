@@ -1,12 +1,21 @@
 import argparse
+import collections
 import datetime
+import importlib.metadata
+import importlib.util
 import os
 import sys
 import time
 
 from rich.markup import escape
 from rich.padding import Padding
-from rich.progress import BarColumn, Progress, TimeElapsedColumn
+from rich.progress import (
+    BarColumn,
+    MofNCompleteColumn,
+    Progress,
+    TimeElapsedColumn,
+    TimeRemainingColumn,
+)
 from rich.table import Table
 
 from lgsf.commands.base import Council, CouncilFilteringCommandBase
@@ -17,6 +26,20 @@ from lgsf.embeddings.chunkers import (
     ModGovMinutesChunker,
 )
 from lgsf.embeddings.embedders import EMBEDDERS, EmbedderBase
+from lgsf.embeddings.extract import (
+    FAILED,
+    NOT_PDF,
+    OK,
+    PARTIAL,
+    TIMEOUT,
+    ExtractionLog,
+    ExtractionTask,
+    extracted_path,
+    plan_council,
+    remove_temp_files,
+    run_tasks,
+    worker_pool,
+)
 from lgsf.embeddings.models import ChunkType
 from lgsf.embeddings.search import (
     DEFAULT_DATABASE_URL,
@@ -58,6 +81,12 @@ class Command(CouncilFilteringCommandBase):
     Chunk councils' scraped data, create embeddings of the chunks, and
     search them.
 
+    `extract` converts the PDFs linked from decisions with Docling, and
+    saves the results in data/<COUNCIL>/Embeddings/extracted/, with a log
+    of each file tried. Each file is converted once: a run skips files the
+    log says are done, so it can be stopped and started again. See
+    extract.py.
+
     `chunk` reads the data already in data/<COUNCIL>/ and writes
     data/<COUNCIL>/Embeddings/<type>.jsonl, one file for each type of
     data. Each run of `chunk` replaces the files of the types it's run
@@ -71,16 +100,16 @@ class Command(CouncilFilteringCommandBase):
     `search` searches the embeddings loaded by lgsf/embeddings/db/load.py
     with a question. It shows the closest sources (agenda items and
     decisions) first, one chunk from each, with the start of its text and
-    a link to its page. With
-    no question, it asks for one question after another until it's given
-    a blank line. bge-m3 takes several seconds to load, so this loads it
-    once for all of them. It needs the database from
-    lgsf/embeddings/db/compose.yaml or DATABASE_URL.
+    a link to its page. With no question, it asks for one question after
+    another until it's given a blank line. bge-m3 takes several seconds
+    to load, so this loads it once for all of them. It needs the database
+    from lgsf/embeddings/db/compose.yaml or DATABASE_URL.
 
-    `embed` and `search` need the embeddings dependency group:
+    `extract`, `embed` and `search` need the embeddings dependency group:
     `uv sync --group embeddings`.
 
     Usage:
+        python manage.py embeddings extract --council MAN --since 2026-01-01 --workers 4 --threads 4
         python manage.py embeddings chunk --council EDE
         python manage.py embeddings chunk --all-councils
         python manage.py embeddings chunk --type decisions --since 2026-01-01 --council MAN,PEM
@@ -143,7 +172,54 @@ class Command(CouncilFilteringCommandBase):
             choices=sorted(EMBEDDERS),
             help="The embedding model to use",
         )
-        for subparser, verb in ((chunk_parser, "chunk"), (embed_parser, "embed")):
+        extract_parser = subparsers.add_parser(
+            "extract",
+            help="Convert the PDFs linked from councils' decisions with Docling",
+        )
+        extract_parser.add_argument(
+            "--since",
+            type=datetime.date.fromisoformat,
+            help="Only PDFs linked from decisions on or after this date (YYYY-MM-DD)",
+        )
+        extract_parser.add_argument(
+            "--until",
+            type=datetime.date.fromisoformat,
+            help="Only PDFs linked from decisions on or before this date (YYYY-MM-DD)",
+        )
+        extract_parser.add_argument(
+            "--workers",
+            type=int,
+            default=1,
+            help="How many PDFs to convert at once, each in its own process "
+            "with its own copy of Docling's models (default 1)",
+        )
+        extract_parser.add_argument(
+            "--threads",
+            type=int,
+            default=8,
+            help="How many threads each worker uses (default 8)",
+        )
+        extract_parser.add_argument(
+            "--timeout",
+            type=float,
+            default=1800,
+            help="Give up on a PDF after this many seconds (default 1800)",
+        )
+        extract_parser.add_argument(
+            "--retry-failed",
+            action="store_true",
+            help="Try again PDFs that failed or timed out before",
+        )
+        extract_parser.add_argument(
+            "--force",
+            action="store_true",
+            help="Extract every PDF again, even ones already extracted",
+        )
+        for subparser, verb in (
+            (extract_parser, "extract"),
+            (chunk_parser, "chunk"),
+            (embed_parser, "embed"),
+        ):
             councils = subparser.add_mutually_exclusive_group(required=True)
             councils.add_argument(
                 "--council",
@@ -223,6 +299,7 @@ class Command(CouncilFilteringCommandBase):
     def handle(self, options):
         self.options = options
         handlers = {
+            "extract": self.handle_extract,
             "chunk": self.handle_chunk,
             "embed": self.handle_embed,
             "search": self.handle_search,
@@ -374,6 +451,171 @@ class Command(CouncilFilteringCommandBase):
             )
 
         self.output_skipped(results)
+
+    # manage.py embeddings extract
+
+    def handle_extract(self):
+        if importlib.util.find_spec("docling") is None:
+            self.parser.error(
+                "docling isn't installed. Run: uv sync --group embeddings"
+            )
+        docling_version = importlib.metadata.version("docling")
+
+        with self.console.status("Finding PDFs to extract"):
+            plans = [
+                self.plan_extraction(council, docling_version)
+                for council in self.councils_to_run
+            ]
+        tasks = sorted(
+            (task for plan in plans if "skipped" not in plan for task in plan["tasks"]),
+            key=ExtractionTask.sort_key,
+        )
+        self.output_extraction_plan(plans, tasks)
+
+        results = collections.defaultdict(collections.Counter)
+        start = time.monotonic()
+        if tasks:
+            options = self.options
+            with worker_pool(
+                options["workers"], options["threads"], options["timeout"]
+            ) as executor:
+                self.run_extraction(tasks, executor, docling_version, results)
+        self.output_extraction_summary(plans, results, time.monotonic() - start)
+        return 0
+
+    def plan_extraction(self, council: Council, docling_version: str) -> dict:
+        """Find which of one council's PDFs to extract."""
+        result = {"council": council.council_id}
+        try:
+            chunker = DecisionChunker(
+                council.council_id,
+                since=self.options["since"],
+                until=self.options["until"],
+            )
+        except FileNotFoundError:
+            result["skipped"] = "no data"
+            return result
+        if not chunker.has_data():
+            result["skipped"] = "no decisions data"
+            return result
+
+        log = ExtractionLog(extracted_path(chunker.data_path))
+        remove_temp_files(log)
+        plan = plan_council(
+            council.council_id,
+            chunker.linked_documents(),
+            log,
+            docling_version,
+            retry_failed=self.options["retry_failed"],
+            force=self.options["force"],
+        )
+        result.update(
+            {
+                "tasks": plan.tasks,
+                "done": plan.done,
+                "missing": plan.missing,
+                "not_pdf": plan.not_pdf,
+            }
+        )
+        return result
+
+    def output_extraction_plan(self, plans, tasks):
+        pages = sum(task.pages or 0 for task in tasks)
+        done = sum(plan.get("done", 0) for plan in plans)
+        self.console.print(
+            f"{len(tasks)} PDFs to extract, with {pages} pages. "
+            f"{done} skipped as done before."
+        )
+        missing = [plan for plan in plans if plan.get("missing")]
+        if missing:
+            self.console.print(
+                "[yellow]Linked documents not on disk: "
+                + ", ".join(f"{plan['council']} {plan['missing']}" for plan in missing)
+                + "[/yellow]"
+            )
+
+    def run_extraction(self, tasks, executor, docling_version, results):
+        """
+        Extract the PDFs, with a progress bar in a terminal, or a line for
+        each PDF otherwise, such as when the output goes to a file.
+        """
+
+        def record(task, entry):
+            counts = results[task.council]
+            counts[entry["status"]] += 1
+            counts["pages"] += entry["pages"] or 0
+
+        if not (self.pretty and self.console.is_terminal):
+            done = 0
+
+            def on_result(task, entry):
+                nonlocal done
+                done += 1
+                record(task, entry)
+                self.console.print(
+                    f"[{done}/{len(tasks)}] {task.council} {task.target.stem} "
+                    f"{entry['status']} {entry['pages']} pages {entry['seconds']}s"
+                )
+
+            run_tasks(tasks, executor, docling_version, on_result)
+            return
+
+        with Progress(
+            "[progress.description]{task.description}",
+            BarColumn(),
+            MofNCompleteColumn(),
+            "pages",
+            TimeElapsedColumn(),
+            TimeRemainingColumn(),
+            console=self.console,
+        ) as progress:
+            bar = progress.add_task(
+                f"Extracting 0/{len(tasks)} PDFs",
+                total=sum(task.pages or 0 for task in tasks),
+            )
+            done = 0
+
+            def on_result(task, entry):
+                nonlocal done
+                done += 1
+                record(task, entry)
+                progress.update(
+                    bar,
+                    advance=task.pages or 0,
+                    description=f"Extracting {done}/{len(tasks)} PDFs",
+                )
+
+            run_tasks(tasks, executor, docling_version, on_result)
+
+    def output_extraction_summary(self, plans, results, elapsed):
+        table = Table(title="Extracted")
+        table.add_column("Council", style="magenta")
+        statuses = (OK, PARTIAL, FAILED, TIMEOUT, NOT_PDF)
+        for status in statuses:
+            table.add_column(status, justify="right")
+        table.add_column("Pages", justify="right")
+        table.add_column("Done before", justify="right")
+        table.add_column("Not on disk", justify="right")
+        for plan in sorted(plans, key=lambda p: p["council"]):
+            if "skipped" in plan:
+                continue
+            counts = results[plan["council"]]
+            counts[NOT_PDF] += plan["not_pdf"]
+            table.add_row(
+                plan["council"],
+                *(str(counts[status]) for status in statuses),
+                str(counts["pages"]),
+                str(plan["done"]),
+                str(plan["missing"]),
+            )
+        self.console.print(table)
+        pages = sum(counts["pages"] for counts in results.values())
+        rate = f", {elapsed / pages:.2f}s a page" if pages else ""
+        self.console.print(
+            f"[dim]Written to {settings.DATA_DIR_NAME}/<COUNCIL>/"
+            f"{ChunkerBase.OUTPUT_DIR_NAME}/extracted/ in {elapsed:.0f}s{rate}[/dim]"
+        )
+        self.output_skipped(plans)
 
     # manage.py embeddings embed
 

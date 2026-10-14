@@ -2,6 +2,7 @@ import abc
 import datetime
 import json
 import re
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Sequence
 
@@ -388,6 +389,37 @@ class DecisionChunker(ChunkerBase):
         second_line = f"Decision: {title}" if title else ""
         return "\n".join(line for line in (first_line, second_line) if line)
 
+    def linked_documents(self) -> dict[str, "LinkedDocument"]:
+        """
+        Each document linked from a decision in range, by content_hash, in
+        the order of the earliest decision linking to it.
+
+        The same file can be linked from several decisions, under a
+        different storage key each time. It's described by the earliest
+        decision's link to it. Documents that weren't downloaded have no
+        content_hash, and are left out.
+        """
+        documents = {}
+        # decisions() is in date order, as the files are named by date.
+        for decision in self.decisions():
+            for document in decision.get("documents") or []:
+                content_hash = document.get("content_hash")
+                storage_key = document.get("storage_key")
+                if not content_hash or not storage_key:
+                    continue
+                linked = documents.get(content_hash)
+                if linked is None:
+                    linked = documents[content_hash] = LinkedDocument(
+                        content_hash=content_hash,
+                        storage_key=storage_key,
+                        path=self.decisions_path / "documents" / storage_key,
+                        title=document.get("title") or "",
+                        url=document.get("url") or "",
+                    )
+                if not linked.decisions or linked.decisions[-1] is not decision:
+                    linked.decisions.append(decision)
+        return documents
+
     def document_hashes(self, decision):
         """
         The content_hash of each document linked from the decision, in the
@@ -400,6 +432,22 @@ class DecisionChunker(ChunkerBase):
             if content_hash and content_hash not in hashes:
                 hashes.append(content_hash)
         return hashes
+
+
+@dataclass
+class LinkedDocument:
+    """A file linked from one or more decisions."""
+
+    content_hash: str
+    #: The key it's stored under for the earliest decision linking to it.
+    storage_key: str
+    #: Where that is on disk.
+    path: Path
+    title: str
+    url: str
+    #: The decisions linking to it, as the scraper stored them, earliest
+    #: first.
+    decisions: list[dict] = field(default_factory=list)
 
 
 #: Titles of decisions that are part of running a meeting rather than a
