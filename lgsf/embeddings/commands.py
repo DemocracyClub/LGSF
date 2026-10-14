@@ -111,7 +111,7 @@ class Command(CouncilFilteringCommandBase):
     `uv sync --group embeddings`.
 
     Usage:
-        python manage.py embeddings extract --council MAN --since 2026-01-01 --workers 4 --threads 4
+        python manage.py embeddings extract --council MAN --since 2026-01-01
         python manage.py embeddings chunk --council EDE
         python manage.py embeddings chunk --all-councils
         python manage.py embeddings chunk --type decisions --since 2026-01-01 --council MAN,PEM
@@ -192,15 +192,15 @@ class Command(CouncilFilteringCommandBase):
         extract_parser.add_argument(
             "--workers",
             type=int,
-            default=1,
+            default=4,
             help="How many PDFs to convert at once, each in its own process "
-            "with its own copy of Docling's models (default 1)",
+            "with its own copy of Docling's models (default 4)",
         )
         extract_parser.add_argument(
             "--threads",
             type=int,
-            default=8,
-            help="How many threads each worker uses (default 8)",
+            default=4,
+            help="How many threads each worker uses (default 4)",
         )
         extract_parser.add_argument(
             "--timeout",
