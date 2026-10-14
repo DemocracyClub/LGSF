@@ -222,8 +222,12 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
         self.parser.add_argument(
             "-r",
             "--refresh",
-            action="store_true",
-            help="Only run scrapers not run recently",
+            nargs="?",
+            const=24,
+            type=float,
+            metavar="HOURS",
+            help="Only run scrapers that haven't completed a run in the last "
+            "HOURS (default 24)",
         )
         self.parser.add_argument(
             "--check-only",
@@ -658,7 +662,11 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
             should_run = True
             if scraper.disabled:
                 should_run = False
-            if should_run and options["refresh"] and scraper.run_since():
+            if (
+                should_run
+                and options["refresh"]
+                and scraper.run_since(hours=options["refresh"])
+            ):
                 should_run = False
             if should_run and options["tags"]:
                 required_tags = set(options["tags"].split(","))
