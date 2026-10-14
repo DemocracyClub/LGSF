@@ -42,6 +42,8 @@ LIMIT %(limit)s
 class SearchFilters:
     #: Council codes; empty for all councils.
     councils: list[str] = field(default_factory=list)
+    #: Chunk types, such as "minutes"; empty for all types.
+    types: list[str] = field(default_factory=list)
     #: Only chunks dated on or after this.
     since: datetime.date | None = None
     #: Only chunks dated on or before this.
@@ -54,6 +56,9 @@ class SearchFilters:
         if self.councils:
             conditions.append("c.council = ANY(%(councils)s)")
             params["councils"] = list(self.councils)
+        if self.types:
+            conditions.append("c.type = ANY(%(types)s)")
+            params["types"] = [str(t) for t in self.types]
         if self.since:
             conditions.append("c.date >= %(since)s")
             params["since"] = self.since
@@ -108,7 +113,7 @@ def search(
     The chunks closest to `question`, closest first.
 
     With one_per_source, only the closest chunk of each source (each
-    agenda item, for minutes) is returned.
+    agenda item, for minutes, and each decision) is returned.
     """
     from psycopg import sql
 

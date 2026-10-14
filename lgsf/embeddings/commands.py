@@ -69,8 +69,9 @@ class Command(CouncilFilteringCommandBase):
     rather than being sent to the model again.
 
     `search` searches the embeddings loaded by lgsf/embeddings/db/load.py
-    with a question. It shows the closest agenda items first, one chunk
-    from each, with the start of its text and a link to the meeting. With
+    with a question. It shows the closest sources (agenda items and
+    decisions) first, one chunk from each, with the start of its text and
+    a link to its page. With
     no question, it asks for one question after another until it's given
     a blank line. bge-m3 takes several seconds to load, so this loads it
     once for all of them. It needs the database from
@@ -87,6 +88,7 @@ class Command(CouncilFilteringCommandBase):
         python manage.py embeddings embed --model bge-m3 --all-councils
         AWS_PROFILE=dev-lgsf-dc python manage.py embeddings search --model titan-v2 "how much is council tax going up"
         python manage.py embeddings search --model bge-m3 --council EDE --since 2026-01-01
+        python manage.py embeddings search --model bge-m3 --type decisions "safe accommodation"
     """
 
     command_name = "embeddings"
@@ -174,14 +176,21 @@ class Command(CouncilFilteringCommandBase):
             help="Only these council codes (comma-separated)",
         )
         search_parser.add_argument(
+            "--type",
+            type=chunk_types,
+            default=[],
+            help="Only these types of chunk, comma-separated, from: "
+            f"{', '.join(ChunkType)}",
+        )
+        search_parser.add_argument(
             "--since",
             type=datetime.date.fromisoformat,
-            help="Only meetings on or after this date (YYYY-MM-DD)",
+            help="Only chunks dated on or after this date (YYYY-MM-DD)",
         )
         search_parser.add_argument(
             "--until",
             type=datetime.date.fromisoformat,
-            help="Only meetings on or before this date (YYYY-MM-DD)",
+            help="Only chunks dated on or before this date (YYYY-MM-DD)",
         )
         search_parser.add_argument(
             "--limit",
@@ -193,7 +202,7 @@ class Command(CouncilFilteringCommandBase):
             "--every-chunk",
             action="store_true",
             help="Show every matching chunk, not just the closest one from "
-            "each agenda item",
+            "each agenda item or decision",
         )
         search_parser.add_argument(
             "--full",
@@ -482,6 +491,7 @@ class Command(CouncilFilteringCommandBase):
                 for code in (self.options["council"] or "").split(",")
                 if code.strip()
             ],
+            types=self.options["type"],
             since=self.options["since"],
             until=self.options["until"],
         )
@@ -538,7 +548,7 @@ class Command(CouncilFilteringCommandBase):
 
         for rank, result in enumerate(results, start=1):
             # The context header: "<council> · <committee> · <date>", then
-            # "Minute <n>: <title>".
+            # "Minute <n>: <title>" or "Decision: <title>".
             heading, _, detail = result.context.partition("\n")
             self.console.print(
                 f"[bold]{rank:>2}.[/bold] [dim]{result.distance:.3f}[/dim]  "
@@ -550,7 +560,7 @@ class Command(CouncilFilteringCommandBase):
                 else snippet(result.text, self.snippet_length)
             )
             lines = [escape(line) for line in (detail, text) if line]
-            url = result.metadata.get("meeting_url")
+            url = result.metadata.get("url")
             if url:
                 lines.append(f"[blue]{escape(url)}[/blue]")
             lines.append(f"[dim]{escape(result.chunk_id)}[/dim]")

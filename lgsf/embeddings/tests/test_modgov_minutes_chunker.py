@@ -81,6 +81,7 @@ def test_minute_numbers_and_metadata(chunks):
     assert metadata["meeting_url"] == (
         "https://democracy.eastdevon.gov.uk/ieListDocuments.aspx?CId=207&MId=2681"
     )
+    assert metadata["url"] == metadata["meeting_url"]
     assert metadata["linked_attachment_ids"][:2] == ["30490", "30492"]
     assert len(metadata["linked_attachment_ids"]) == 11
 

@@ -10,6 +10,7 @@ import datetime
 
 import pytest
 
+from lgsf.embeddings.models import ChunkType
 from lgsf.embeddings.search import (
     SearchFilters,
     SearchResult,
@@ -40,15 +41,18 @@ def test_no_filters():
 def test_filters():
     filters = SearchFilters(
         councils=["EDE", "ADU"],
+        types=[ChunkType.DECISIONS],
         since=datetime.date(2026, 1, 1),
         until=datetime.date(2026, 3, 31),
     )
     where, params = filters.where()
     assert where == (
-        "c.council = ANY(%(councils)s) AND c.date >= %(since)s AND c.date <= %(until)s"
+        "c.council = ANY(%(councils)s) AND c.type = ANY(%(types)s) "
+        "AND c.date >= %(since)s AND c.date <= %(until)s"
     )
     assert params == {
         "councils": ["EDE", "ADU"],
+        "types": ["decisions"],
         "since": datetime.date(2026, 1, 1),
         "until": datetime.date(2026, 3, 31),
     }

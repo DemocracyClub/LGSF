@@ -29,7 +29,8 @@ class Chunk:
     Every chunker writes this same record, whatever its source. A field is
     at the top level if every chunk has it and it's used to identify,
     filter or embed the chunk. Anything only some sources have, or that's
-    only for display, goes in `metadata`.
+    only for display, goes in `metadata`. Every chunker puts the web page
+    the chunk comes from in `metadata["url"]`.
     """
 
     #: Stable between runs: `{parent_id}:{chunk_index}`.

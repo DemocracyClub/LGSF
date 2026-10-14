@@ -228,6 +228,7 @@ class ModGovMinutesChunker(ChunkerBase):
         date = meeting.get("raw_date")
 
         metadata = {
+            "url": meeting.get("url"),
             "committee": meeting.get("raw_committee"),
             "committee_id": meeting.get("raw_committee_id"),
             "meeting_id": meeting_id,
