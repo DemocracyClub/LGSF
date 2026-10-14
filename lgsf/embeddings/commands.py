@@ -218,6 +218,11 @@ class Command(CouncilFilteringCommandBase):
             action="store_true",
             help="Extract every PDF again, even ones already extracted",
         )
+        extract_parser.add_argument(
+            "--max-pages",
+            type=int,
+            help="Leave out PDFs with more pages than this, for a later run",
+        )
         for subparser, verb in (
             (extract_parser, "extract"),
             (chunk_parser, "chunk"),
@@ -544,6 +549,7 @@ class Command(CouncilFilteringCommandBase):
             docling_version,
             retry_failed=self.options["retry_failed"],
             force=self.options["force"],
+            max_pages=self.options["max_pages"],
         )
         result.update(
             {
@@ -551,6 +557,7 @@ class Command(CouncilFilteringCommandBase):
                 "done": plan.done,
                 "missing": plan.missing,
                 "not_pdf": plan.not_pdf,
+                "too_long": plan.too_long,
             }
         )
         return result
@@ -562,6 +569,12 @@ class Command(CouncilFilteringCommandBase):
             f"{len(tasks)} PDFs to extract, with {pages} pages. "
             f"{done} skipped as done before."
         )
+        too_long = sum(plan.get("too_long", 0) for plan in plans)
+        if too_long:
+            self.console.print(
+                f"{too_long} PDFs left out for having more than "
+                f"{self.options['max_pages']} pages."
+            )
         missing = [plan for plan in plans if plan.get("missing")]
         if missing:
             self.console.print(

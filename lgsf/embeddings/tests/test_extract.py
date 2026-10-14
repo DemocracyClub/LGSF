@@ -316,3 +316,15 @@ def test_smallest_files_go_first(data_path, monkeypatch):
     result, _ = plan(data_path)
     ordered = sorted(result.tasks, key=extract.ExtractionTask.sort_key)
     assert [t.pages for t in ordered] == [4, 300]
+
+
+def test_max_pages(data_path, monkeypatch):
+    pages = {"2026-02-01-1-s1.pdf": 300, "2026-03-01-2-s6.pdf": 4}
+    monkeypatch.setattr(extract, "count_pages", lambda path: pages[path.name])
+    result, log = plan(data_path, max_pages=200)
+    assert [t.pages for t in result.tasks] == [4]
+    assert result.too_long == 1
+    # Not logged, so a run without max_pages extracts it.
+    assert "sha256:aaa" not in log.read()
+    result, _ = plan(data_path)
+    assert sorted(t.pages for t in result.tasks) == [4, 300]

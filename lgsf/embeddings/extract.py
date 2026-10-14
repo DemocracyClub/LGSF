@@ -190,6 +190,8 @@ class CouncilPlan:
     missing: int = 0
     #: Linked documents found not to be PDFs by this run, and logged.
     not_pdf: int = 0
+    #: PDFs left out for having more than max_pages pages.
+    too_long: int = 0
 
 
 def plan_council(
@@ -199,13 +201,15 @@ def plan_council(
     docling_version: str,
     retry_failed: bool = False,
     force: bool = False,
+    max_pages: int | None = None,
 ) -> CouncilPlan:
     """
     Choose which of a council's linked documents to extract.
 
     Files that aren't PDFs are logged as not_pdf here, rather than sent
-    to a worker. Files that aren't on disk aren't logged, so they're
-    looked for again next time.
+    to a worker. Files that aren't on disk, and PDFs with more than
+    `max_pages` pages, aren't logged, so they're looked at again next
+    time.
     """
     plan = CouncilPlan(council)
     entries = log.read()
@@ -228,12 +232,16 @@ def plan_council(
             )
             plan.not_pdf += 1
             continue
+        pages = count_pages(document.path)
+        if max_pages is not None and pages is not None and pages > max_pages:
+            plan.too_long += 1
+            continue
         plan.tasks.append(
             ExtractionTask(
                 council=council,
                 document=document,
                 log=log,
-                pages=count_pages(document.path),
+                pages=pages,
                 size=document.path.stat().st_size,
             )
         )
