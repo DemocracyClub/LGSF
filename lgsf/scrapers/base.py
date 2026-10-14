@@ -107,6 +107,9 @@ class ScraperBase(metaclass=abc.ABCMeta):
     #: records. See lgsf.storage.backends.base.
     storage_mode = StorageMode.REPLACE
 
+    #: Written when a run finishes without an exception, holding the time.
+    LAST_RUN_FILE_NAME = "_last-run"
+
     def __init__(self, options, console):
         self.options = options
         self.console = console
@@ -394,7 +397,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
         return Path(name)
 
     def _last_run_file_name(self) -> Path:
-        return self._file_name("_last-run")
+        return self._file_name(self.LAST_RUN_FILE_NAME)
 
     def _error_file_name(self):
         return self._file_name("error")

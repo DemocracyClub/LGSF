@@ -89,6 +89,12 @@ with every decision stored or settled, is recorded as complete in
 Progress is committed after every slice and every 50 decision pages, on
 backends with `supports_checkpoints` (local, not GitHub).
 
+Runs over several councils are ordered least-done first: nothing stored,
+then an index but no `_last-run` (stopped part way), then oldest `_last-run`.
+`--refresh HOURS` skips councils that completed within that time. Both are
+how a backfill resumes after credentials expire; see
+`backfill_order` in `lgsf/decisions/commands.py`.
+
 Decisions set `request_interval = 1` (per host, shared across workers) and
 `retries = 3` for timeouts, connection errors and 429/5xx. Retries are off in
 `ScraperBase` for everything else, which relies on Lambda retries.

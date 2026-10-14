@@ -159,6 +159,22 @@ request, and a document already in the document store is not downloaded
 again even if the index never recorded it. Run it again after it finishes to
 pick up anything that failed.
 
+**A run over several councils takes the least-done first:** councils with
+nothing stored, then those stopped part way (an `_index.json` but no
+`_last-run`, which is written only when a run completes), then the rest by
+when their last run completed, oldest first. This is looked up before the
+run starts, with a HEAD and a GET per council on S3 and no listing. So a
+backfill stopped by expiring credentials resumes on councils it hasn't
+reached, and the ones it just finished come last. To skip those entirely:
+
+```bash
+uv run python manage.py decisions --all-councils --discover-since --refresh 36
+```
+
+`--refresh HOURS` (24 if no number is given) skips any council whose last
+run completed in that time. A council that gave up after repeated failures
+still completes its run, so it counts as recent.
+
 **Progress is committed as it goes**, after every slice and every
 `checkpoint_every` (50) decision pages, where the storage backend can do that
 cheaply (`supports_checkpoints`: local storage yes, GitHub no, since each
