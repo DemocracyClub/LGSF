@@ -38,9 +38,12 @@ cdk = [
 ]
 embeddings = [
     "boto3==1.43.109",
+    "docling==2.130.0",
     "psycopg[binary]==3.3.6",
+    "rapidocr==3.9.2",
     "sentence-transformers==6.1.0",
     "torch==2.14.1",
+    "torchvision==0.29.1",
 ]
 
 [tool.uv]
@@ -49,7 +52,8 @@ required-version = "==0.11.*"
 
 # torch from PyPI is the CUDA build on Linux, which brings several GB of
 # NVIDIA libraries. Embeddings run on CPU, so take torch from PyTorch's
-# CPU-only index instead.
+# CPU-only index instead. torchvision, which Docling needs, has to come
+# from the same index, to be built against the same torch.
 [[tool.uv.index]]
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
@@ -57,6 +61,7 @@ explicit = true
 
 [tool.uv.sources]
 torch = [{ index = "pytorch-cpu" }]
+torchvision = [{ index = "pytorch-cpu" }]
 
 [tool.pytest.ini_options]
 testpaths = ["lgsf", "scrapers"]

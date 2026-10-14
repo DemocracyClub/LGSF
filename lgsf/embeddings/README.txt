@@ -35,9 +35,9 @@ Step 2 needs packages that aren't installed by default:
 
   uv sync --group embeddings
 
-This installs boto3, sentence-transformers and a CPU-only build of torch.
-They're kept out of the default install, and out of the Lambda layer,
-because torch is large. A plain `uv sync` removes them again, so run
+This installs boto3, psycopg, sentence-transformers, Docling, and
+CPU-only builds of torch and torchvision. They're kept out of the default
+install, and out of the Lambda layer, because torch is large. A plain `uv sync` removes them again, so run
 `uv sync --group embeddings` after one.
 
 The commands below are run from the repository root with the virtualenv
