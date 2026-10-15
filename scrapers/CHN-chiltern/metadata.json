@@ -21,6 +21,10 @@
         "decisions": {
             "base_url": "https://isa.chiltern.gov.uk/democracy/",
             "cms_type": "ModernGov"
+        },
+        "interests": {
+            "base_url": "https://isa.chiltern.gov.uk/democracy/",
+            "cms_type": "ModernGov"
         }
     }
 }

@@ -32,6 +32,7 @@ def test_runner_no_commands():
         "\t * councillors\n"
         "\t * minutes\n"
         "\t * decisions\n"
+        "\t * interests\n"
         "\t * templates\n"
         "\t * metadata\n"
         "\t * sync"

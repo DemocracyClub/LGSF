@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<councillorsbyward>
+  <wards>
+    <ward>
+      <wardtitle>Central</wardtitle>
+      <councillors>
+        <councillor>
+          <councillorid>100</councillorid>
+          <fullusername>Cllr Sample Member</fullusername>
+        </councillor>
+      </councillors>
+    </ward>
+  </wards>
+</councillorsbyward>

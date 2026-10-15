@@ -24,6 +24,10 @@
         "decisions": {
             "base_url": "https://aberdeenshire.moderngov.co.uk",
             "cms_type": "ModernGov"
+        },
+        "interests": {
+            "base_url": "https://aberdeenshire.moderngov.co.uk",
+            "cms_type": "ModernGov"
         }
     }
 }
