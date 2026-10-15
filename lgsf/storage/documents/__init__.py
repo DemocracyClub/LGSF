@@ -22,11 +22,13 @@ def detect_document_storage_backend_from_environment(options: dict) -> str:
     """
     Work out which document backend to use, in priority order: an explicit
     option, then the LGSF_DOCUMENT_STORAGE_BACKEND environment variable,
-    then local storage.
+    then S3 if the metadata is going to S3, then local storage.
 
     Note this is deliberately independent of the metadata storage backend:
     a Lambda run will typically write metadata to GitHub while putting the
-    documents themselves in an object store.
+    documents themselves in an object store. The one exception is metadata
+    on S3 with nothing said about documents, which almost certainly wants
+    the documents beside it rather than on this machine's disk.
     """
     if options and "document_storage_backend" in options:
         return options["document_storage_backend"]
@@ -34,6 +36,12 @@ def detect_document_storage_backend_from_environment(options: dict) -> str:
     backend_from_env = os.environ.get("LGSF_DOCUMENT_STORAGE_BACKEND")
     if backend_from_env:
         return backend_from_env.lower()
+
+    metadata_backend = (options or {}).get("storage_backend") or os.environ.get(
+        "LGSF_STORAGE_BACKEND", ""
+    )
+    if metadata_backend.lower() == "s3":
+        return "s3"
 
     return "local"
 
@@ -52,7 +60,9 @@ def get_document_storage_backend(
         backend_type: Backend to create. If None, detected from options and
                      environment.
         options: Scraper options dictionary, used for detection.
-        **kwargs: Additional backend-specific parameters.
+        **kwargs: Additional backend-specific parameters:
+                 - scraper_object_type: for the s3 backend, the data type
+                   whose prefix the documents go under
 
     Raises:
         ValueError: If the backend_type is not supported.
@@ -67,9 +77,17 @@ def get_document_storage_backend(
 
         return LocalDocumentStorage(council_code=council_code)
 
+    if backend_type == "s3":
+        from lgsf.storage.documents.s3 import S3DocumentStorage
+
+        return S3DocumentStorage(
+            council_code=council_code,
+            scraper_object_type=kwargs.get("scraper_object_type"),
+        )
+
     raise ValueError(f"Unsupported document storage backend: {backend_type}")
 
 
 def get_available_document_backends() -> list[str]:
     """Return a list of available document storage backend types."""
-    return ["local"]
+    return ["local", "s3"]

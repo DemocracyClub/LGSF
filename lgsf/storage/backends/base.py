@@ -121,6 +121,19 @@ class StorageSession(abc.ABC):
         """
         ...
 
+    def exists(self, filename: Path) -> bool:
+        """
+        True if ``filename`` is staged in this session or already stored.
+
+        Backends where reading a file is expensive should override this:
+        scrapers ask it of every record they consider skipping.
+        """
+        try:
+            self.open(filename, "rb")
+        except FileNotFoundError:
+            return False
+        return True
+
     @abc.abstractmethod
     def open(self, filename: Path, mode: Literal["r", "rb"] = "r") -> Union[str, bytes]:
         """
@@ -215,6 +228,12 @@ class BaseStorage(abc.ABC):
     - Use separate storage instances per thread if needed
     - Session objects should not be shared across threads
     """
+
+    #: True when ending a session and starting another is cheap enough to do
+    #: mid-run, so a long scrape can commit its progress as it goes rather
+    #: than losing it all to a crash. False where each commit is expensive
+    #: or visible, such as a pull request per session.
+    supports_checkpoints = False
 
     def __init__(
         self, council_code: str, storage_mode: StorageMode = StorageMode.REPLACE

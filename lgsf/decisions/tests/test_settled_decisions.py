@@ -33,6 +33,10 @@ class FakeSession:
             raise FileNotFoundError(filename)
         return "{}"
 
+    def exists(self, filename):
+        self.opened.append(str(filename))
+        return Path(filename).name in self.present
+
 
 def make_scraper(index_entry=None, stored=(), settled_after_months=3):
     scraper = ModGovDecisionsScraper.__new__(ModGovDecisionsScraper)

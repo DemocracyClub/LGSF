@@ -64,6 +64,11 @@ class _LocalPathlibSession(StorageSession):
         raw = path.read_bytes()
         return raw if mode == "rb" else raw.decode(self._encoding)
 
+    def exists(self, filename: Path) -> bool:
+        self._assert_open()
+        key = self._key(filename)
+        return key in self._staged or (self._root / key).is_file()
+
     # --- internals used by storage ---
     def _consume_staged(self) -> Dict[str, bytes]:
         self._assert_open()
@@ -147,6 +152,8 @@ class LocalFilesystemStorage(BaseStorage):
             processed = process_csv(data)
             session.write(Path("output.csv"), processed)
     """
+
+    supports_checkpoints = True
 
     def __init__(
         self,
