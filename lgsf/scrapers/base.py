@@ -491,6 +491,35 @@ class ScraperBase(metaclass=abc.ABCMeta):
         if exc_type is not KeyboardInterrupt:
             self._set_error(tb)
 
+    def save_index(self):
+        """
+        Write what this scraper keeps between runs to the metadata store,
+        ready for a checkpoint or the end of the run. Nothing here: minutes
+        and decisions keep an _index.json.
+        """
+
+    def checkpoint(self):
+        """
+        Commit what this run has stored so far, and carry on in a new
+        session.
+
+        Everything written in a session is held until it ends, so without
+        this an interrupted run loses every record it had read. The
+        documents themselves are written straight to the document store and
+        survive regardless, but only the index says which link each one
+        came from. So save_record_documents downloads the ones written
+        since the last checkpoint again, though it finds them already
+        stored and doesn't write them again.
+        """
+        if not self.storage_backend.supports_checkpoints:
+            return
+        self.save_index()
+        self.storage_backend.end_session(
+            self.storage_session,
+            f"Checkpoint: {self.service_name} for {self.council_id}",
+        )
+        self.storage_session = self.storage_backend.start_session()
+
     def finalise(self):
         """
         Call this to wrap up any operations, e.g committing files
