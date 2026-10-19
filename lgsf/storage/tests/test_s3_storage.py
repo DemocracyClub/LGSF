@@ -5,8 +5,10 @@ Run against an in-memory fake of the S3 client, so what is checked is what
 we ask S3 to do and in what order, not S3 itself.
 """
 
+import hashlib
 import io
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -21,7 +23,13 @@ from lgsf.storage.documents.s3 import S3DocumentStorage
 
 
 class FakeS3:
-    """Enough of a boto3 S3 client for these backends, and a call log."""
+    """
+    Enough of a boto3 S3 client for these backends and the documents
+    migration, and a call log.
+
+    Objects are dicts of Body, and optionally ContentType and Metadata, so
+    a test can put one there directly.
+    """
 
     def __init__(self, page_size=1000):
         self.objects = {}
@@ -42,18 +50,74 @@ class FakeS3:
             "Metadata": Metadata or {},
         }
 
-    def get_object(self, Bucket, Key):
-        self.calls.append(("get", Key))
+    def get_object(self, Bucket, Key, Range=None):
+        """
+        The object, or with Range="bytes=<first>-<last>" part of it. As S3
+        does, a range starting past the end, which is any range of an empty
+        object, fails with InvalidRange, and one ending past it is cut short.
+        """
+        self.calls.append(("range" if Range else "get", Key))
         if Key not in self.objects:
             raise self._missing("GetObject")
-        return {"Body": io.BytesIO(self.objects[Key]["Body"])}
+        obj = self.objects[Key]
+        body = obj["Body"]
+        response = {
+            "ContentType": obj.get("ContentType"),
+            "Metadata": dict(obj.get("Metadata") or {}),
+            "ETag": etag(body),
+        }
+        if Range:
+            first, last = map(int, re.fullmatch(r"bytes=(\d+)-(\d+)", Range).groups())
+            if first >= len(body):
+                raise ClientError({"Error": {"Code": "InvalidRange"}}, "GetObject")
+            part = body[first : last + 1]
+            response["ContentRange"] = (
+                f"bytes {first}-{first + len(part) - 1}/{len(body)}"
+            )
+            body = part
+        response["ContentLength"] = len(body)
+        response["Body"] = io.BytesIO(body)
+        return response
 
     def head_object(self, Bucket, Key):
         self.calls.append(("head", Key))
         if Key not in self.objects:
             raise ClientError({"Error": {"Code": "404"}}, "HeadObject")
         obj = self.objects[Key]
-        return {"ContentLength": len(obj["Body"]), "Metadata": obj["Metadata"]}
+        return {
+            "ContentLength": len(obj["Body"]),
+            "Metadata": dict(obj.get("Metadata") or {}),
+        }
+
+    def copy_object(
+        self,
+        Bucket,
+        Key,
+        CopySource,
+        MetadataDirective="COPY",
+        Metadata=None,
+        ContentType=None,
+    ):
+        """
+        As S3 does, COPY keeps the source's metadata and content type and
+        REPLACE takes the ones given.
+        """
+        self.calls.append(("copy", Key))
+        if self.fail_on and self.fail_on in Key:
+            raise ClientError({"Error": {"Code": "InternalError"}}, "CopyObject")
+        source = self.objects.get(CopySource["Key"])
+        if source is None:
+            raise self._missing("CopyObject")
+        if MetadataDirective == "REPLACE":
+            metadata, content_type = Metadata or {}, ContentType
+        else:
+            metadata = source.get("Metadata") or {}
+            content_type = source.get("ContentType")
+        self.objects[Key] = {
+            "Body": source["Body"],
+            "ContentType": content_type,
+            "Metadata": dict(metadata),
+        }
 
     def delete_objects(self, Bucket, Delete):
         for item in Delete["Objects"]:
@@ -65,13 +129,37 @@ class FakeS3:
         fake = self
 
         class Paginator:
-            def paginate(self, Bucket, Prefix):
+            def paginate(self, Bucket, Prefix, Delimiter=None):
                 fake.calls.append(("list", Prefix))
                 keys = sorted(k for k in fake.objects if k.startswith(Prefix))
+                if Delimiter:
+                    # Keys with the delimiter after the prefix are rolled
+                    # up into their common prefix, as S3 does.
+                    common = sorted(
+                        {
+                            Prefix + k[len(Prefix) :].split(Delimiter)[0] + Delimiter
+                            for k in keys
+                            if Delimiter in k[len(Prefix) :]
+                        }
+                    )
+                    keys = [k for k in keys if Delimiter not in k[len(Prefix) :]]
+                    yield {
+                        "CommonPrefixes": [{"Prefix": c} for c in common],
+                        "Contents": [
+                            {"Key": k, "Size": len(fake.objects[k]["Body"])}
+                            for k in keys
+                        ],
+                    }
+                    return
                 for start in range(0, len(keys), fake.page_size):
                     yield {
                         "Contents": [
-                            {"Key": k} for k in keys[start : start + fake.page_size]
+                            {
+                                "Key": k,
+                                "Size": len(fake.objects[k]["Body"]),
+                                "ETag": etag(fake.objects[k]["Body"]),
+                            }
+                            for k in keys[start : start + fake.page_size]
                         ]
                     }
 
@@ -81,9 +169,85 @@ class FakeS3:
         return [key for op, key in self.calls if op == kind]
 
 
+def etag(body):
+    """What S3 gives an object put in one request: its MD5, quoted."""
+    return '"{}"'.format(hashlib.md5(body).hexdigest())
+
+
 @pytest.fixture
 def fake():
     return FakeS3()
+
+
+# ---- the fake itself ----
+
+
+def test_the_fake_reads_part_of_an_object_with_its_metadata(fake):
+    fake.put_object("bucket", "a.pdf", b"%PDF-1.7", Metadata={"sha256": "abc"})
+
+    response = fake.get_object(Bucket="bucket", Key="a.pdf", Range="bytes=0-3")
+
+    assert response["Body"].read() == b"%PDF"
+    assert response["ContentRange"] == "bytes 0-3/8"
+    assert response["Metadata"] == {"sha256": "abc"}
+    full = fake.get_object(Bucket="bucket", Key="a.pdf", Range="bytes=0-8191")
+    assert full["Body"].read() == b"%PDF-1.7"
+
+
+def test_the_fake_refuses_a_range_of_an_empty_object_as_s3_does(fake):
+    fake.put_object("bucket", "empty", b"")
+
+    with pytest.raises(ClientError) as error:
+        fake.get_object(Bucket="bucket", Key="empty", Range="bytes=0-8191")
+    assert error.value.response["Error"]["Code"] == "InvalidRange"
+
+
+def test_the_fake_copies_or_replaces_metadata(fake):
+    fake.put_object(
+        "bucket", "a", b"x", ContentType="application/pdf", Metadata={"sha256": "1"}
+    )
+
+    fake.copy_object(
+        Bucket="bucket", Key="b", CopySource={"Bucket": "bucket", "Key": "a"}
+    )
+    fake.copy_object(
+        Bucket="bucket",
+        Key="c",
+        CopySource={"Bucket": "bucket", "Key": "a"},
+        MetadataDirective="REPLACE",
+        Metadata={"sha256": "2"},
+        ContentType="text/html",
+    )
+
+    assert fake.objects["b"]["Metadata"] == {"sha256": "1"}
+    assert fake.objects["b"]["ContentType"] == "application/pdf"
+    assert fake.objects["c"]["Metadata"] == {"sha256": "2"}
+    assert fake.objects["c"]["ContentType"] == "text/html"
+    assert fake.objects["c"]["Body"] == b"x"
+
+
+def test_the_fake_lists_sizes_and_etags(fake):
+    fake.put_object("bucket", "data/a", b"abc")
+
+    (page,) = fake.get_paginator("list_objects_v2").paginate(
+        Bucket="bucket", Prefix="data/"
+    )
+
+    assert page["Contents"] == [
+        {"Key": "data/a", "Size": 3, "ETag": '"900150983cd24fb0d6963f7d28e17f72"'}
+    ]
+
+
+def test_the_fake_lists_common_prefixes(fake):
+    for key in ("data/ABC/Decisions/_index.json", "data/XYZ/documents/a", "data/b"):
+        fake.put_object("bucket", key, b"")
+
+    (page,) = fake.get_paginator("list_objects_v2").paginate(
+        Bucket="bucket", Prefix="data/", Delimiter="/"
+    )
+
+    assert page["CommonPrefixes"] == [{"Prefix": "data/ABC/"}, {"Prefix": "data/XYZ/"}]
+    assert [item["Key"] for item in page["Contents"]] == ["data/b"]
 
 
 def metadata_store(fake, mode=StorageMode.ACCUMULATE, prefix="data"):
