@@ -54,10 +54,18 @@ Metadata and files are stored separately:
   `storage_key` and the backend holding it — but **never a resolved URL**,
   which would be specific to whoever ran the scrape.
 - The files go to `data/<COUNCIL>/documents/` through a pluggable document
-  backend.
+  backend, in a store shared with decisions. Each is named after its
+  content (the SHA-256 of its bytes and an extension sniffed from them), so
+  a report linked from a meeting and a decision is stored once. Scrapers
+  don't build keys: `DocumentSavingMixin.save_record_documents` saves them.
 - A document already in the store is not downloaded again, tracked through
   `_index.json`. That index is a cache, not a source of truth: entries are
   checked against the store before being used to skip.
+- A 404, 410 or empty 200 is recorded on the document as `unavailable`.
+- A run checkpoints every 50 meetings saved (`checkpoint_every`) on backends
+  with `supports_checkpoints`, so an interrupted run keeps what it saved
+  before then. Documents stored since the last checkpoint aren't in the
+  saved index, so the next run downloads them again, without writing them.
 
 **Store documents before saving the record's JSON.** The JSON is serialised
 from the document dicts, and storing a document is what adds the hash and

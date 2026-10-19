@@ -120,9 +120,8 @@ Conditional requests are still made for whatever is fetched, so `ETag` and
 
 `LGSF_STORAGE_BACKEND=s3` with `LGSF_S3_BUCKET` (and optional
 `LGSF_S3_PREFIX`) writes metadata to S3 in the same layout as `data/`;
-documents follow unless `LGSF_DOCUMENT_STORAGE_BACKEND` is set, but under
-`<COUNCIL>/Decisions/documents/`, not `<COUNCIL>/documents/`, since every
-data type shares the bucket. It checkpoints like
+documents follow unless `LGSF_DOCUMENT_STORAGE_BACKEND` is set, to
+`<COUNCIL>/documents/`, shared with minutes as in `data/`. It checkpoints like
 local (`supports_checkpoints`), uploading the index after the records it
 names. Existence checks use one listing per council, not a request each.
 
@@ -137,8 +136,12 @@ anything but display.
 
 The decision text is small and is the point of the record, so it lands in
 `data/<COUNCIL>/Decisions/json/` for version control. Attachments go to
-`data/<COUNCIL>/documents/` through the document backend, keyed by their
-`sNNNN` attachment id.
+`data/<COUNCIL>/documents/` through the document backend, shared with
+minutes, each named after its content: the SHA-256 of its bytes and an
+extension sniffed from them (`lgsf/storage/documents/sniff.py`). Don't build
+keys in a scraper; `DocumentSavingMixin.save_record_documents` does the
+saving. A document the index doesn't name is downloaded and then not written
+if the store already has it, so the same file linked twice is stored once.
 
 **Store documents before saving the record's JSON.** The JSON is serialised
 from the document dicts, and storing a document is what adds the hash and

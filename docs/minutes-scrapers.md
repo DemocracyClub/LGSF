@@ -119,12 +119,31 @@ would be specific to whoever ran the scrape.
 
 The files themselves go to `data/<COUNCIL>/documents/` via a pluggable
 document-storage backend, so they can be pointed at an object store without
-touching the metadata.
+touching the metadata. The store is shared with decisions. Each file is named
+after its content: the SHA-256 of its bytes, then an extension worked out from
+the bytes. So a report linked from a meeting and from a decision is stored
+once, though each downloads it.
 
 A document already in the store is not downloaded again, so a second run over
 the same window costs almost nothing. `--skip-documents` skips downloading
 entirely, which is what you want while iterating on parsing: a single council
 can be hundreds of megabytes.
+
+A document that answers 404 or 410, or 200 with no body, is recorded on the
+meeting as `unavailable` (the status code, or `"empty"`) and counted as that in
+the run report, not as a failed download. It isn't recorded in the index, so
+a later run that reads the meeting again asks for it again.
+
+## Checkpoints
+
+A run commits what it has stored every `checkpoint_every` (50) meetings
+saved, where the storage backend can do that cheaply (`supports_checkpoints`:
+local and S3 yes, GitHub no, since each commit there is a pull request). An
+interrupted run loses at most the meetings since its last checkpoint.
+
+Their documents are already in the document store, but only a saved index
+records which link each came from, so the next run downloads those again. It
+finds them already stored and doesn't write them a second time.
 
 ## When a scraper runs but finds no meetings
 

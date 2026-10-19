@@ -188,17 +188,19 @@ the flag goes back for them.
 ## Writing to S3
 
 For a long run that others should be able to follow, write to S3 instead of
-`data/`. Every data type shares the bucket, so each council's decisions
-and their documents sit together under `<prefix>/<COUNCIL>/Decisions/`:
+`data/`. Every data type shares the bucket. A council's decisions sit under
+`<prefix>/<COUNCIL>/Decisions/`, and its documents beside them, in a store
+shared with minutes:
 
 ```
 <prefix>/<COUNCIL>/Decisions/json/...
 <prefix>/<COUNCIL>/Decisions/_index.json
-<prefix>/<COUNCIL>/Decisions/documents/...
+<prefix>/<COUNCIL>/documents/...
 ```
 
-The metadata is laid out as in `data/`, so anyone with read access can sync
-it at any point and get a data directory LGSF can read:
+That is the layout of `data/`, with the same document keys, so anyone with
+read access can sync it at any point and get a data directory LGSF can read,
+documents included:
 
 ```bash
 export LGSF_STORAGE_BACKEND=s3
@@ -212,11 +214,8 @@ uv run python manage.py decisions --all-councils --discover-since --workers 12
 aws s3 sync s3://<bucket>/data ./data     # repeat to pick up new data
 ```
 
-Documents go to S3 too, under `Decisions/documents/` beside the metadata,
-unless `LGSF_DOCUMENT_STORAGE_BACKEND` says otherwise. That differs from
-`data/`, where every type shares `data/<COUNCIL>/documents/`, so a synced
-copy carries on scraping without re-fetching documents only if they are
-moved there.
+Documents go to S3 too, to `<COUNCIL>/documents/`, unless
+`LGSF_DOCUMENT_STORAGE_BACKEND` says otherwise.
 
 It behaves as local storage does. Records are staged in memory and uploaded
 at each checkpoint (every 50 decisions and each slice), so S3 is a few
@@ -227,9 +226,9 @@ pull requests as with GitHub: a checkpoint is just uploads.
 
 Each council's keys are listed once, on first use, and existence checks are
 answered from that listing, so a run makes about one request to S3 per file
-it writes, plus a listing per council. Each document records its SHA-256 in
-the object's metadata, so recovering one after a crash is a HEAD rather than
-a download.
+it writes, plus a listing per council. Each document also carries its SHA-256
+in the object's user metadata, as `sha256`, so its hash can be read without
+downloading it.
 
 The runner needs `s3:ListBucket` on the bucket and `s3:GetObject` and
 `s3:PutObject` under the prefix, plus `s3:DeleteObject` only for data types
@@ -343,11 +342,30 @@ a `content_hash`, a `storage_key` and the backend holding it, but not a
 resolved URL, which would be specific to whoever ran the scrape.
 
 The files themselves go to `data/<COUNCIL>/documents/` through the pluggable
-document backend. ModernGov document URLs carry an `sNNNN` attachment id,
-which is used as the storage key so the same document is not stored twice.
+document backend. That store is shared with minutes. Each file is named after
+its content: the SHA-256 of its bytes as 64 hex digits, then an extension
+worked out from the bytes by `lgsf/storage/documents/sniff.py`, such as
+`5601de3f01c2dbb3bb49673b2e84e9df7082b0f68661ae586e980f74619cb704.pdf`. So:
 
-A document already in the store is not downloaded again. `--skip-documents`
-skips downloading entirely, which is what you want while iterating on parsing.
+- a file linked from two decisions, or from a decision and a meeting, is
+  stored once
+- an HTML page served from a link ending `.pdf`, as `mgConvert2PDF.aspx`
+  error pages and `mgReasonsRestricted.aspx` pages are, is stored as `.html`
+
+A document whose URL `_index.json` records, with its file still in the store,
+is not downloaded again. Any other document is downloaded, since its key isn't
+known until its bytes are, and then not written if the store already has that
+key. The run report counts those as "already in the store". It means a file
+linked from both minutes and decisions is downloaded by each, and a run that
+stops part way downloads again the documents it stored after its last
+checkpoint.
+
+An index entry whose `storage_key` isn't a content key was written before
+documents were named this way, and is treated as missing, so the document is
+downloaded again and stored under its content key.
+
+`--skip-documents` skips downloading entirely, which is what you want while
+iterating on parsing.
 
 ## Storage
 
@@ -381,8 +399,9 @@ record rather than saving a request:
   retried however old it is.
 - A decision stored without all its documents, because a download failed or
   the run was `--skip-documents`. Its index entry is marked `incomplete`. A
-  document that answers 404 or 410 is recorded on the record as
-  `unavailable` and does not count as missing.
+  document that answers 404 or 410, or 200 with no body, is recorded on the
+  record as `unavailable` (the status code, or `"empty"`) and does not count
+  as missing.
 - A decision whose stored file has gone. The index is a cache; the file it
   names is opened before its word is taken.
 - A decision the list page gives no publication date for.

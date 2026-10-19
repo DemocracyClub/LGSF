@@ -359,35 +359,73 @@ and run every council afterwards to check what you generated.
 ## 8. If your type downloads files
 
 Documents do **not** go through `self.storage_session`. That is the metadata
-store, destined for git.
+store, destined for git. They go to `self.document_storage`, a store per
+council shared by every data type: `data/<COUNCIL>/documents/` locally,
+`<prefix>/<COUNCIL>/documents/` on S3.
+
+Put `DocumentSavingMixin` before `ScraperBase`, and call
+`save_record_documents` before saving the record's JSON:
 
 ```python
-from lgsf.storage.documents import get_document_storage_backend  # via ScraperBase
+from lgsf.scrapers.documents import DocumentSavingMixin
 
-stored = self.document_storage.write(key, content)
-record_entry = stored.as_dict()
-# -> storage_key, storage_backend, content_hash, content_length
+
+class BaseCommitteeScraper(DocumentSavingMixin, ScraperBase):
+    save_documents = True
+
+    def process_committee(self, committee, raw):
+        if self.save_documents and not self.skip_documents:
+            self.save_record_documents(committee)
+        self.save_raw(f"{committee.as_file_name()}.{self.ext}", raw)
+        self.save_json(committee)
 ```
+
+`save_record_documents(record)` goes through `record.documents`, a list of
+dicts each with a `url`. For each one it:
+
+- skips it if `self.index["documents"]` records the URL and the store still
+  has the file the entry names
+- otherwise downloads it and passes the bytes to
+  `self.document_storage.store(content)`, which writes the file unless the
+  store already has it
+- records `storage_key`, `storage_backend`, `content_hash`, `content_length`,
+  `etag`, `last_modified` and `content_type` on the dict, and in the index
+  under the URL
+- records a 404 or 410 as `unavailable: <status>`, and a 200 with no body as
+  `unavailable: "empty"`
+
+It returns how many downloads failed in any other way, which might work next
+time. Decisions use that to mark a decision incomplete so it is fetched
+again; minutes ignore it. The counts (`documents_downloaded`,
+`documents_skipped`, `documents_failed`, `documents_unavailable`,
+`documents_already_in_store`) are on the scraper for its report.
+
+**A new type doesn't choose keys.** The store names each file after its
+content: the SHA-256 of its bytes and an extension worked out from them
+(`lgsf/storage/documents/sniff.py`). The same file is stored once per council
+whichever record or type links it, and an HTML error page from a `.pdf` link
+is stored as `.html`.
 
 The resolved URL is deliberately not recorded: it is specific to wherever the
 scrape ran, so the same document would produce a different value for every
-person who scraped it. Store the key — the document's path within its backend —
-and call `document_storage.url_for(key)` when you need a URL.
+person who scraped it. The key is recorded, and
+`document_storage.url_for(key)` gives a URL when you need one.
 
-1. **Skip what you already have.** Check `self.document_storage.exists(key)`
-   before downloading, or every run re-downloads everything.
-2. **Verify the index against the store.** Keep a `_index.json` in the metadata
-   store mapping source URL to storage key, but treat it as a cache: confirm
-   the file is really there before skipping, so a deleted file costs a
-   re-download rather than a lost document.
-3. **Store documents before saving the record's JSON.** See step 3.
-4. **Offer a way to skip downloads.** Add a `--skip-documents` flag in the
+1. **Keep an index.** The mixin reads and writes `self.index["documents"]`, a
+   dict from source URL to what was recorded. Keep it in `_index.json` in the
+   metadata store and override `save_index()` to write it, as minutes and
+   decisions do. Without it every run downloads every document again, since a
+   file's key isn't known until its bytes are. It is a cache: the mixin
+   confirms the file is in the store before skipping it.
+2. **Store documents before saving the record's JSON.** See step 3.
+3. **Offer a way to skip downloads.** Add a `--skip-documents` flag in the
    command's `add_arguments` and honour it in the scraper, as minutes does, so
    parsing can be checked without transferring every file.
-5. **Keep the key portable.** Unique per council, stable across runs, free of
-   anything machine-specific. Source-system attachment ids are ideal; fall back
-   to a per-record index where the source has none (CMIS URLs are opaque
-   encrypted query strings).
+4. **Checkpoint long runs.** `self.checkpoint()`, on `ScraperBase`, saves the
+   index, ends the storage session and starts a new one, where the backend can
+   do that cheaply (`supports_checkpoints`). A file stored but not yet named
+   in a saved index is downloaded again by the next run, so call it every so
+   often: minutes do every 50 meetings, decisions every 50 decision pages.
 
 ---
 
