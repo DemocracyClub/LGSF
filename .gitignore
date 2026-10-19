@@ -1,4 +1,6 @@
 data
+# Old to new keys from scripts/migrate_documents.py
+documents-migration/
 .idea
 .DS_Store
 .pytest_cache
