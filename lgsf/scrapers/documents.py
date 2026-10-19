@@ -73,7 +73,8 @@ class DocumentSavingMixin:
         A failed download shouldn't fail the whole scrape. Returns how many
         documents could not be fetched this time but might be next time.
         A 404 or 410 is not one of those: it is recorded on the document as
-        ``unavailable``.
+        ``unavailable``. Nor is a 200 with no body, recorded as
+        ``unavailable: "empty"``, since fetching it again doesn't help.
         """
         missing = 0
         for document in getattr(record, "documents", []):
@@ -108,6 +109,14 @@ class DocumentSavingMixin:
                 missing += 1
                 self.documents_failed += 1
                 self.console.log(f"[yellow]Failed to download {url}: {e}[/yellow]")
+                continue
+
+            if not content:
+                # Some councils answer 200 with no body for a document
+                # (4,202 on S3), and the ones fetched again later were
+                # still empty, so there is nothing to store or retry.
+                document["unavailable"] = "empty"
+                self.documents_unavailable += 1
                 continue
 
             stored, written = self.document_storage.store(content)

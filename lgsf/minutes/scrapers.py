@@ -244,7 +244,7 @@ class BaseMinutesScraper(DocumentSavingMixin, ScraperBase):
                 f"({self.documents_already_in_store} of them already in the "
                 f"store, so not written again), "
                 f"{self.documents_skipped} already stored, "
-                f"{self.documents_unavailable} gone from the source (404/410)"
+                f"{self.documents_unavailable} unavailable (404, 410 or empty)"
             )
             if self.documents_failed:
                 self.console.log(

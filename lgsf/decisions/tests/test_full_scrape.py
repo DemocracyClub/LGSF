@@ -557,6 +557,25 @@ def test_a_document_that_is_gone_does_not_keep_its_decision_open(
     assert record["documents"][0]["unavailable"] == 404
 
 
+def test_an_empty_document_does_not_keep_its_decision_open(make_scraper, data_dir):
+    """A 200 with no body: fetching it again doesn't help."""
+    scraper = run(
+        make_scraper(
+            with_document(lambda: FakeResponse(content=b"")), since="2019-06-01"
+        )
+    )
+
+    assert scraper.documents_unavailable == 1
+    assert scraper.incomplete_decisions == 0
+    assert stored_record(data_dir)["documents"][0]["unavailable"] == "empty"
+    assert "storage_key" not in stored_record(data_dir)["documents"][0]
+    assert not (data_dir / "TST" / "documents").exists()
+    entry = stored_index(data_dir)["decisions"][
+        f"{BASE_URL}/ieDecisionDetails.aspx?ID=1"
+    ]
+    assert "incomplete" not in entry
+
+
 def test_skip_documents_does_not_settle_decisions_without_them(make_scraper, data_dir):
     """
     A --skip-documents backfill followed by a normal run has to go back for

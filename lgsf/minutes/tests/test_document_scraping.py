@@ -263,6 +263,23 @@ def test_a_document_that_is_gone_is_recorded_as_unavailable(scraper):
     assert scraper.documents_failed == 0
 
 
+def test_an_empty_document_is_recorded_as_unavailable(scraper, data_dir):
+    """A 200 with no body. Fetching it again weeks later gets the same."""
+    scraper.responses["https://ex.gov.uk/a.pdf"] = FakeResponse(content=b"")
+    meeting = make_meeting(
+        [{"url": "https://ex.gov.uk/a.pdf", "title": "Minutes", "category": "minutes"}]
+    )
+
+    scraper.save_record_documents(meeting)
+
+    assert meeting.documents[0]["unavailable"] == "empty"
+    assert "storage_key" not in meeting.documents[0]
+    assert scraper.documents_unavailable == 1
+    assert scraper.documents_failed == 0
+    assert not (data_dir / "ABC" / "documents").exists()
+    assert "https://ex.gov.uk/a.pdf" not in scraper.index["documents"]
+
+
 def test_documents_are_not_fetched_conditionally(scraper):
     """
     A document is only requested when the store doesn't have it, so a 304
@@ -295,7 +312,7 @@ def test_failed_and_unavailable_documents_are_reported(scraper):
 
     scraper.report()
 
-    assert any("1 gone from the source" in m for m in scraper.console.messages)
+    assert any("1 unavailable" in m for m in scraper.console.messages)
     assert any("1 documents failed" in m for m in scraper.console.messages)
 
 
