@@ -404,3 +404,24 @@ def test_one_file_can_be_read_and_checked_without_listing(fake):
     assert store.exists_now("_last-run")
     assert not store.exists_now("_index.json")
     assert fake.ops("list") == []
+
+
+def test_the_same_bytes_are_put_once(fake):
+    store = document_store(fake)
+
+    first, first_written = store.store(b"%PDF-1.7 report")
+    second, second_written = document_store(fake).store(b"%PDF-1.7 report")
+
+    assert first_written and not second_written
+    assert second.key == first.key
+    assert len(fake.ops("put")) == 1
+
+
+def test_an_html_page_is_stored_as_html(fake):
+    """Not as application/pdf, whatever its link said."""
+    stored, _ = document_store(fake).store(b"<!DOCTYPE html><html></html>")
+
+    assert stored.key.endswith(".html")
+    obj = fake.objects[f"data/KIR/Decisions/documents/{stored.key}"]
+    assert obj["ContentType"].startswith("text/html")
+    assert obj["Metadata"]["sha256"] == stored.key.removesuffix(".html")

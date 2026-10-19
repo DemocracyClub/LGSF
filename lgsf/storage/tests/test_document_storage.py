@@ -1,14 +1,17 @@
 """Document storage backend behaviour."""
 
+import hashlib
 from pathlib import Path
 
 import pytest
 
 from lgsf.conf import settings
 from lgsf.storage.documents import (
+    content_key,
     get_available_document_backends,
     get_document_storage_backend,
     hash_content,
+    is_content_key,
 )
 from lgsf.storage.documents.local import LocalDocumentStorage
 
@@ -200,3 +203,53 @@ def test_url_for_works_without_the_file_existing(data_dir):
     assert url.startswith("file://")
     assert url.endswith("/ABC/documents/doc.pdf")
     assert not Path(storage._path("doc.pdf")).exists()
+
+
+# ---- storing by content ----
+
+REPORT = b"%PDF-1.7 report"
+REPORT_KEY = hashlib.sha256(REPORT).hexdigest() + ".pdf"
+
+
+def test_a_document_is_stored_under_the_hash_of_its_bytes(data_dir):
+    stored, written = LocalDocumentStorage(council_code="ABC").store(REPORT)
+
+    assert written
+    assert stored.key == REPORT_KEY
+    assert stored.content_hash == hash_content(REPORT)
+    assert stored.content_length == len(REPORT)
+    assert (data_dir / "ABC" / "documents" / REPORT_KEY).read_bytes() == REPORT
+
+
+def test_the_extension_comes_from_the_bytes():
+    assert content_key(b"<!DOCTYPE html><html></html>").endswith(".html")
+    assert content_key(REPORT).endswith(".pdf")
+
+
+def test_storing_the_same_bytes_twice_writes_once(data_dir, monkeypatch):
+    storage = LocalDocumentStorage(council_code="ABC")
+    first, first_written = storage.store(REPORT)
+
+    writes = []
+    monkeypatch.setattr(storage, "write", lambda *args: writes.append(args))
+    second, second_written = storage.store(REPORT)
+
+    assert first_written and not second_written
+    assert writes == []
+    assert second == first
+
+
+@pytest.mark.parametrize(
+    "key,expected",
+    [
+        (REPORT_KEY, True),
+        (hashlib.sha256(b"").hexdigest(), True),
+        (hashlib.sha256(b"").hexdigest().upper() + ".pdf", False),
+        (REPORT_KEY[:63] + ".pdf", False),
+        ("2026-08-19-council-1234.pdf", False),
+        ("2020-01-01-1-s123.pdf", False),
+        ("nested/" + REPORT_KEY, False),
+    ],
+)
+def test_a_content_key_can_be_told_from_a_key_made_before(key, expected):
+    assert is_content_key(key) is expected

@@ -6,13 +6,17 @@ from typing import Optional
 from lgsf.storage.documents.base import (
     BaseDocumentStorage,
     StoredDocument,
+    content_key,
     hash_content,
+    is_content_key,
 )
 
 __all__ = [
     "BaseDocumentStorage",
     "StoredDocument",
+    "content_key",
     "hash_content",
+    "is_content_key",
     "get_document_storage_backend",
     "get_available_document_backends",
 ]
