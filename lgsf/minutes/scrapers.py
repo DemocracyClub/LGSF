@@ -14,10 +14,11 @@ from lgsf.minutes.exceptions import (
     SkipMeetingException,
 )
 from lgsf.scrapers import ScraperBase
+from lgsf.scrapers.documents import DocumentSavingMixin
 from lgsf.storage.backends.base import StorageMode
 
 
-class BaseMinutesScraper(ScraperBase):
+class BaseMinutesScraper(DocumentSavingMixin, ScraperBase):
     tags = []
     class_tags = []
     ext = "html"
@@ -53,9 +54,6 @@ class BaseMinutesScraper(ScraperBase):
         self.meetings = set()
         self.new_data = True
         self.unchanged_meetings = 0
-        self.documents_downloaded = 0
-        self.documents_skipped = 0
-        self.documents_linked = 0
 
     @property
     def skip_documents(self):
@@ -215,8 +213,10 @@ class BaseMinutesScraper(ScraperBase):
         # Documents first: storing them adds the hash and storage key to each
         # document dict, and the meeting JSON is serialised from those, so
         # saving the meeting first would record documents with no location.
+        # Unlike decisions, a meeting isn't marked incomplete when one of
+        # its documents fails, so how many did isn't needed here.
         if self.save_documents and not self.skip_documents:
-            self.save_meeting_documents(meeting)
+            self.save_record_documents(meeting)
 
         self.save_meeting(formatted_meeting_raw_str, meeting)
 
@@ -225,118 +225,6 @@ class BaseMinutesScraper(ScraperBase):
         file_name = "{}.{}".format(meeting_obj.as_file_name(), self.ext)
         self.save_raw(file_name, raw_content)
         self.save_json(meeting_obj)
-
-    def document_key(self, meeting_obj, document, index):
-        """
-        Build the document store key for one of a meeting's documents.
-
-        CMIS documents have no clean attachment id (their URLs are opaque
-        encrypted query strings), so fall back to a per-meeting index to
-        keep keys distinct.
-        """
-        suffix = document.get("attachment_id") or index
-        extension = self.document_extension(document)
-        return "{}-{}{}".format(meeting_obj.as_file_name(), suffix, extension)
-
-    def document_extension(self, document):
-        """
-        Guess a file extension from the document URL.
-
-        ModernGov and CMIS both serve documents through handler URLs with no
-        extension at all (mgConvert2PDF.aspx, Document.ashx), and those are
-        overwhelmingly PDFs, so that's the fallback.
-        """
-        path = document.get("url", "").split("?")[0].lower()
-        for extension in (".pdf", ".docx", ".doc", ".xlsx", ".xls", ".rtf", ".txt"):
-            if path.endswith(extension):
-                return extension
-        return ".pdf"
-
-    def stored_document_metadata(self, url):
-        """
-        Return the recorded metadata for an already-stored document, or None.
-
-        The index is only trusted as far as the document store agrees with
-        it: an entry whose file has gone is treated as never fetched.
-        """
-        entry = self.index["documents"].get(url)
-        if not entry:
-            return None
-
-        key = entry.get("storage_key")
-        if not key:
-            return None
-
-        try:
-            if not self.document_storage.exists(key):
-                return None
-        except ValueError:
-            # Key written by a backend with a different key format
-            return None
-
-        return entry
-
-    def save_meeting_documents(self, meeting_obj):
-        """
-        Store every document linked from this meeting, skipping any we
-        already hold, and record where each one went on the meeting's
-        metadata.
-
-        Documents go to the document store rather than the metadata store:
-        the JSON that lands in git carries a hash and a storage key, and the
-        file itself lives wherever the document backend puts it.
-
-        A failed download shouldn't fail the whole scrape.
-        """
-        for index, document in enumerate(
-            getattr(meeting_obj, "documents", []), start=1
-        ):
-            url = document.get("url")
-            if not url:
-                continue
-
-            existing = self.stored_document_metadata(url)
-            if existing:
-                # Already downloaded by an earlier run and still in the
-                # store: reuse its metadata so a skipped document looks
-                # exactly like a freshly fetched one.
-                document.update(existing)
-                self.documents_skipped += 1
-                continue
-
-            etag, last_modified = (None, None)
-            stale = self.index["documents"].get(url) or {}
-            if stale:
-                etag = stale.get("etag")
-                last_modified = stale.get("last_modified")
-
-            try:
-                response = self.get_conditional(
-                    url,
-                    etag=etag,
-                    last_modified=last_modified,
-                    extra_headers=self.extra_headers,
-                )
-                if self.response_status(response) == 304:
-                    # Unchanged, but the file isn't in the store (or we
-                    # wouldn't be here), so fetch it unconditionally.
-                    response = self.get(url, extra_headers=self.extra_headers)
-                content = self.response_bytes(response)
-            except Exception as e:
-                self.console.log(f"[yellow]Failed to download {url}: {e}[/yellow]")
-                continue
-
-            key = self.document_key(meeting_obj, document, index)
-            stored = self.document_storage.write(key, content)
-
-            entry = stored.as_dict()
-            entry["etag"] = self.response_header(response, "etag")
-            entry["last_modified"] = self.response_header(response, "last-modified")
-            entry["content_type"] = self.response_header(response, "content-type")
-
-            document.update(entry)
-            self.index["documents"][url] = entry
-            self.documents_downloaded += 1
 
     def report(self):
         # Unlike councillors, zero meetings in the scrape window is
@@ -352,9 +240,17 @@ class BaseMinutesScraper(ScraperBase):
             )
         else:
             self.console.log(
-                f"Documents: {self.documents_downloaded} downloaded, "
-                f"{self.documents_skipped} already stored"
+                f"Documents: {self.documents_downloaded} downloaded "
+                f"({self.documents_already_in_store} of them already in the "
+                f"store, so not written again), "
+                f"{self.documents_skipped} already stored, "
+                f"{self.documents_unavailable} gone from the source (404/410)"
             )
+            if self.documents_failed:
+                self.console.log(
+                    f"[yellow]{self.documents_failed} documents failed to "
+                    f"download[/yellow]"
+                )
 
     def categorise_document(self, title):
         lowered = title.lower()

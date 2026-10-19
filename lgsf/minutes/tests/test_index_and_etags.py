@@ -33,9 +33,6 @@ def make_scraper(stored_files=None):
     scraper.meetings = set()
     scraper.new_data = True
     scraper.unchanged_meetings = 0
-    scraper.documents_downloaded = 0
-    scraper.documents_skipped = 0
-    scraper.documents_linked = 0
     scraper.extra_headers = {}
     scraper.console = FakeConsole()
     scraper.storage_session = FakeStorageSession(stored_files)
@@ -196,17 +193,16 @@ def test_the_index_survives_a_round_trip_between_runs():
     What run 1 wrote is what run 2 reads: this is the whole mechanism that
     makes skipping work across runs.
     """
+    key = "5601de3f01c2dbb3bb49673b2e84e9df7082b0f68661ae586e980f74619cb704.pdf"
     first = make_scraper()
     first.index["documents"]["https://ex.gov.uk/a.pdf"] = {
-        "storage_key": "doc.pdf",
-        "content_hash": "sha256:abc",
+        "storage_key": key,
+        "content_hash": "sha256:" + key.removesuffix(".pdf"),
     }
     first.save_index()
 
     second = make_scraper(first.storage_session.files)
-    assert second.index["documents"]["https://ex.gov.uk/a.pdf"]["storage_key"] == (
-        "doc.pdf"
-    )
+    assert second.index["documents"]["https://ex.gov.uk/a.pdf"]["storage_key"] == key
 
 
 def test_source_block_is_written_into_the_meeting_json():

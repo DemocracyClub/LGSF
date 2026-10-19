@@ -150,8 +150,6 @@ def make_fetching_scraper(detail_html, status=200, headers=None):
     scraper.options = {}
     scraper.extra_headers = {}
     scraper.unchanged_meetings = 0
-    scraper.documents_downloaded = 0
-    scraper.documents_skipped = 0
     scraper.requested = []
 
     class Response:
