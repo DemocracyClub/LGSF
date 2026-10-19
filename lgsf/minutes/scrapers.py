@@ -45,6 +45,13 @@ class BaseMinutesScraper(DocumentSavingMixin, ScraperBase):
     # categorisation labels documents, it doesn't filter them.
     save_documents = True
 
+    # Commit progress every this many meetings saved, where the storage
+    # backend can do that cheaply. A document is stored under a key made
+    # from its bytes, so one stored but not yet named in a saved index is
+    # downloaded again by the next run: checkpointing keeps that to the
+    # documents of the last few meetings, not the whole run.
+    checkpoint_every = 50
+
     #: Where the run index lives inside the metadata store.
     INDEX_FILE_NAME = "_index.json"
     INDEX_VERSION = 1
@@ -54,6 +61,7 @@ class BaseMinutesScraper(DocumentSavingMixin, ScraperBase):
         self.meetings = set()
         self.new_data = True
         self.unchanged_meetings = 0
+        self.meetings_saved = 0
 
     @property
     def skip_documents(self):
@@ -219,6 +227,12 @@ class BaseMinutesScraper(DocumentSavingMixin, ScraperBase):
             self.save_record_documents(meeting)
 
         self.save_meeting(formatted_meeting_raw_str, meeting)
+
+        # Here rather than in run(), because ModernGov and CMIS each have
+        # their own run loop, and all three come through here.
+        self.meetings_saved += 1
+        if self.checkpoint_every and self.meetings_saved % self.checkpoint_every == 0:
+            self.checkpoint()
 
     def save_meeting(self, raw_content, meeting_obj):
         assert type(meeting_obj) is MeetingBase, "Scrapers must return a meeting object"

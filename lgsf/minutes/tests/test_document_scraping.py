@@ -78,6 +78,7 @@ def scraper():
     scraper.meetings = set()
     scraper.new_data = True
     scraper.unchanged_meetings = 0
+    scraper.meetings_saved = 0
     scraper.extra_headers = {}
     scraper.console = FakeConsole()
     scraper.storage_session = FakeStorageSession()
