@@ -7,8 +7,12 @@ import hashlib
 import pytest
 
 from lgsf.conf import settings
+from lgsf.decisions.scrapers import ModGovDecisionsScraper
+from lgsf.minutes.scrapers import ModGovMinutesScraper
 from lgsf.scrapers.base import ScraperBase
 from lgsf.scrapers.documents import DocumentSavingMixin
+from lgsf.storage import s3
+from lgsf.storage.tests.test_s3_storage import FakeS3
 
 
 class FakeConsole:
@@ -130,3 +134,38 @@ def test_the_counters_start_at_zero_without_an_init():
         "documents_already_in_store",
     ):
         assert getattr(scraper, counter) == 0
+
+
+# ---- one store per council ----
+
+
+def scraper_for(scraper_class, options):
+    scraper = scraper_class.__new__(scraper_class)
+    scraper.council_id = "ABC"
+    scraper.options = options
+    return scraper
+
+
+def test_every_type_of_a_council_shares_one_local_store(data_dir):
+    minutes = scraper_for(ModGovMinutesScraper, {"council": "ABC"})
+    decisions = scraper_for(ModGovDecisionsScraper, {"council": "ABC"})
+
+    assert minutes.document_storage.root == decisions.document_storage.root
+    assert minutes.document_storage.root == (data_dir / "ABC" / "documents").resolve()
+
+
+def test_every_type_of_a_council_shares_one_s3_store(monkeypatch):
+    """As locally: documents on S3 used to sit under each type's prefix."""
+    bucket = FakeS3()
+    monkeypatch.setattr(s3, "get_client", lambda: bucket)
+    monkeypatch.setenv("LGSF_S3_BUCKET", "bucket")
+    monkeypatch.setenv("LGSF_S3_PREFIX", "data")
+    options = {"council": "ABC", "document_storage_backend": "s3"}
+    minutes = scraper_for(ModGovMinutesScraper, options)
+    decisions = scraper_for(ModGovDecisionsScraper, options)
+
+    stored, _ = minutes.document_storage.store(b"%PDF-1.7 report")
+
+    assert minutes.document_storage.root == "data/ABC/documents"
+    assert decisions.document_storage.root == "data/ABC/documents"
+    assert decisions.document_storage.exists(stored.key)

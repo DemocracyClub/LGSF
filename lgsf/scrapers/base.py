@@ -381,14 +381,14 @@ class ScraperBase(metaclass=abc.ABCMeta):
         """
         Where this scraper's document *files* go, as opposed to its metadata.
 
-        Lazily created, so scrapers that don't download documents never
-        construct one. Selected independently of the metadata backend: see
-        lgsf.storage.documents.
+        One store per council, shared by every data type, so it isn't told
+        this scraper's type. Lazily created, so scrapers that don't download
+        documents never construct one. Selected independently of the
+        metadata backend: see lgsf.storage.documents.
         """
         return get_document_storage_backend(
             council_code=self.council_id,
             options=self.options,
-            scraper_object_type=self.scraper_object_type,
         )
 
     @property

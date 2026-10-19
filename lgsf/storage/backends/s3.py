@@ -81,8 +81,6 @@ class S3Storage(BaseStorage):
     prefix that the session didn't write, which is what the local backend's
     clearing of the directory amounts to, but done after the new data is in
     place rather than before, so a failed run leaves the old data alone.
-    The documents/ beside the metadata belong to S3DocumentStorage and are
-    never deleted here.
     """
 
     supports_checkpoints = True
@@ -238,12 +236,7 @@ class S3Storage(BaseStorage):
         return json.dumps(summary, indent=2, default=str).encode(self.encoding)
 
     def _delete_all_but(self, keep):
-        documents = f"{s3.DOCUMENTS_DIR}/"
-        stale = sorted(
-            key
-            for key in set(self.listing.keys) - keep
-            if not key.startswith(documents)
-        )
+        stale = sorted(set(self.listing.keys) - keep)
         for start in range(0, len(stale), 1000):
             batch = stale[start : start + 1000]
             self.client.delete_objects(

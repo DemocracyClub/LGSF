@@ -54,19 +54,18 @@ def get_document_storage_backend(
     council_code: str,
     backend_type: Optional[str] = None,
     options: Optional[dict] = None,
-    **kwargs,
 ) -> BaseDocumentStorage:
     """
     Get a document storage backend instance for a specific council.
+
+    There is no data type to give: every type of a council shares one
+    document store.
 
     Args:
         council_code: Council identifier this storage instance will serve.
         backend_type: Backend to create. If None, detected from options and
                      environment.
         options: Scraper options dictionary, used for detection.
-        **kwargs: Additional backend-specific parameters:
-                 - scraper_object_type: for the s3 backend, the data type
-                   whose prefix the documents go under
 
     Raises:
         ValueError: If the backend_type is not supported.
@@ -84,10 +83,7 @@ def get_document_storage_backend(
     if backend_type == "s3":
         from lgsf.storage.documents.s3 import S3DocumentStorage
 
-        return S3DocumentStorage(
-            council_code=council_code,
-            scraper_object_type=kwargs.get("scraper_object_type"),
-        )
+        return S3DocumentStorage(council_code=council_code)
 
     raise ValueError(f"Unsupported document storage backend: {backend_type}")
 
