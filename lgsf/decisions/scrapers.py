@@ -18,9 +18,9 @@ from lgsf.decisions.exceptions import (
     SkipDecisionException,
 )
 from lgsf.scrapers import ScraperBase
+from lgsf.scrapers.documents import DocumentSavingMixin
 from lgsf.scrapers.progress import NullProgress
 from lgsf.storage.backends.base import StorageMode
-from lgsf.storage.documents import is_content_key
 
 
 class DecisionWindow(NamedTuple):
@@ -37,7 +37,7 @@ class DecisionWindow(NamedTuple):
         return f"{self.start.isoformat()}/{self.last.isoformat()}"
 
 
-class BaseDecisionsScraper(ScraperBase):
+class BaseDecisionsScraper(DocumentSavingMixin, ScraperBase):
     tags = []
     class_tags = []
     ext = "html"
@@ -115,13 +115,6 @@ class BaseDecisionsScraper(ScraperBase):
         self.windows_read = 0
         self.windows_skipped = 0
         self.windows_incomplete = 0
-        self.documents_downloaded = 0
-        self.documents_skipped = 0
-        self.documents_linked = 0
-        self.documents_failed = 0
-        self.documents_bytes = 0
-        self.documents_unavailable = 0
-        self.documents_already_in_store = 0
         self.incomplete_decisions = 0
         self.consecutive_failures = 0
 
@@ -324,7 +317,7 @@ class BaseDecisionsScraper(ScraperBase):
         this an interrupted backfill loses every decision it had read. The
         documents themselves are written straight to the document store and
         survive regardless, but only the index says which link each one
-        came from. So save_decision_documents downloads the ones written
+        came from. So save_record_documents downloads the ones written
         since the last checkpoint again, though it finds them already
         stored and doesn't write them again.
         """
@@ -509,7 +502,7 @@ class BaseDecisionsScraper(ScraperBase):
         # saving the decision first would record documents with no location.
         missing = 0
         if self.save_documents and not self.skip_documents:
-            missing = self.save_decision_documents(decision)
+            missing = self.save_record_documents(decision)
         elif self.save_documents:
             missing = len(getattr(decision, "documents", []) or [])
 
@@ -538,98 +531,6 @@ class BaseDecisionsScraper(ScraperBase):
             entry.pop("incomplete", None)
         else:
             entry["incomplete"] = True
-
-    def stored_document_metadata(self, url):
-        """
-        Return the recorded metadata for an already-stored document, or None.
-
-        The index is only trusted as far as the document store agrees with
-        it: an entry whose file has gone is treated as never fetched.
-        """
-        entry = self.index["documents"].get(url)
-        if not entry:
-            return None
-
-        key = entry.get("storage_key")
-        if not key or not is_content_key(key):
-            # A key from before documents were named after their content.
-            # The S3 migration renames those; until it has, the document
-            # is fetched again and stored under its content key.
-            return None
-
-        try:
-            if not self.document_storage.exists(key):
-                return None
-        except ValueError:
-            # Key written by a backend with a different key format
-            return None
-
-        return entry
-
-    def save_decision_documents(self, decision_obj):
-        """
-        Store every document linked from this decision, skipping any we
-        already hold, and record where each one went on the decision.
-
-        A document's key comes from its bytes, so one the index doesn't
-        name is downloaded to find out whether it is held. If it is - the
-        same file linked from somewhere else, or one stored by a run that
-        stopped before its index was saved - it isn't written again.
-
-        A failed download shouldn't fail the whole scrape. Returns how many
-        documents could not be fetched this time but might be next time.
-        A 404 or 410 is not one of those: it is recorded on the document as
-        ``unavailable`` and does not hold the decision open.
-        """
-        missing = 0
-        for document in getattr(decision_obj, "documents", []):
-            url = document.get("url")
-            if not url:
-                continue
-
-            existing = self.stored_document_metadata(url)
-            if existing:
-                # Already downloaded by an earlier run and still in the
-                # store: reuse its metadata so a skipped document looks
-                # exactly like a freshly fetched one.
-                document.update(existing)
-                self.documents_skipped += 1
-                continue
-
-            # Not a conditional request: we only get here when the index
-            # doesn't name a stored file, so a 304 would only cost a second
-            # request.
-            try:
-                response = self.get(
-                    url, extra_headers=self.extra_headers, raise_for_status=False
-                )
-                status = self.response_status(response)
-                if status in (404, 410):
-                    document["unavailable"] = status
-                    self.documents_unavailable += 1
-                    continue
-                response.raise_for_status()
-                content = self.response_bytes(response)
-            except Exception as e:
-                missing += 1
-                self.documents_failed += 1
-                self.console.log(f"[yellow]Failed to download {url}: {e}[/yellow]")
-                continue
-
-            stored, written = self.document_storage.store(content)
-
-            entry = stored.as_dict()
-            entry["etag"] = self.response_header(response, "etag")
-            entry["last_modified"] = self.response_header(response, "last-modified")
-            entry["content_type"] = self.response_header(response, "content-type")
-
-            document.update(entry)
-            self.index["documents"][url] = entry
-            self.documents_downloaded += 1
-            self.documents_bytes += len(content)
-            if not written:
-                self.documents_already_in_store += 1
-        return missing
 
     @property
     def given_up(self):
