@@ -176,23 +176,3 @@ class BaseDocumentStorage(abc.ABC):
         portable between machines and deployments.
         """
         ...
-
-    def describe(self, key: str) -> StoredDocument | None:
-        """
-        Return a :class:`StoredDocument` for an already-stored document, or
-        None if nothing is stored under ``key``.
-
-        Used to re-record metadata for a document that was skipped because we
-        already had it, so a skipped document's JSON looks identical to a
-        freshly downloaded one's.
-        """
-        if not self.exists(key):
-            return None
-        content = self.read(key)
-        return StoredDocument(
-            key=key,
-            url=self.url_for(key),
-            content_hash=hash_content(content),
-            content_length=len(content),
-            backend=self.name,
-        )

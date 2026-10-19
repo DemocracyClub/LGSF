@@ -16,7 +16,7 @@ from lgsf.storage import s3
 from lgsf.storage.backends import get_storage_backend
 from lgsf.storage.backends.base import StorageMode
 from lgsf.storage.backends.s3 import S3Storage
-from lgsf.storage.documents import get_document_storage_backend, hash_content
+from lgsf.storage.documents import get_document_storage_backend
 from lgsf.storage.documents.s3 import S3DocumentStorage
 
 
@@ -307,30 +307,6 @@ def test_replace_leaves_the_documents_beside_it_alone(fake):
     assert "data/KIR/Decisions/documents/a.pdf" in fake.objects
 
 
-def test_describing_a_document_does_not_download_it(fake):
-    """Recovering after a crash would otherwise re-download every file."""
-    store = document_store(fake)
-    written = store.write("a.pdf", b"%PDF-1.7 report")
-    fresh = document_store(fake)
-
-    described = fresh.describe("a.pdf")
-
-    assert described.content_hash == written.content_hash
-    assert described.content_length == written.content_length
-    assert fake.ops("get") == []
-
-
-def test_a_document_put_there_some_other_way_is_hashed_the_slow_way(fake):
-    fake.objects["data/KIR/Decisions/documents/a.pdf"] = {
-        "Body": b"%PDF",
-        "Metadata": {},
-    }
-
-    described = document_store(fake).describe("a.pdf")
-
-    assert described.content_hash == hash_content(b"%PDF")
-
-
 def test_document_existence_is_answered_from_one_listing(fake):
     fake.objects["data/KIR/Decisions/documents/a.pdf"] = {"Body": b"%PDF"}
     store = document_store(fake)
@@ -347,7 +323,6 @@ def test_document_existence_is_answered_from_one_listing(fake):
 def test_a_missing_document_is_not_found(fake):
     with pytest.raises(FileNotFoundError):
         document_store(fake).read("missing.pdf")
-    assert document_store(fake).describe("missing.pdf") is None
 
 
 # ---- choosing it ----

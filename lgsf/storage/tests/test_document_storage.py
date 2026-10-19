@@ -91,19 +91,6 @@ def test_read_missing_document_raises(data_dir):
         storage.read("nope.pdf")
 
 
-def test_describe_returns_none_for_missing_document(data_dir):
-    storage = LocalDocumentStorage(council_code="ABC")
-    assert storage.describe("nope.pdf") is None
-
-
-def test_describe_rebuilds_metadata_for_a_stored_document(data_dir):
-    storage = LocalDocumentStorage(council_code="ABC")
-    written = storage.write("doc.pdf", b"content")
-
-    described = storage.describe("doc.pdf")
-    assert described == written
-
-
 def test_documents_are_isolated_per_council(data_dir):
     LocalDocumentStorage(council_code="ABC").write("doc.pdf", b"abc")
     LocalDocumentStorage(council_code="XYZ").write("doc.pdf", b"xyz")

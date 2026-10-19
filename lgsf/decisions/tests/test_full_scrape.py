@@ -7,8 +7,10 @@ backends in a temporary directory, with only the HTTP layer faked.
 """
 
 import datetime
+import hashlib
 import json
 from pathlib import Path
+from urllib.parse import urlparse
 
 import pytest
 import wreq
@@ -340,22 +342,178 @@ def with_document(document_route):
     return route
 
 
-def test_a_document_already_on_disk_is_not_downloaded_again(make_scraper, data_dir):
+def content_key_of(content, extension):
+    return hashlib.sha256(content).hexdigest() + extension
+
+
+def stored_record(data_dir, name="2020-01-01-1.json"):
+    return json.loads((data_dir / "TST/Decisions/json" / name).read_text())
+
+
+def stored_documents(data_dir):
+    return sorted(p.name for p in (data_dir / "TST" / "documents").iterdir())
+
+
+def test_a_document_is_stored_under_the_hash_of_its_bytes(make_scraper, data_dir):
+    run(
+        make_scraper(
+            with_document(lambda: FakeResponse(content=b"%PDF-1.7 report")),
+            since="2019-06-01",
+        )
+    )
+
+    key = content_key_of(b"%PDF-1.7 report", ".pdf")
+    assert stored_documents(data_dir) == [key]
+    assert stored_record(data_dir)["documents"][0]["storage_key"] == key
+    assert stored_index(data_dir)["documents"][DOC]["storage_key"] == key
+
+
+def test_the_same_bytes_at_two_links_are_stored_once(make_scraper, data_dir):
+    """
+    ModernGov links one report as /documents/sN/<title>.pdf and through
+    mgConvert2PDF.aspx, and the two serve the same bytes.
+    """
+    converted = f"{BASE_URL}/mgConvert2PDF.aspx?ID=123"
+
+    def route(url):
+        if url in (DOC, converted):
+            return FakeResponse(content=b"%PDF-1.7 report")
+        if "ieDecisionDetails" in url:
+            return FakeResponse(detail_page([DOC, converted]))
+        return history(ids=("1",))(url)
+
+    scraper = run(make_scraper(route, since="2019-06-01"))
+
+    key = content_key_of(b"%PDF-1.7 report", ".pdf")
+    assert stored_documents(data_dir) == [key]
+    documents = stored_record(data_dir)["documents"]
+    assert [d["storage_key"] for d in documents] == [key, key]
+    assert scraper.documents_downloaded == 2
+    assert scraper.documents_already_in_store == 1
+
+
+def test_html_at_a_pdf_link_is_stored_as_html(make_scraper, data_dir):
+    """mgConvert2PDF.aspx answers with an error page as often as a PDF."""
+    page = b"<!DOCTYPE html><html><body>Restricted</body></html>"
+    run(
+        make_scraper(
+            with_document(lambda: FakeResponse(content=page)), since="2019-06-01"
+        )
+    )
+
+    key = stored_record(data_dir)["documents"][0]["storage_key"]
+    assert key == content_key_of(page, ".html")
+
+
+def test_a_document_stored_but_not_indexed_is_not_written_again(
+    make_scraper, data_dir, monkeypatch
+):
     """
     Documents are written straight to the store but the index that records
     them waits for the session to end, so a run that stops part way leaves
-    documents the index doesn't know about.
+    documents the index doesn't know about. Its key comes from its bytes, so
+    the document is downloaded again to find it.
     """
-    LocalDocumentStorage("TST").write("2020-01-01-1-s123.pdf", b"%PDF")
+    LocalDocumentStorage("TST").store(b"%PDF-1.7 report")
 
-    def fail():
-        raise AssertionError("should not be downloaded")
+    def must_not_write(self, key, content):
+        raise AssertionError("written twice")
 
-    scraper = run(make_scraper(with_document(fail), since="2019-06-01"))
+    monkeypatch.setattr(LocalDocumentStorage, "write", must_not_write)
+    scraper = run(
+        make_scraper(
+            with_document(lambda: FakeResponse(content=b"%PDF-1.7 report")),
+            since="2019-06-01",
+        )
+    )
 
-    assert scraper.documents_skipped == 1
-    record = json.loads((data_dir / "TST/Decisions/json/2020-01-01-1.json").read_text())
-    assert record["documents"][0]["storage_key"] == "2020-01-01-1-s123.pdf"
+    assert scraper.documents_downloaded == 1
+    assert scraper.documents_already_in_store == 1
+    assert stored_record(data_dir)["documents"][0]["storage_key"] == (
+        content_key_of(b"%PDF-1.7 report", ".pdf")
+    )
+
+
+def test_an_indexed_document_whose_file_has_gone_is_downloaded_again(
+    make_scraper, data_dir
+):
+    """The index is a cache, not the source of truth."""
+    first = run(
+        make_scraper(
+            with_document(lambda: FakeResponse(content=b"%PDF-1.7 report")),
+            since="2019-06-01",
+        )
+    )
+    key = stored_index(data_dir)["documents"][DOC]["storage_key"]
+    (data_dir / "TST" / "documents" / key).unlink()
+
+    again = make_scraper(
+        with_document(lambda: FakeResponse(content=b"%PDF-1.7 report")),
+        since="2019-06-01",
+    )
+    again.settled_after_months = None
+    run(again)
+
+    assert first.documents_downloaded == 1
+    assert DOC in again.requests
+    assert again.documents_skipped == 0
+    assert stored_documents(data_dir) == [key]
+
+
+def test_an_index_entry_from_before_content_keys_is_downloaded_again(
+    make_scraper, data_dir
+):
+    """
+    Until the S3 migration renames them, keys made from the decision that
+    linked a document are not trusted, so every document recorded from now
+    on is named after its content.
+    """
+    LocalDocumentStorage("TST").write("2020-01-01-1-s123.pdf", b"%PDF-1.7 report")
+    (data_dir / "TST/Decisions").mkdir(parents=True)
+    (data_dir / "TST/Decisions/_index.json").write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "documents": {DOC: {"storage_key": "2020-01-01-1-s123.pdf"}},
+            }
+        )
+    )
+
+    scraper = run(
+        make_scraper(
+            with_document(lambda: FakeResponse(content=b"%PDF-1.7 report")),
+            since="2019-06-01",
+        )
+    )
+
+    assert scraper.documents_downloaded == 1
+    assert stored_record(data_dir)["documents"][0]["storage_key"] == (
+        content_key_of(b"%PDF-1.7 report", ".pdf")
+    )
+
+
+def test_a_link_that_cannot_be_parsed_is_a_failed_download(make_scraper, data_dir):
+    """
+    A link whose port isn't a number makes the HTTP client raise, and that
+    must count against the decision like any other failed download rather
+    than end the run.
+    """
+    bad = "https://democracy.example.gov.uk:port/documents/s1/report.pdf"
+
+    def route(url):
+        if url == bad:
+            urlparse(url).port
+        if "ieDecisionDetails" in url:
+            return FakeResponse(detail_page([bad]))
+        return history(ids=("1",))(url)
+
+    scraper = run(make_scraper(route, since="2019-06-01"))
+
+    assert scraper.documents_failed == 1
+    assert scraper.failed_decisions == 0
+    assert stored_index(data_dir)["decisions"][
+        f"{BASE_URL}/ieDecisionDetails.aspx?ID=1"
+    ]["incomplete"]
 
 
 def test_a_document_that_failed_keeps_its_decision_open(make_scraper, data_dir):

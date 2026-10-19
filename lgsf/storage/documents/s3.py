@@ -19,8 +19,8 @@ class S3DocumentStorage(BaseDocumentStorage):
     share a bucket and each keeps to its own prefix. Without a type they go
     under ``<COUNCIL>/documents/``.
 
-    Each object carries its SHA-256 in its metadata, so describing a stored
-    document is a HEAD request rather than downloading it to hash it.
+    Each object carries its SHA-256 in its metadata, so anything checking
+    the store can get a document's hash without downloading it.
     """
 
     name = "s3"
@@ -80,25 +80,3 @@ class S3DocumentStorage(BaseDocumentStorage):
 
     def url_for(self, key: str) -> str:
         return f"s3://{self.bucket}/{self.object_key(key)}"
-
-    def describe(self, key: str) -> StoredDocument | None:
-        if not self.exists(key):
-            return None
-        try:
-            head = self.client.head_object(Bucket=self.bucket, Key=self.object_key(key))
-        except ClientError as e:
-            if s3.is_not_found(e):
-                return None
-            raise
-        digest = (head.get("Metadata") or {}).get("sha256")
-        if not digest:
-            # Put there by something other than this backend: hash it the
-            # slow way.
-            return super().describe(key)
-        return StoredDocument(
-            key=key,
-            url=self.url_for(key),
-            content_hash=f"sha256:{digest}",
-            content_length=head["ContentLength"],
-            backend=self.name,
-        )

@@ -20,6 +20,7 @@ from lgsf.decisions.exceptions import (
 from lgsf.scrapers import ScraperBase
 from lgsf.scrapers.progress import NullProgress
 from lgsf.storage.backends.base import StorageMode
+from lgsf.storage.documents import is_content_key
 
 
 class DecisionWindow(NamedTuple):
@@ -120,6 +121,7 @@ class BaseDecisionsScraper(ScraperBase):
         self.documents_failed = 0
         self.documents_bytes = 0
         self.documents_unavailable = 0
+        self.documents_already_in_store = 0
         self.incomplete_decisions = 0
         self.consecutive_failures = 0
 
@@ -321,8 +323,10 @@ class BaseDecisionsScraper(ScraperBase):
         Everything written in a session is held until it ends, so without
         this an interrupted backfill loses every decision it had read. The
         documents themselves are written straight to the document store and
-        survive regardless; see save_decision_documents for how they are
-        picked up again.
+        survive regardless, but only the index says which link each one
+        came from. So save_decision_documents downloads the ones written
+        since the last checkpoint again, though it finds them already
+        stored and doesn't write them again.
         """
         if not self.storage_backend.supports_checkpoints:
             return
@@ -535,32 +539,6 @@ class BaseDecisionsScraper(ScraperBase):
         else:
             entry["incomplete"] = True
 
-    def document_key(self, decision_obj, document, index):
-        """
-        Build the document store key for one of a decision's documents.
-
-        ModernGov document URLs carry an ``sNNNN`` id that is stable, but not
-        every source has one, so fall back to a per-decision index to keep
-        keys distinct.
-        """
-        suffix = document.get("attachment_id") or index
-        extension = self.document_extension(document)
-        return "{}-{}{}".format(decision_obj.as_file_name(), suffix, extension)
-
-    def document_extension(self, document):
-        """
-        Guess a file extension from the document URL.
-
-        ModernGov serves some documents through handler URLs with no
-        extension at all, and those are overwhelmingly PDFs, so that's the
-        fallback.
-        """
-        path = document.get("url", "").split("?")[0].lower()
-        for extension in (".pdf", ".docx", ".doc", ".xlsx", ".xls", ".rtf", ".txt"):
-            if path.endswith(extension):
-                return extension
-        return ".pdf"
-
     def stored_document_metadata(self, url):
         """
         Return the recorded metadata for an already-stored document, or None.
@@ -573,7 +551,10 @@ class BaseDecisionsScraper(ScraperBase):
             return None
 
         key = entry.get("storage_key")
-        if not key:
+        if not key or not is_content_key(key):
+            # A key from before documents were named after their content.
+            # The S3 migration renames those; until it has, the document
+            # is fetched again and stored under its content key.
             return None
 
         try:
@@ -590,15 +571,18 @@ class BaseDecisionsScraper(ScraperBase):
         Store every document linked from this decision, skipping any we
         already hold, and record where each one went on the decision.
 
+        A document's key comes from its bytes, so one the index doesn't
+        name is downloaded to find out whether it is held. If it is - the
+        same file linked from somewhere else, or one stored by a run that
+        stopped before its index was saved - it isn't written again.
+
         A failed download shouldn't fail the whole scrape. Returns how many
         documents could not be fetched this time but might be next time.
         A 404 or 410 is not one of those: it is recorded on the document as
         ``unavailable`` and does not hold the decision open.
         """
         missing = 0
-        for index, document in enumerate(
-            getattr(decision_obj, "documents", []), start=1
-        ):
+        for document in getattr(decision_obj, "documents", []):
             url = document.get("url")
             if not url:
                 continue
@@ -612,21 +596,9 @@ class BaseDecisionsScraper(ScraperBase):
                 self.documents_skipped += 1
                 continue
 
-            key = self.document_key(decision_obj, document, index)
-            on_disk = self.document_storage.describe(key)
-            if on_disk:
-                # In the store but not the index: written by a run that was
-                # interrupted before its index was saved. Documents are
-                # written straight to the store while the index waits for
-                # the session to end, so this is what a crash leaves.
-                entry = on_disk.as_dict()
-                document.update(entry)
-                self.index["documents"][url] = entry
-                self.documents_skipped += 1
-                continue
-
-            # Not a conditional request: we only get here when the file is
-            # not in the store, so a 304 would only cost a second request.
+            # Not a conditional request: we only get here when the index
+            # doesn't name a stored file, so a 304 would only cost a second
+            # request.
             try:
                 response = self.get(
                     url, extra_headers=self.extra_headers, raise_for_status=False
@@ -644,7 +616,7 @@ class BaseDecisionsScraper(ScraperBase):
                 self.console.log(f"[yellow]Failed to download {url}: {e}[/yellow]")
                 continue
 
-            stored = self.document_storage.write(key, content)
+            stored, written = self.document_storage.store(content)
 
             entry = stored.as_dict()
             entry["etag"] = self.response_header(response, "etag")
@@ -655,6 +627,8 @@ class BaseDecisionsScraper(ScraperBase):
             self.index["documents"][url] = entry
             self.documents_downloaded += 1
             self.documents_bytes += len(content)
+            if not written:
+                self.documents_already_in_store += 1
         return missing
 
     @property
@@ -694,7 +668,9 @@ class BaseDecisionsScraper(ScraperBase):
             )
         else:
             self.console.log(
-                f"Documents: {self.documents_downloaded} downloaded, "
+                f"Documents: {self.documents_downloaded} downloaded "
+                f"({self.documents_already_in_store} of them already in the "
+                f"store, so not written again), "
                 f"{self.documents_skipped} already stored, "
                 f"{self.documents_unavailable} gone from the source (404/410)"
             )
