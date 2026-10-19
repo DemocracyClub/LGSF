@@ -328,6 +328,24 @@ class ScraperBase(metaclass=abc.ABCMeta):
             return value.decode("utf-8", errors="replace")
         return value
 
+    def response_bytes(self, response):
+        """
+        Return a response body as bytes, normalising across the supported
+        HTTP clients (requests/httpx expose .content, wreq a .bytes()).
+        """
+        for attr in ("content", "bytes"):
+            body = getattr(response, attr, None)
+            if body is None:
+                continue
+            if callable(body):
+                body = body()
+            return body
+        raise ValueError(f"Can't read bytes from {type(response)} response")
+
+    def get_bytes(self, url):
+        """Wraps self.get and always returns the response body as bytes."""
+        return self.response_bytes(self.get(url))
+
     def get_conditional(self, url, etag=None, last_modified=None, extra_headers=None):
         """
         GET a URL, telling the server what we already have so it can answer

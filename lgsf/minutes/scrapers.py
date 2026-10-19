@@ -200,24 +200,6 @@ class BaseMinutesScraper(ScraperBase):
 
         self.report()
 
-    def response_bytes(self, response):
-        """
-        Return a response body as bytes, normalising across the supported
-        HTTP clients (requests/httpx expose .content, wreq a .bytes()).
-        """
-        for attr in ("content", "bytes"):
-            body = getattr(response, attr, None)
-            if body is None:
-                continue
-            if callable(body):
-                body = body()
-            return body
-        raise ValueError(f"Can't read bytes from {type(response)} response")
-
-    def get_bytes(self, url):
-        """Wraps self.get and always returns the response body as bytes."""
-        return self.response_bytes(self.get(url))
-
     def prettify_meeting_str(self, meeting_raw_str):
         if isinstance(meeting_raw_str, dict):
             return json.dumps(meeting_raw_str, indent=4)
