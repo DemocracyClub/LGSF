@@ -11,6 +11,7 @@ dependencies = [
     "html5lib>=1.1",
     "httpx==0.28.1",
     "lxml==6.1.0",
+    "olefile==0.47",
     "playwright>=1.60.0",
     "pyjwt==2.14.0",
     "python-dateutil==2.9.0.post0",
