@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from bs4 import BeautifulSoup
@@ -269,3 +270,75 @@ def test_the_full_record_round_trips_through_storage():
     again = MeetingBase.from_storage("x.json", Session())
 
     assert json.loads(again.as_json()) == data
+
+
+# --- committees as their own records ---
+
+
+def test_each_committee_is_written_as_its_own_record_including_expired():
+
+    scraper = make_scraper()
+    committees = BeautifulSoup(load_xml("committees.xml"), features="xml").find_all(
+        "committee"
+    )
+
+    scraper.save_committees(committees)
+
+    files = scraper.storage_session.files
+    assert sorted(files) == [
+        "committees/144.json",
+        "committees/163.json",
+        "committees/312.json",
+    ]
+    expired = json.loads(files["committees/312.json"])
+    assert expired == {
+        "committee_id": "312",
+        "title": "Appointment Sub Committee for Director of Adult Social Services",
+        "is_expired": True,
+        "is_deleted": False,
+        "category": "Governance and Decision Making Committees",
+        "url": "https://democracy.example.gov.uk/mgCommitteeDetails.aspx?ID=312",
+        "install_url": "https://democracy.example.gov.uk",
+        "raw": {
+            "committeeid": "312",
+            "committeetitle": "Appointment Sub Committee for Director of Adult Social Services",
+            "committeedeleted": "False",
+            "committeeexpired": "True",
+            "committeecategory": "Governance and Decision Making Committees",
+        },
+    }
+
+
+def test_a_committee_record_without_a_category_has_none():
+    scraper = make_scraper()
+    committee = BeautifulSoup(
+        "<committee><committeeid>138</committeeid><committeetitle>Audit and Standards Committee</committeetitle>"
+        "<committeedeleted>False</committeedeleted><committeeexpired>False</committeeexpired></committee>",
+        features="xml",
+    ).find("committee")
+
+    record = scraper.committee_record(committee)
+
+    assert record["category"] is None
+    assert record["is_expired"] is False
+
+
+def test_the_run_writes_committees_before_reading_meetings():
+    scraper = make_scraper()
+    order = []
+    committees = BeautifulSoup(load_xml("committees.xml"), features="xml").find_all(
+        "committee"
+    )
+    scraper.get_meetings = lambda: committees
+    scraper.save_committees = lambda c: order.append(("committees", len(c)))
+    scraper.get_meeting_stubs = lambda committee_id: (
+        order.append(("stubs", committee_id)) or []
+    )
+    scraper.save_index = lambda: None
+    scraper.finalize_storage = lambda run_log=None: None
+    scraper.report = lambda: None
+
+    scraper.run(run_log=None)
+
+    assert order[0] == ("committees", 3)
+    assert [o[1] for o in order[1:]] == ["312", "163", "144"]

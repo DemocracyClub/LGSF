@@ -364,7 +364,9 @@ class ModGovMinutesScraper(BaseMinutesScraper):
         ModGovCouncillorScraper - this overrides the base run() loop rather
         than using the generic get_meetings()/get_single_meeting() pairing.
         """
-        for committee in self.get_meetings():
+        committees = self.get_meetings()
+        self.save_committees(committees)
+        for committee in committees:
             committee_id = committee.find("committeeid").text.strip()
             for meeting_stub in self.get_meeting_stubs(committee_id):
                 meeting_id_tag = meeting_stub.find("meetingid")
@@ -386,6 +388,41 @@ class ModGovMinutesScraper(BaseMinutesScraper):
         self.save_index()
         self.finalize_storage(run_log)
         self.report()
+
+    def committee_record(self, committee):
+        """
+        One committee as its own record. ModernGov lists expired and
+        deleted committees too; a renamed committee is a new one, so the
+        old name is kept as an expired record (Manchester has 101, 72 of
+        them expired).
+        """
+        committee_id = self.tag_text(committee, "committeeid")
+        return {
+            "committee_id": committee_id,
+            "title": self.tag_text(committee, "committeetitle"),
+            "is_expired": self.tag_bool(committee, "committeeexpired"),
+            "is_deleted": self.tag_bool(committee, "committeedeleted"),
+            "category": self.tag_text(committee, "committeecategory"),
+            "url": f"{self.base_url}/mgCommitteeDetails.aspx?ID={committee_id}",
+            "install_url": self.base_url,
+            # Everything ModernGov said, for fields not read above
+            "raw": {
+                child.name: child.get_text(strip=True) or None
+                for child in committee.find_all(recursive=False)
+            },
+        }
+
+    def save_committees(self, committees):
+        """committees/<id>.json beside the meetings, one per committee."""
+        for committee in committees:
+            record = self.committee_record(committee)
+            if not record["committee_id"]:
+                continue
+            self._save_file(
+                "committees",
+                f"{record['committee_id']}.json",
+                json.dumps(record, indent=4, sort_keys=True),
+            )
 
     def get_meetings(self):
         text = self.get_text(

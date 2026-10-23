@@ -108,6 +108,18 @@ Each document in `documents` also gives, from ModernGov, the
 `is_restricted` and `is_decision_attachment`. A meeting's own minutes are
 often not a document at all but the `minutes_html` of its items.
 
+## Committees
+
+A ModernGov minutes run also writes each of the council's committees as its
+own record, `committees/<committee_id>.json` beside `json/`, from the list
+it reads to find meetings anyway. ModernGov lists expired and deleted
+committees too, and a renamed committee is a new one, so old names stay as
+expired records (Manchester has 101, 72 of them expired). Each holds
+`committee_id`, `title`, `is_expired`, `is_deleted`, `category` (where the
+install has categories), `url`, `install_url`, and `raw`, every field
+ModernGov gave. A meeting's `raw_committee_id`, and a decision's
+`decided_at_meeting.committee_id`, join to it.
+
 ## The scrape window
 
 Meetings are scraped over a rolling window around today, set by two class
