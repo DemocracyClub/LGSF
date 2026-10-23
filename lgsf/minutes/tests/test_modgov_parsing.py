@@ -84,9 +84,13 @@ def test_get_single_meeting_with_minutes():
 
     documents = meeting.documents
     assert len(documents) == 2
-    minutes_docs = [d for d in documents if d["category"] == "minutes"]
+    # "CHAIR APPROVED Minutes Audit Committee 25 Nov 2025", on a meeting of
+    # 10 February 2026: the previous meeting's, approved at this one. This
+    # meeting's own minutes are the HTML in its agenda items.
+    minutes_docs = [d for d in documents if d["category"] == "previous_minutes"]
     assert len(minutes_docs) == 1
     assert minutes_docs[0]["attachment_id"] == "60860"
+    assert not [d for d in documents if d["category"] == "minutes"]
     other_docs = [d for d in documents if d["category"] == "other"]
     assert len(other_docs) == 1
 
@@ -131,3 +135,137 @@ def test_meeting_as_dict_shape():
     assert data["raw_committee_id"] == "144"
     assert data["minutes_published"] is True
     assert len(data["documents"]) == 2
+
+
+# --- the full record: a real Stroud Council meeting, trimmed ---
+
+
+def stroud_meeting():
+    scraper = make_scraper()
+    scraper._pending_source = {
+        "url": "https://stroud.example/GetMeeting?lMeetingId=1570"
+    }
+    detail = BeautifulSoup(load_xml("meeting_stroud_council.xml"), features="xml").find(
+        "meeting"
+    )
+    committee = BeautifulSoup(
+        "<committee><committeeid>143</committeeid><committeetitle>Council</committeetitle></committee>",
+        features="xml",
+    ).find("committee")
+    return scraper.get_single_meeting(committee, detail)
+
+
+def test_times_are_kept_as_given_including_past_midnight():
+    meeting = stroud_meeting()
+
+    assert meeting.times == {
+        "scheduled": "7.00 pm",
+        "actual_start": "7.00 pm",
+        "actual_finish": "2.22 am",
+        "planned_finish": "11.00 pm",
+    }
+
+
+def test_publication_flags_webcast_and_install():
+    meeting = stroud_meeting()
+
+    assert set(meeting.published) == {"agenda", "decisions", "minutes"}
+    assert all(isinstance(v, bool) for v in meeting.published.values())
+    assert meeting.is_webcast in (True, False)
+    assert meeting.install_url == "https://democracy.example.gov.uk"
+
+
+def test_agenda_items_in_order_with_minute_references_and_documents():
+    items = stroud_meeting().agenda_items
+
+    assert [(i["display_number"], i["title"]) for i in items] == [
+        ("CL.054", "Apologies"),
+        ("CL.056", "Minutes"),
+        ("CL.059", items[2]["title"]),
+    ]
+    minutes_item = items[1]
+    assert minutes_item["minutes_number"] == 56
+    assert minutes_item["minutes_html"].lstrip().startswith("<div")
+    assert minutes_item["document_ids"] == ["18071"]
+    assert len(items[2]["document_ids"]) == 2
+    assert {"is_decision", "is_call_in", "is_restricted", "declaration_count"} <= set(
+        items[0]
+    )
+
+
+def test_documents_say_which_item_they_belong_to():
+    meeting = stroud_meeting()
+    by_id = {d["attachment_id"]: d for d in meeting.documents}
+    minutes_item = meeting.agenda_items[1]
+
+    previous = by_id["18071"]
+    assert previous["agenda_item_id"] == minutes_item["id"]
+    assert previous["owner_title"] == "Minutes"
+    assert previous["publication_date"] == "2026-02-11"
+    assert previous["is_decision_attachment"] is False
+
+
+def test_the_previous_meetings_minutes_arent_this_meetings():
+    """'Minutes , 18/12/2025 Council' on the 19 February 2026 meeting."""
+    meeting = stroud_meeting()
+    previous = next(d for d in meeting.documents if d["attachment_id"] == "18071")
+
+    assert previous["category"] == "previous_minutes"
+
+
+def test_categorise_by_the_date_in_the_title():
+    scraper = make_scraper()
+    assert (
+        scraper.categorise_document("Minutes , 18/12/2025 Council", "2026-02-19")
+        == "previous_minutes"
+    )
+    assert (
+        scraper.categorise_document("Minutes of 19th February 2026", "2026-02-19")
+        == "minutes"
+    )
+    assert (
+        scraper.categorise_document("Printed minutes 19/02/2026 19:00", "2026-02-19")
+        == "minutes"
+    )
+    assert (
+        scraper.categorise_document("Minutes of the last meeting", "2026-02-19")
+        == "minutes"
+    )
+    assert (
+        scraper.categorise_document("Minutes, 18 December 2025", "2026-02-19")
+        == "previous_minutes"
+    )
+
+
+def test_attendance_joins_to_councillors_by_member_id():
+    attendance = stroud_meeting().attendance
+
+    assert attendance[0] == {
+        "member_id": "2566",
+        "member_type": "U",
+        "name": "Councillor Kate Kay",
+        "role": "Chair",
+        "attendance": "Present, as expected",
+        "party": "GP",
+        "ward": "N",
+        "key_posts": "Chair of Council",
+        "url": "https://Stroud.moderngov.co.uk/mgUserInfo.aspx?UID=2566",
+    }
+    assert [a["attendance"] for a in attendance].count("Apologies") == 2
+
+
+def test_the_full_record_round_trips_through_storage():
+    import json
+
+    from lgsf.minutes.models import MeetingBase
+
+    meeting = stroud_meeting()
+    data = json.loads(meeting.as_json())
+
+    class Session:
+        def open(self, name):
+            return json.dumps(data)
+
+    again = MeetingBase.from_storage("x.json", Session())
+
+    assert json.loads(again.as_json()) == data
