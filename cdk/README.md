@@ -35,9 +35,11 @@ execution name, which ends up in the trailers of every commit it makes and
 names the run report, so a commit can be traced to the report for the run
 that made it.
 
-Storage: the worker writes to GitHub (`LGSF_STORAGE_BACKEND=github`) with a
-GitHub App's credentials. Run reports and per-council run logs for failures
-go to the S3 bucket named in SSM. The dashboard at
+Storage: the worker writes records to GitHub (`LGSF_STORAGE_BACKEND=github`)
+with a GitHub App's credentials, and the documents those records link to
+(minutes, decision papers) to the data bucket (`LGSF_DOCUMENT_STORAGE_BACKEND=s3`),
+which it can list, read and write but not delete from. Run reports and
+per-council run logs for failures go to the reports bucket. The dashboard at
 https://democracyclub.github.io/lgsf-dashboard/ reads those reports.
 
 Logs: each scraper type has a log group, `/aws/lambda/lgsf-scrapers/<type>`,
@@ -58,6 +60,7 @@ Everything environment-specific is read from SSM Parameter Store under
 | `github/app_id`, `github/installation_id`, `github/app_private_key` | The GitHub App the worker commits as |
 | `github/organization` | The organisation holding one repository per council |
 | `s3/reports_bucket` | Run reports and run logs |
+| `s3/data_bucket` | Scraped documents, under `merged-data/<COUNCIL>/documents/`: the content-keyed store made by `scripts/migrate_documents.py --to-prefix merged-data` |
 | `notification/emails` | Comma-separated recipients of the summary |
 | `proxy_url` | Optional outbound proxy for scrapers |
 

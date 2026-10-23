@@ -1,6 +1,7 @@
 """
-The state machine the CDK renders: one item per council, and within it the
-council's scraper types one at a time.
+The stack the CDK renders: the state machine (one item per council, and
+within it the council's scraper types one at a time) and what the worker
+needs to store documents.
 
 Synthesises the real stack with asset bundling turned off. Needs the cdk
 dependency group (`uv sync --group cdk`); skipped without it, as in the
@@ -96,3 +97,48 @@ def test_the_schedule_starts_every_council_with_the_daily_types(template):
     (rule,) = template.find_resources("AWS::Events::Rule").values()
     (target,) = rule["Properties"]["Targets"]
     assert json.loads(target["Input"]) == {"all_councils": True}
+
+
+def worker(template):
+    functions = template.find_resources("AWS::Lambda::Function")
+    (resource,) = [
+        r for r in functions.values() if r["Properties"].get("PackageType") == "Image"
+    ]
+    return resource["Properties"]
+
+
+def test_the_worker_stores_documents_in_the_data_bucket(template):
+    env = worker(template)["Environment"]["Variables"]
+
+    assert env["LGSF_DOCUMENT_STORAGE_BACKEND"] == "s3"
+    assert env["LGSF_S3_PREFIX"] == "merged-data"
+    # The bucket's name comes from SSM, so it renders as a reference
+    assert "Ref" in env["LGSF_S3_BUCKET"]
+    assert env["LGSF_S3_BUCKET"] != env["S3_REPORTS_BUCKET"]
+
+
+def test_the_worker_can_list_read_and_write_documents_but_not_delete_them(template):
+    statements = [
+        s
+        for policy in template.find_resources("AWS::IAM::Policy").values()
+        for s in policy["Properties"]["PolicyDocument"]["Statement"]
+    ]
+    data_bucket_ref = worker(template)["Environment"]["Variables"]["LGSF_S3_BUCKET"]
+
+    def on_data_bucket(statement):
+        return json.dumps(data_bucket_ref) in json.dumps(statement["Resource"])
+
+    data_statements = [s for s in statements if on_data_bucket(s)]
+    actions = set()
+    for statement in data_statements:
+        actions.update(
+            statement["Action"]
+            if isinstance(statement["Action"], list)
+            else [statement["Action"]]
+        )
+
+    assert actions == {"s3:ListBucket", "s3:GetObject", "s3:PutObject"}
+    object_statement = next(
+        s for s in data_statements if "s3:PutObject" in json.dumps(s)
+    )
+    assert "/merged-data/*" in json.dumps(object_statement["Resource"])
