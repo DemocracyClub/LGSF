@@ -41,6 +41,11 @@ EXCLUDE_FILES = [
 #: Per-type log groups live here; the worker is told the same prefix.
 SCRAPER_LOG_GROUP_PREFIX = "/aws/lambda/lgsf-scrapers"
 
+#: The prefix data lives under in the data bucket, as in
+#: docs/decision-scrapers.md ("Writing to S3"): documents are at
+#: <prefix>/<COUNCIL>/documents/<sha256><ext>.
+S3_DATA_PREFIX = "data"
+
 
 class LgsfStack(cdk.Stack):
     """Main LGSF CDK stack with Step Functions orchestration."""
@@ -75,6 +80,16 @@ class LgsfStack(cdk.Stack):
 
         self.github_organization = ssm.StringParameter.value_for_string_parameter(
             self, f"/lgsf/{self.dc_environment}/github/organization"
+        )
+
+        # Where scraped documents (PDFs and the like) go: the content-keyed
+        # store every data type shares, <prefix>/<COUNCIL>/documents/ in
+        # this bucket. The same bucket and prefix that laptop runs with
+        # LGSF_STORAGE_BACKEND=s3 write to, so a document is stored once
+        # however it was found. Kept apart from the reports bucket, whose
+        # contents are pruned.
+        self.s3_data_bucket = ssm.StringParameter.value_for_string_parameter(
+            self, f"/lgsf/{self.dc_environment}/s3/data_bucket"
         )
 
         # Fetch notification email addresses from Parameter Store at build time
@@ -204,6 +219,23 @@ class LgsfStack(cdk.Stack):
             )
         )
 
+        # Documents: listed, read and written, never deleted. Every type
+        # stores them under <prefix>/<COUNCIL>/documents/, keyed by content.
+        self.lambda_execution_role.add_to_policy(
+            aws_iam.PolicyStatement(
+                effect=aws_iam.Effect.ALLOW,
+                actions=["s3:ListBucket"],
+                resources=[f"arn:aws:s3:::{self.s3_data_bucket}"],
+            )
+        )
+        self.lambda_execution_role.add_to_policy(
+            aws_iam.PolicyStatement(
+                effect=aws_iam.Effect.ALLOW,
+                actions=["s3:GetObject", "s3:PutObject"],
+                resources=[f"arn:aws:s3:::{self.s3_data_bucket}/{S3_DATA_PREFIX}/*"],
+            )
+        )
+
         # Add S3 permissions for saving run reports and RunLogs
         self.lambda_execution_role.add_to_policy(
             aws_iam.PolicyStatement(
@@ -293,6 +325,13 @@ class LgsfStack(cdk.Stack):
                 # Must match PLAYWRIGHT_BROWSERS_PATH set during the Docker build
                 # so Playwright finds the pre-installed Chromium binary at runtime.
                 "PLAYWRIGHT_BROWSERS_PATH": "/ms-playwright",
+                # Documents to S3. Without this, with metadata going to
+                # GitHub, the document store would be the Lambda's /tmp,
+                # and every storage_key recorded would point at a file
+                # gone with the container.
+                "LGSF_DOCUMENT_STORAGE_BACKEND": "s3",
+                "LGSF_S3_BUCKET": self.s3_data_bucket,
+                "LGSF_S3_PREFIX": S3_DATA_PREFIX,
             },
             ephemeral_storage_size=cdk.Size.mebibytes(
                 1024
@@ -736,7 +775,7 @@ class LgsfStack(cdk.Stack):
         cdk.CfnOutput(
             self,
             "ConfigurationInfo",
-            value=f"Required SSM Parameters: /lgsf/{self.dc_environment}/github/app_id, /lgsf/{self.dc_environment}/github/installation_id, /lgsf/{self.dc_environment}/github/app_private_key, /lgsf/{self.dc_environment}/github/organization, /lgsf/{self.dc_environment}/notification/emails (comma-separated)",
+            value=f"Required SSM Parameters: /lgsf/{self.dc_environment}/github/app_id, /lgsf/{self.dc_environment}/github/installation_id, /lgsf/{self.dc_environment}/github/app_private_key, /lgsf/{self.dc_environment}/github/organization, /lgsf/{self.dc_environment}/notification/emails (comma-separated), /lgsf/{self.dc_environment}/s3/reports_bucket, /lgsf/{self.dc_environment}/s3/data_bucket",
             description="Information about required SSM Parameter Store configuration",
         )
 
