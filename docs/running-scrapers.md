@@ -73,7 +73,25 @@ into one repository per council in the LGSF-Data organisation: `main` of
 `LGSF-Data/KIR` holds `Councillors/json/`, `Councillors/raw/` and so on.
 Each data type has its own directory so a run of one type can't add to or
 delete another's files. A councillors run replaces exactly the contents of
-`Councillors/` and leaves the rest of the repository alone. Repositories
+`Councillors/` and leaves the rest of the repository alone.
+
+Each run that changes something makes exactly one commit on `main`, pushed
+fast-forward; a run that finds nothing new makes none, and a run that fails
+makes none. Two runs of the same council overlapping can't overwrite each
+other: the second push is rejected and that run fails. The commit message
+carries git trailers naming the run, so a commit can be traced to the run
+that made it and to that day's run report:
+
+```
+Updated KIR councillors
+
+LGSF-Run-Id: 3f9a1c2b7d4e
+LGSF-Execution-Id: scraper-all-20261023-060000
+LGSF-Scraper-Type: Councillors
+```
+
+`git log --format='%h %(trailers:key=LGSF-Run-Id,valueonly)'` lists them.
+Repositories
 written before this layout had `json/` and `raw/` at the root, and older
 history had other arrangements again; `scripts/migrate_github_layout.py`
 rewrote every commit so that the files are at the same paths throughout,

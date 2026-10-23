@@ -5,6 +5,7 @@ import os
 import threading
 import time
 import traceback
+import uuid
 from functools import cached_property
 from pathlib import Path
 from urllib.parse import urlparse
@@ -110,6 +111,11 @@ class ScraperBase(metaclass=abc.ABCMeta):
     #: Written when a run finishes without an exception, holding the time.
     LAST_RUN_FILE_NAME = "_last-run"
 
+    #: Set per run in __init__; see commit_message. Class-level defaults so
+    #: a scraper built without __init__ (as some tests do) still commits.
+    run_id = None
+    execution_id = None
+
     def __init__(self, options, console):
         self.options = options
         self.console = console
@@ -125,13 +131,21 @@ class ScraperBase(metaclass=abc.ABCMeta):
             self.service_name
         ).base_url
 
+        #: Names this run in every commit it makes (see commit_message), so
+        #: a reader of the repositories can find the run that produced a
+        #: commit. Random unless the caller supplies one.
+        self.run_id = self.options.get("run_id") or uuid.uuid4().hex[:12]
+        #: The Step Functions execution this run is part of, when there is
+        #: one: the key into that day's run report on S3.
+        self.execution_id = self.options.get("execution_id")
+
         self.storage_backend = get_storage_backend(
             council_code=self.council_id,
             options=self.options,
             scraper_object_type=self.scraper_object_type,
             storage_mode=self.storage_mode,
         )
-        self.storage_session = self.storage_backend.start_session()
+        self.storage_session = self.storage_backend.start_session(run_id=self.run_id)
 
         # Get proxy URL from environment variable if use_proxy is enabled
         proxy_url = None
@@ -515,9 +529,11 @@ class ScraperBase(metaclass=abc.ABCMeta):
         self.save_index()
         self.storage_backend.end_session(
             self.storage_session,
-            f"Checkpoint: {self.service_name} for {self.council_id}",
+            self.commit_message(
+                f"Checkpoint: {self.service_name} for {self.council_id}"
+            ),
         )
-        self.storage_session = self.storage_backend.start_session()
+        self.storage_session = self.storage_backend.start_session(run_id=self.run_id)
 
     def finalise(self):
         """
@@ -528,11 +544,43 @@ class ScraperBase(metaclass=abc.ABCMeta):
         self._set_last_run()
         # End session if still active
         if self.storage_session:
-            self.storage_backend.end_session(
+            self._last_storage_result = self.storage_backend.end_session(
                 self.storage_session,
-                f"Scraping {self.service_name} for {self.options['council']} completed",
+                self.commit_message(
+                    f"Scraping {self.service_name} for {self.options['council']} completed"
+                ),
             )
             self.storage_session = None
+
+    def commit_message(self, subject):
+        """
+        The message for a commit this run makes: a subject line, then git
+        trailers naming the run.
+
+        Readers of the repositories walk the commits as a log, so each
+        commit says which run produced it, and the same trailers point at
+        the run report for the day:
+
+            LGSF-Run-Id: <run_id>
+            LGSF-Execution-Id: <Step Functions execution>, when there is one
+            LGSF-Scraper-Type: <Councillors, Minutes...>
+
+        Nothing else goes here: when the run started and what it found are
+        the commit's own date and tree, and how it went is the run log's job.
+        """
+        if not self.run_id:
+            self.run_id = uuid.uuid4().hex[:12]
+        trailers = [f"LGSF-Run-Id: {self.run_id}"]
+        if self.execution_id:
+            trailers.append(f"LGSF-Execution-Id: {self.execution_id}")
+        trailers.append(f"LGSF-Scraper-Type: {self.scraper_object_type}")
+        return subject + "\n\n" + "\n".join(trailers) + "\n"
+
+    @property
+    def last_commit(self):
+        """The commit this run's final storage commit made, or None: no changes, or a backend without commits."""
+        result = getattr(self, "_last_storage_result", None) or {}
+        return result.get("commit")
 
     def check_before_commit(self):
         """
@@ -642,7 +690,9 @@ class ScraperBase(metaclass=abc.ABCMeta):
                     run_log.log = self.console.export_text()
 
             # End session with run log for backend-specific finalization
-            commit_message = f"Updated {self.options['council']}"
+            commit_message = self.commit_message(
+                f"Updated {self.options['council']} {self.service_name}"
+            )
             storage_result = self.storage_backend.end_session(
                 self.storage_session, commit_message, run_log=run_log
             )

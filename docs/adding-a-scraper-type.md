@@ -243,6 +243,7 @@ class BaseCommitteesScraper(ScraperBase):
 | `self.council_metadata` | The whole `CouncilMetadata` |
 | `self.finalize_storage(run_log)` | Commits. Call once, at the end of `run()` |
 | `self.check_before_commit()` | Override with sanity checks; raise to commit nothing |
+| `self.commit_message(subject)` | Subject plus `LGSF-*` trailers naming the run; used for every commit |
 
 Also set on the class: `http_lib` (`wreq` default, or `requests` / `httpx` /
 `playwright`), `timeout` (default 30 — CMIS month calendars need 120),

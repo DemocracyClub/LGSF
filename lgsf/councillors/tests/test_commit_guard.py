@@ -58,6 +58,8 @@ def make_scraper(monkeypatch):
         self.console = console
         self.council_id = options["council"]
         self.base_url = "https://example.gov.uk"
+        self.run_id = options.get("run_id") or "run-test"
+        self.execution_id = options.get("execution_id")
         self.storage_backend = LocalFilesystemStorage(
             council_code=self.council_id,
             scraper_object_type="Councillors",
@@ -67,11 +69,11 @@ def make_scraper(monkeypatch):
 
     monkeypatch.setattr(ScraperBase, "__init__", base_init)
 
-    def build(names, fail_at=None):
+    def build(names, fail_at=None, **options):
         cls = type(
             "Scraper", (ListedCouncillorScraper,), {"names": names, "fail_at": fail_at}
         )
-        return cls({"council": "TST", "verbose": False}, FakeConsole())
+        return cls({"council": "TST", "verbose": False, **options}, FakeConsole())
 
     return build
 
@@ -147,3 +149,18 @@ def test_a_good_run_after_a_failed_one_replaces_the_set(make_scraper, data_dir):
     run_cli_style(make_scraper(smaller))
 
     assert stored(data_dir) == smaller
+
+
+def test_commit_messages_name_the_run_in_trailers(make_scraper):
+    scraper = make_scraper(
+        FULL_COUNCIL, run_id="abc123", execution_id="scraper-all-20261023"
+    )
+
+    assert scraper.commit_message("Updated TST councillors") == (
+        "Updated TST councillors\n"
+        "\n"
+        "LGSF-Run-Id: abc123\n"
+        "LGSF-Execution-Id: scraper-all-20261023\n"
+        "LGSF-Scraper-Type: Councillors\n"
+    )
+    assert "LGSF-Execution-Id" not in make_scraper(FULL_COUNCIL).commit_message("x")
