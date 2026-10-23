@@ -1,3 +1,5 @@
+import datetime
+
 from rich.table import Table
 
 from lgsf.commands.base import PerCouncilCommandBase
@@ -12,6 +14,14 @@ class Command(PerCouncilCommandBase):
             action="store_true",
             help="Find and record documents but don't download them. Useful "
             "for checking a scraper works without pulling every PDF.",
+        )
+        parser.add_argument(
+            "--since",
+            type=lambda value: datetime.date.fromisoformat(value).isoformat(),
+            help="Scrape meetings from this date (YYYY-MM-DD) rather than "
+            "the last few weeks. For a backfill; it can be stopped and rerun. "
+            "CMIS councils list one month per request, about 40 seconds each, "
+            "before any meeting is saved.",
         )
 
     def output_report(self):

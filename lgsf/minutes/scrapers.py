@@ -143,8 +143,17 @@ class BaseMinutesScraper(DocumentSavingMixin, ScraperBase):
 
     @property
     def date_range(self):
+        """
+        The meetings to look at: weeks_back before today to weeks_forward
+        after, or from --since for a backfill. A backfill is resumable: a
+        meeting whose detail is unchanged since it was stored is answered
+        with a 304 where the council supports it, and not saved again.
+        """
         today = datetime.date.today()
-        start = today - datetime.timedelta(weeks=self.weeks_back)
+        if self.options.get("since"):
+            start = datetime.date.fromisoformat(self.options["since"])
+        else:
+            start = today - datetime.timedelta(weeks=self.weeks_back)
         end = today + datetime.timedelta(weeks=self.weeks_forward)
         return start, end
 
