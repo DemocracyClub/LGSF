@@ -17,6 +17,31 @@ from datetime import datetime
 from typing import Optional
 
 
+def _council_set(council_ids: Optional[str]) -> set[str]:
+    return {c.strip().upper() for c in (council_ids or "").split(",") if c.strip()}
+
+
+class ExecutionOverlapError(ValueError):
+    """Raised instead of starting an execution that would overlap a running one."""
+
+    def __init__(self, executions: list[dict]):
+        self.executions = executions
+        names = ", ".join(
+            e["name"]
+            + (
+                " (all councils)"
+                if e["all_councils"]
+                else f" ({', '.join(sorted(e['council_ids']))})"
+            )
+            for e in executions
+        )
+        super().__init__(
+            f"A Step Function execution covering these councils is already running: {names}. "
+            "Wait for it, or pass --allow-overlap to start anyway (the later push for an "
+            "overlapping council will be rejected and that run will fail)."
+        )
+
+
 class StepFunctionInvoker:
     """
     Invokes AWS Step Functions for scraper orchestration.
@@ -323,30 +348,88 @@ class StepFunctionInvoker:
             self._client = boto3.client("stepfunctions", region_name="eu-west-2")
         return self._client
 
+    def running_executions(self) -> list[dict]:
+        """
+        The executions of this state machine that are running now, each as
+        {"name", "arn", "council_ids", "all_councils"} from its input.
+        """
+        running = []
+        paginator = self.client.get_paginator("list_executions")
+        for page in paginator.paginate(
+            stateMachineArn=self.state_machine_arn, statusFilter="RUNNING"
+        ):
+            for execution in page.get("executions", []):
+                details = self.client.describe_execution(
+                    executionArn=execution["executionArn"]
+                )
+                try:
+                    payload = json.loads(details.get("input") or "{}")
+                except ValueError:
+                    payload = {}
+                running.append(
+                    {
+                        "name": execution["name"],
+                        "arn": execution["executionArn"],
+                        "council_ids": _council_set(payload.get("council_ids")),
+                        "all_councils": bool(payload.get("all_councils")),
+                    }
+                )
+        return running
+
+    def overlapping_executions(
+        self, council_ids: Optional[str], all_councils: bool
+    ) -> list[dict]:
+        """Running executions that would scrape a council this one would."""
+        wanted = _council_set(council_ids)
+        overlapping = []
+        for execution in self.running_executions():
+            if (
+                all_councils
+                or execution["all_councils"]
+                or wanted & execution["council_ids"]
+            ):
+                overlapping.append(execution)
+        return overlapping
+
     def invoke(
         self,
         council_ids: Optional[str] = None,
         all_councils: bool = False,
         execution_name: Optional[str] = None,
+        allow_overlap: bool = False,
     ) -> dict:
         """
         Start a Step Function execution.
+
+        Two runs scraping the same council at once waste a scrape at best:
+        both clone, both push, and the second push is rejected because main
+        moved, so that run fails. So this refuses to start while a running
+        execution covers any of the same councils (the daily run covers
+        them all), unless allow_overlap is set.
 
         Args:
             council_ids: Comma-separated council IDs to scrape (e.g., "ABE,XYZ")
             all_councils: Whether to run all councils
             execution_name: Optional custom name for the execution
+            allow_overlap: Start even if a running execution overlaps
 
         Returns:
             dict: Response from Step Functions API containing execution ARN and start date
 
         Raises:
             ValueError: If neither council_ids nor all_councils is specified
+            ExecutionOverlapError: If a running execution overlaps and
+                allow_overlap is False
         """
         if not council_ids and not all_councils:
             raise ValueError(
                 "Either council_ids or all_councils must be specified for AWS execution"
             )
+
+        if not allow_overlap:
+            overlapping = self.overlapping_executions(council_ids, all_councils)
+            if overlapping:
+                raise ExecutionOverlapError(overlapping)
 
         # Build the input payload for the Step Function
         input_payload = {}

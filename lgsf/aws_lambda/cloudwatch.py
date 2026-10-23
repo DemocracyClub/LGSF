@@ -1,4 +1,5 @@
 # cloudwatch_rich_stream.py
+import os
 import sys
 import time
 import threading
@@ -6,6 +7,18 @@ from io import IOBase
 from typing import List, Dict, Optional
 import boto3
 from botocore.exceptions import ClientError
+
+
+#: Where the CDK makes the per-type log groups, with retention. The worker
+#: must write to the same names or its logs land in groups nothing manages.
+SCRAPER_LOG_GROUP_PREFIX = os.environ.get(
+    "SCRAPER_LOG_GROUP_PREFIX", "/aws/lambda/lgsf-scrapers"
+)
+
+
+def scraper_log_group(scraper_type: str) -> str:
+    """The log group a scraper type's runs write to, e.g. /aws/lambda/lgsf-scrapers/councillors."""
+    return f"{SCRAPER_LOG_GROUP_PREFIX}/{scraper_type}"
 
 
 class CloudWatchLogStream(IOBase):

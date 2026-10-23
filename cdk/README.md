@@ -1,196 +1,90 @@
-# LGSF CDK Deployment
+# LGSF CDK deployment
 
-This directory contains the AWS CDK (Cloud Development Kit) v2 deployment code for the Local Government Scraper Framework (LGSF), migrated from AWS SAM.
+AWS CDK v2 code for the Local Government Scraper Framework's daily run. One
+stack, `cdk/stacks/lgsf_stack.py`. CircleCI deploys it on every push to
+`master` (see `.circleci/config.yml`), so a merge is a deploy.
 
-## Overview
-
-The CDK deployment creates the following AWS resources:
-
-- **Lambda Functions**: 
-  - Queue Builder Function (scheduled daily)
-  - Scraper Worker Function (triggered by SQS)
-- **SQS Queue**: For distributing scraper tasks
-- **Lambda Layer**: For Python dependencies
-- **IAM Roles**: With necessary permissions for Lambda execution
-- **EventBridge Rule**: For daily scheduling
-
-## Architecture
+## What runs
 
 ```
-EventBridge (daily) -> Queue Builder Lambda -> SQS Queue -> Scraper Worker Lambda -> GitHub/Local Storage
+EventBridge (every 24h)
+  -> Step Function "scraper-orchestration"
+       1. EnumerateCouncils   Lambda: the councils with a current councillors scraper
+       2. ParallelScrapers    Distributed Map, 10 at a time, over those councils
+            RunScraper        Lambda (Docker image, with git): scrapes one council and
+                              pushes one commit to LGSF-Data/<COUNCIL> on GitHub
+       3. Aggregation         Lambda: writes run-reports/<timestamp>.json to S3
+       4. NotificationReport  Lambda: emails a summary via SNS
+       5. PostProcessing      Lambda: per-council results, old report cleanup
 ```
 
-## Prerequisites
+Each council is one Map item, so one council failing never stops the
+others (`tolerated_failure_percentage=100`); failures show in the run
+report. The worker is told the Step Functions execution name, which ends up
+in the trailers of every commit it makes, so a commit can be traced to the
+report for the run that made it.
 
-1. **Python Dependencies**: Install CDK dependencies
-   ```bash
-   uv sync --group cdk
-   ```
+Storage: the worker writes to GitHub (`LGSF_STORAGE_BACKEND=github`) with a
+GitHub App's credentials. Run reports and per-council run logs for failures
+go to the S3 bucket named in SSM. The dashboard at
+https://democracyclub.github.io/lgsf-dashboard/ reads those reports.
 
-2. **Node.js Dependencies**: Install CDK CLI
-   ```bash
-   npm install
-   ```
+Logs: each scraper type has a log group, `/aws/lambda/lgsf-scrapers/<type>`,
+with one-month retention, and each council's run is a stream in it. The
+worker is told the prefix (`SCRAPER_LOG_GROUP_PREFIX`) so the two can't
+disagree.
 
-3. **AWS CLI**: Configured with appropriate credentials
-   ```bash
-   aws configure --profile lgsf-dev-dc
-   ```
+There is no SQS queue. An earlier design used one; the Step Function
+replaced it.
 
-## Deployment Commands
+## Configuration
 
-### Using the Makefile (Recommended)
+Everything environment-specific is read from SSM Parameter Store under
+`/lgsf/<DC_ENVIRONMENT>/`:
+
+| Parameter | Used for |
+| --- | --- |
+| `github/app_id`, `github/installation_id`, `github/app_private_key` | The GitHub App the worker commits as |
+| `github/organization` | The organisation holding one repository per council |
+| `s3/reports_bucket` | Run reports and run logs |
+| `notification/emails` | Comma-separated recipients of the summary |
+| `proxy_url` | Optional outbound proxy for scrapers |
+
+`DC_ENVIRONMENT` is `development` (default) or `production`.
+
+## Running it yourself
+
+Prerequisites: `uv sync --group cdk`, `npm install`, and AWS credentials for
+the account.
 
 ```bash
-# Install NPM dependencies
-make npm-install
-
-# Bootstrap CDK (first time only)
-make cdk-bootstrap
-
-# Show what will be deployed
-make cdk-synth
-
-# Show differences from current deployment
-make cdk-diff
-
-# Deploy the stack
-make cdk-deploy
-
-# Destroy the stack
-make cdk-destroy
-```
-
-### Using the Deployment Script
-
-```bash
-# Deploy with default settings
-./scripts/deploy-cdk.sh
-
-# Deploy to different environment
-./scripts/deploy-cdk.sh -e production -p lgsf-prod-dc
-
-# Bootstrap CDK
-./scripts/deploy-cdk.sh -a bootstrap
-
-# Show differences
-./scripts/deploy-cdk.sh -a diff
-
-# Destroy stack
-./scripts/deploy-cdk.sh -a destroy
-```
-
-### Using CDK CLI Directly
-
-```bash
-# Set environment variables
-export AWS_PROFILE=lgsf-dev-dc
-export DC_ENVIRONMENT=development
-
-# Bootstrap (first time only)
-npx cdk bootstrap
-
-# Deploy
+export AWS_PROFILE=<profile> DC_ENVIRONMENT=development
+make lambda-layers/DependenciesLayer/requirements.txt   # layer requirements from uv.lock
+npx cdk bootstrap        # first time in an account only
+npx cdk synth            # render the template
+npx cdk diff             # compare with what is deployed
 npx cdk deploy
-
-# Destroy
-npx cdk destroy
 ```
 
-## Environment Configuration
+To start a run from the CLI instead of waiting for the schedule:
 
-The deployment supports multiple environments through the `DC_ENVIRONMENT` variable:
-
-- `development` (default): Uses `lgsf-dev-dc` AWS profile
-- `production`: Uses `lgsf-prod-dc` AWS profile
-
-## File Structure
-
-```
-cdk/
-├── README.md                     # This file
-├── app.py                        # CDK app entry point
-└── stacks/
-    ├── __init__.py
-    └── lgsf_stack.py            # Single consolidated LGSF stack
+```bash
+python manage.py councillors --aws --council KIR [--wait]
+python manage.py councillors --aws --all-councils
 ```
 
-## Migration from SAM
+This refuses to start while a running execution already covers any of the
+same councils, since the two would race to push the same repository and
+the later one would fail. `--allow-overlap` starts anyway.
 
-This CDK deployment replaces the original SAM template (`sam-template.yaml`) with the following mappings:
+## Stack outputs
 
-| SAM Resource | CDK Resource | Notes |
-|--------------|--------------|-------|
-| `DependenciesLayer` | `DependenciesLayer` | Lambda layer for Python dependencies |
-| `QueueBuilderFunction` | `QueueBuilderFunction` | Scheduled Lambda function |
-| `SQSScraperQueue` | `ScraperQueue` | SQS queue with DLQ |
-| `ScraperWorkerFunction` | `ScraperWorkerFunction` | SQS-triggered Lambda function |
-| Schedule Event | EventBridge Rule | Daily scheduling |
-
-## Key Improvements
-
-1. **Type Safety**: Python CDK provides better type checking
-2. **Simplified Structure**: Single stack file with all resources
-3. **Environment Management**: Better support for multiple environments
-4. **Error Handling**: Added dead letter queue for failed messages
-5. **Resource Naming**: Consistent naming conventions
-6. **Permissions**: More granular IAM permissions
+`StepFunctionArn`, the ARN of each Lambda, the SNS topic ARN, and the
+execution role ARN. `npx cdk deploy` prints them.
 
 ## Troubleshooting
 
-### Common Issues
-
-1. **CDK Bootstrap Required**
-   ```
-   Error: Need to perform AWS CDK bootstrap
-   Solution: Run `make cdk-bootstrap`
-   ```
-
-2. **Lambda Layer Build Fails**
-   ```
-   Error: Requirements file not found
-   Solution: Run `make lambda-layers/DependenciesLayer/requirements.txt`
-   ```
-
-3. **AWS Credentials**
-   ```
-   Error: Unable to locate credentials
-   Solution: Check AWS profile configuration
-   ```
-
-### Debugging
-
-- View synthesized CloudFormation: `make cdk-synth`
-- Check differences: `make cdk-diff`
-- Watch for changes: `make cdk-watch`
-
-## Stack Outputs
-
-After deployment, the following outputs are available:
-
-- `QueueBuilderFunctionArn`: ARN of the queue builder Lambda
-- `ScraperWorkerFunctionArn`: ARN of the scraper worker Lambda  
-- `ScraperQueueUrl`: URL of the SQS queue
-- `LambdaExecutionRoleArn`: ARN of the Lambda execution role
-
-## Security
-
-- Lambda functions use least-privilege IAM roles
-- SQS queue has a dead letter queue for error handling
-- All resources are tagged for cost tracking
-- No hardcoded secrets or credentials
-
-## Cost Optimization
-
-- Lambda functions have appropriate timeout settings
-- SQS messages have retention periods to avoid storage costs
-- Resources are tagged for cost allocation
-- Dead letter queue prevents infinite retries
-
-## Support
-
-For issues with the CDK deployment, please check:
-
-1. AWS CloudFormation console for detailed error messages
-2. CloudWatch Logs for Lambda function execution logs
-3. CDK documentation at https://docs.aws.amazon.com/cdk/
+- **"Need to perform AWS CDK bootstrap"**: run `npx cdk bootstrap` once for the account and region.
+- **Lambda layer build fails on a missing requirements file**: run `make lambda-layers/DependenciesLayer/requirements.txt`.
+- **"Unable to locate credentials"**: check `AWS_PROFILE`.
+- **A council's run**: its log stream in `/aws/lambda/lgsf-scrapers/councillors`, and for a failure the run log the report points to in S3.

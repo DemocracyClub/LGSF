@@ -26,6 +26,10 @@ EXCLUDE_FILES = [
 ]
 
 
+#: Per-type log groups live here; the worker is told the same prefix.
+SCRAPER_LOG_GROUP_PREFIX = "/aws/lambda/lgsf-scrapers"
+
+
 class LgsfStack(cdk.Stack):
     """Main LGSF CDK stack with Step Functions orchestration."""
 
@@ -227,6 +231,9 @@ class LgsfStack(cdk.Stack):
             "GITHUB_APP_INSTALLATION_ID": self.github_app_installation_id,
             "GITHUB_APP_PRIVATE_KEY": self.github_app_private_key,
             "S3_REPORTS_BUCKET": self.s3_reports_bucket,
+            # The worker writes its per-council log streams into the
+            # per-type log groups made below, so they share one prefix.
+            "SCRAPER_LOG_GROUP_PREFIX": SCRAPER_LOG_GROUP_PREFIX,
         }
 
         # Add proxy URL if configured
@@ -463,7 +470,7 @@ class LgsfStack(cdk.Stack):
             log_group = aws_logs.LogGroup(
                 self,
                 f"ScraperLogGroup{scraper_type.title()}",
-                log_group_name=f"/aws/lambda/lgsf-scrapers/{scraper_type}",
+                log_group_name=f"{SCRAPER_LOG_GROUP_PREFIX}/{scraper_type}",
                 retention=aws_logs.RetentionDays.ONE_MONTH,
                 removal_policy=cdk.RemovalPolicy.DESTROY,
             )
