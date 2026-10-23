@@ -12,6 +12,7 @@ EXTRA_FIELDS = (
     "is_webcast",
     "agenda_items",
     "attendance",
+    "declarations",
     "install_url",
 )
 
@@ -46,6 +47,9 @@ class MeetingBase:
     agenda_items: list = field(init=False, hash=False, compare=False)
     #: One entry per person the source lists, with how they attended
     attendance: list = field(init=False, hash=False, compare=False)
+    #: Declarations of interest, where the source itemises them (CMIS
+    #: does; ModernGov gives only a count per agenda item)
+    declarations: list = field(init=False, hash=False, compare=False)
     #: The base URL of the system the meeting was read from. Councils that
     #: share one ModernGov install list the same meetings, and joint
     #: committees appear on several councils' sites: the same install and
@@ -112,6 +116,7 @@ class MeetingBase:
             "is_webcast": getattr(self, "is_webcast", None),
             "agenda_items": getattr(self, "agenda_items", []),
             "attendance": getattr(self, "attendance", []),
+            "declarations": getattr(self, "declarations", []),
             "install_url": getattr(self, "install_url", None),
         }
         RAW_FIELDS = ["identifier", "title", "committee", "committee_id", "date"]

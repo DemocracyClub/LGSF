@@ -605,6 +605,8 @@ class ModGovMinutesScraper(BaseMinutesScraper):
                     "ward": attendee.get("ward") or None,
                     "key_posts": attendee.get("keyposts") or None,
                     "url": self.tag_text(attendee, "url"),
+                    "reason": None,
+                    "substituted_by": None,
                 }
             )
         return attendance
@@ -928,6 +930,93 @@ class CMISMinutesScraper(BaseMinutesScraper):
             )
         return documents
 
+    @staticmethod
+    def grid_rows(table):
+        """A Telerik RadGrid's data rows as lists of cells, skipping 'no records'."""
+        return [
+            tr.select("td")
+            for tr in table.select("tr.rgRow, tr.rgAltRow")
+            if tr.select("td")
+        ]
+
+    @staticmethod
+    def cmis_member_id(cell):
+        """The id in a ViewCMIS_Person/.../id/<id>/ link, as the councillors scraper uses."""
+        link = cell.find("a", href=True)
+        match = re.search(r"/id/(\d+)/", link["href"]) if link else None
+        return match.group(1) if match else None
+
+    def get_attendance(self, detail_soup):
+        """
+        The Attendance tab: who attended (committee members and others),
+        apologies and absences with their reasons, and any substitutes, in
+        the same shape as ModernGov's attendance. ``attendance`` is CMIS's
+        own heading, e.g. "Attended - Committee Members" or "Apologies".
+        """
+        tab = detail_soup.select_one(".AttendanceTab")
+        if tab is None:
+            return []
+        attendance = []
+        for fieldset in tab.find_all("fieldset"):
+            legend = fieldset.find("legend")
+            table = fieldset.select_one("table.rgMasterTable")
+            if legend is None or table is None:
+                continue
+            heading = legend.get_text(" ", strip=True)
+            columns = [
+                th.get_text(" ", strip=True).lower() for th in table.select("th")
+            ]
+            for cells in self.grid_rows(table):
+                values = {
+                    column: cell.get_text(" ", strip=True) or None
+                    for column, cell in zip(columns, cells)
+                }
+                name_cell = cells[0]
+                link = name_cell.find("a", href=True)
+                attendance.append(
+                    {
+                        "member_id": self.cmis_member_id(name_cell),
+                        "member_type": None,
+                        "name": name_cell.get_text(" ", strip=True) or None,
+                        "role": None,
+                        "attendance": heading,
+                        "party": None,
+                        "ward": None,
+                        "key_posts": None,
+                        "url": link["href"] if link else None,
+                        "reason": next(
+                            (v for c, v in values.items() if c.startswith("reason")),
+                            None,
+                        ),
+                        "substituted_by": values.get("substituted by"),
+                    }
+                )
+        return attendance
+
+    def get_declarations(self, detail_soup):
+        """The Declarations of Interests table, one entry per declaration."""
+        for table in detail_soup.select("table.rgMasterTable"):
+            columns = [th.get_text(" ", strip=True) for th in table.select("th")]
+            if "Nature of Declaration" not in columns:
+                continue
+            keys = {
+                "Member Name": "member_name",
+                "Item Ref.": "item_ref",
+                "Details": "details",
+                "Nature of Declaration": "nature",
+                "Action": "action",
+            }
+            declarations = []
+            for cells in self.grid_rows(table):
+                entry = {
+                    keys.get(column, column): cell.get_text(" ", strip=True) or None
+                    for column, cell in zip(columns, cells)
+                }
+                entry["member_id"] = self.cmis_member_id(cells[0])
+                declarations.append(entry)
+            return declarations
+        return []
+
     def get_single_meeting(self, row):
         etag, last_modified = self.validators_for(row["url"])
         response = self.get_conditional(
@@ -964,6 +1053,8 @@ class CMISMinutesScraper(BaseMinutesScraper):
             detail_soup, meeting_date=row["date"].isoformat()
         )
         meeting.install_url = self.base_url
+        meeting.attendance = self.get_attendance(detail_soup)
+        meeting.declarations = self.get_declarations(detail_soup)
         meeting.minutes_published = any(
             document["category"] == "minutes" for document in meeting.documents
         )
