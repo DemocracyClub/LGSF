@@ -236,6 +236,18 @@ class BaseStorage(abc.ABC):
     #: or visible, such as a pull request per session.
     supports_checkpoints = False
 
+    def read_other_type(self, scraper_object_type: str, filename: str) -> Optional[str]:
+        """
+        Another data type's file for the same council, read-only and outside
+        any session, or None if it isn't there or this backend can't say.
+
+        For what types share: minutes and decisions often link the same
+        documents, and each records the ones it stored in its _index.json,
+        so one can reuse what the other already fetched. See
+        DocumentSavingMixin.
+        """
+        return None
+
     def __init__(
         self, council_code: str, storage_mode: StorageMode = StorageMode.REPLACE
     ):

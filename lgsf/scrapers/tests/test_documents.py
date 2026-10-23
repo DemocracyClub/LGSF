@@ -169,3 +169,129 @@ def test_every_type_of_a_council_shares_one_s3_store(monkeypatch):
     assert minutes.document_storage.root == "data/ABC/documents"
     assert decisions.document_storage.root == "data/ABC/documents"
     assert decisions.document_storage.exists(stored.key)
+
+
+# --- documents another data type already stored ---
+
+
+import json  # noqa: E402
+
+from lgsf.storage.backends.base import StorageMode  # noqa: E402
+from lgsf.storage.backends.local import LocalFilesystemStorage  # noqa: E402
+
+SHARED = b"%PDF-1.7 the cabinet report"
+SHARED_URL = "https://ex.gov.uk/mgConvert2PDF.aspx?ID=1"
+
+
+class MinutesLikeScraper(DocumentSavingMixin, ScraperBase):
+    service_name = "minutes"
+    scraper_object_type = "Minutes"
+
+
+def stored_by_decisions(data_dir, url=SHARED_URL, content=SHARED, store_file=True):
+    """Decisions has fetched a document and recorded it in its index."""
+    key = hashlib.sha256(content).hexdigest() + ".pdf"
+    if store_file:
+        (data_dir / "ABC" / "documents").mkdir(parents=True, exist_ok=True)
+        (data_dir / "ABC" / "documents" / key).write_bytes(content)
+    entry = {
+        "storage_key": key,
+        "storage_backend": "local",
+        "content_hash": f"sha256:{hashlib.sha256(content).hexdigest()}",
+        "content_length": len(content),
+        "etag": '"d1"',
+    }
+    (data_dir / "ABC" / "Decisions").mkdir(parents=True, exist_ok=True)
+    (data_dir / "ABC" / "Decisions" / "_index.json").write_text(
+        json.dumps({"decisions": {}, "documents": {url: entry}})
+    )
+    return entry
+
+
+def minutes_scraper(responses):
+    scraper = MinutesLikeScraper.__new__(MinutesLikeScraper)
+    scraper.council_id = "ABC"
+    scraper.options = {"council": "ABC"}
+    scraper.console = FakeConsole()
+    scraper.index = {"documents": {}}
+    scraper.requests = []
+    scraper.storage_backend = LocalFilesystemStorage(
+        "ABC", scraper_object_type="Minutes", storage_mode=StorageMode.ACCUMULATE
+    )
+
+    def send(url, extra_headers=None):
+        scraper.requests.append(url)
+        return responses[url]
+
+    scraper._send = send
+    return scraper
+
+
+def test_a_document_decisions_stored_is_not_downloaded_for_minutes(data_dir):
+    entry = stored_by_decisions(data_dir)
+    scraper = minutes_scraper({SHARED_URL: FakeResponse(SHARED)})
+    meeting = Thing(SHARED_URL)
+
+    scraper.save_record_documents(meeting)
+
+    assert scraper.requests == []
+    assert meeting.documents[0]["storage_key"] == entry["storage_key"]
+    assert scraper.index["documents"][SHARED_URL]["storage_key"] == entry["storage_key"]
+    assert (scraper.documents_skipped, scraper.documents_from_other_types) == (1, 1)
+
+
+def test_another_types_entry_whose_file_is_gone_is_downloaded(data_dir):
+    stored_by_decisions(data_dir, store_file=False)
+    scraper = minutes_scraper({SHARED_URL: FakeResponse(SHARED)})
+
+    scraper.save_record_documents(Thing(SHARED_URL))
+
+    assert scraper.requests == [SHARED_URL]
+    assert scraper.documents_from_other_types == 0
+
+
+def test_this_types_own_entry_comes_first(data_dir):
+    stored_by_decisions(data_dir)
+    scraper = minutes_scraper({})
+    own = dict(scraper.other_types_documents()[SHARED_URL], etag='"mine"')
+    scraper.index["documents"][SHARED_URL] = own
+
+    assert scraper.stored_document_metadata(SHARED_URL)["etag"] == '"mine"'
+    assert scraper.documents_from_other_types == 0
+
+
+def test_an_unusable_own_entry_falls_back_to_another_types(data_dir):
+    """An old-style key in this type's index, a good one in decisions'."""
+    entry = stored_by_decisions(data_dir)
+    scraper = minutes_scraper({})
+    scraper.index["documents"][SHARED_URL] = {"storage_key": "2024-01-01-old.pdf"}
+
+    found = scraper.stored_document_metadata(SHARED_URL)
+
+    assert found["storage_key"] == entry["storage_key"]
+    assert scraper.index["documents"][SHARED_URL]["storage_key"] == entry["storage_key"]
+
+
+def test_the_other_types_indexes_are_read_once_per_run(data_dir, monkeypatch):
+    stored_by_decisions(data_dir)
+    scraper = minutes_scraper({})
+    reads = []
+    real = scraper.storage_backend.read_other_type
+    monkeypatch.setattr(
+        scraper.storage_backend,
+        "read_other_type",
+        lambda t, f: reads.append(t) or real(t, f),
+    )
+
+    scraper.save_record_documents(Thing(SHARED_URL))
+    scraper.save_record_documents(Thing(SHARED_URL, "https://ex.gov.uk/other.pdf"))
+
+    assert sorted(reads) == ["Councillors", "Decisions"]
+
+
+def test_a_scraper_without_a_storage_backend_just_downloads():
+    scraper = make_scraper({"https://ex.gov.uk/a.pdf": FakeResponse(b"%PDF-1.7 x")})
+
+    scraper.save_record_documents(Thing("https://ex.gov.uk/a.pdf"))
+
+    assert scraper.documents_downloaded == 1

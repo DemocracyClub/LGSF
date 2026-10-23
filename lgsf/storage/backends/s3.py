@@ -113,6 +113,21 @@ class S3Storage(BaseStorage):
     def object_key(self, key: str) -> str:
         return s3.join_key(self.root, key)
 
+    def read_other_type(self, scraper_object_type: str, filename: str) -> Optional[str]:
+        key = s3.join_key(
+            self.prefix,
+            s3.safe_name(self.council_code, "council_code"),
+            s3.safe_name(scraper_object_type, "scraper_object_type"),
+            filename,
+        )
+        try:
+            response = self.client.get_object(Bucket=self.bucket, Key=key)
+        except ClientError as e:
+            if s3.is_not_found(e):
+                return None
+            raise
+        return response["Body"].read().decode(self.encoding)
+
     def url_for(self, key: str) -> str:
         return f"s3://{self.bucket}/{self.object_key(key)}"
 
