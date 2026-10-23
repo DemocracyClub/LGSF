@@ -251,6 +251,8 @@ def test_attendance_joins_to_councillors_by_member_id():
         "ward": "N",
         "key_posts": "Chair of Council",
         "url": "https://Stroud.moderngov.co.uk/mgUserInfo.aspx?UID=2566",
+        "reason": None,
+        "substituted_by": None,
     }
     assert [a["attendance"] for a in attendance].count("Apologies") == 2
 

@@ -451,3 +451,70 @@ def test_module_id_missing_raises_a_useful_error():
 
     with pytest.raises(ValueError, match="Could not find CMIS meetings module id"):
         scraper.get_module_id()
+
+
+# --- attendance and declarations, from a real Birmingham meeting page ---
+
+
+def birmingham():
+    return BeautifulSoup(load_html("cmis_attendance_declarations.html"), "lxml")
+
+
+def test_attendance_has_every_group_with_member_ids_that_join_to_councillors():
+    attendance = make_scraper().get_attendance(birmingham())
+
+    groups = {a["attendance"] for a in attendance}
+    assert {
+        "Attended - Committee Members",
+        "Attended - Other Members",
+        "Absent",
+    } <= groups
+    first = attendance[0]
+    assert first["attendance"] == "Attended - Committee Members"
+    assert first["name"].startswith("Councillor")
+    assert first["member_id"] and first["member_id"].isdigit()
+    assert f"/id/{first['member_id']}/" in first["url"]
+    assert set(first) == {
+        "member_id",
+        "member_type",
+        "name",
+        "role",
+        "attendance",
+        "party",
+        "ward",
+        "key_posts",
+        "url",
+        "reason",
+        "substituted_by",
+    }
+
+
+def test_apologies_and_absences_carry_their_reason_column():
+    attendance = make_scraper().get_attendance(birmingham())
+
+    absent = [a for a in attendance if a["attendance"] == "Absent"]
+    assert absent
+    assert all("reason" in a for a in absent)
+
+
+def test_declarations_are_itemised():
+    declarations = make_scraper().get_declarations(birmingham())
+
+    assert declarations == [
+        {
+            "member_name": "Councillor Kamel Hawwash",
+            "item_ref": "6",
+            "details": "Governor of a school in the area",
+            "nature": "Personal interest",
+            "action": "Remained in the meeting",
+            "member_id": None,
+        }
+    ]
+
+
+def test_a_page_without_the_tabs_gives_empty_lists():
+    soup = BeautifulSoup("<html><body><p>No tabs</p></body></html>", "lxml")
+    scraper = make_scraper()
+
+    assert scraper.get_attendance(soup) == []
+    assert scraper.get_declarations(soup) == []

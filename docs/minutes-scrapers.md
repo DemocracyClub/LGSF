@@ -101,7 +101,15 @@ CMIS and custom scrapers fill what they can and leave the rest empty
 | `is_webcast` | Whether the meeting is webcast | `iswebcast` |
 | `install_url` | The base URL of the system the meeting came from. Councils sharing one install list the same meetings: the same install and `raw_identifier` is the same meeting | the scraper's base URL |
 | `agenda_items` | In the source's order. Each has `id`, `number`, `sub_number`, `display_number` (the minute reference, e.g. Stroud's `CL.025a`), `minutes_number`, `minutes_sub_number`, `title`, `agenda_html`, `minutes_html`, `is_decision`, `is_decision_published`, `is_minute_published`, `is_call_in`, `is_restricted`, `is_public_can_speak`, `declaration_count`, `refer_to_committee`, `preferred_date`, and `document_ids`, the `attachment_id`s of its documents | `agendaitem` and its children |
-| `attendance` | Each person listed, with `member_id`, `member_type`, `name`, `role`, `attendance` (e.g. `"Present, as expected"`, `"Apologies"`), `party`, `ward`, `key_posts`, `url`. `member_id` is the councillors scraper's id, so attendance joins to councillors | `attendee` attributes |
+| `attendance` | Each person listed, with `member_id`, `member_type`, `name`, `role`, `attendance` (e.g. `"Present, as expected"`, `"Apologies"`), `party`, `ward`, `key_posts`, `url`, `reason` and `substituted_by`. `member_id` is the councillors scraper's id, so attendance joins to councillors | `attendee` attributes |
+| `declarations` | Declarations of interest, each with `member_name`, `member_id`, `item_ref`, `details`, `nature`, `action`. ModernGov gives only a `declaration_count` per agenda item, so this is `[]` there | (CMIS only) |
+
+**CMIS** fills `attendance` and `declarations` from the meeting page's
+Attendance and Declarations tabs. `attendance` is CMIS's own heading:
+`"Attended - Committee Members"`, `"Attended - Other Members"`,
+`"Apologies"` or `"Absent"`, with the reason given and any substitute.
+`member_id` comes from the person's `.../ViewCMIS_Person/.../id/<id>/`
+link, the same id the CMIS councillors scraper records.
 
 Each document in `documents` also gives, from ModernGov, the
 `agenda_item_id` it hangs from, `owner_title`, `publication_date` (ISO),
