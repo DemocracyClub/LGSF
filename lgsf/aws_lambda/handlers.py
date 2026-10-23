@@ -541,6 +541,43 @@ def flatten_scraper_results(scraper_results) -> list[dict]:
     return flat
 
 
+#: The statuses the worker reports. Anything else reaching aggregation
+#: isn't a worker result.
+SCRAPER_STATUSES = ("completed", "failed", "disabled")
+
+
+def as_scraper_result(result):
+    """
+    A Map result as a scraper result, or as a failure if it isn't one.
+
+    A council's item can end with something other than the worker's
+    result: a Step Functions error ({"Error", "Cause"}) when the state
+    machine itself went wrong, as when a run starts against a definition
+    that doesn't match the Lambdas' code mid-deploy. Counted as a run but
+    in no category, that hid the problem; as a failure it names it.
+    """
+    if not isinstance(result, dict):
+        return {
+            "council": "unknown",
+            "scraper_type": "unknown",
+            "status": "failed",
+            "statusCode": 500,
+            "error": f"Unexpected result: {str(result)[:150]}",
+        }
+    if result.get("status") in SCRAPER_STATUSES or result.get("statusCode") == 429:
+        return result
+    error = result.get("error") or result.get("Error") or "Unexpected result"
+    cause = result.get("cause") or result.get("Cause")
+    return {
+        **result,
+        "council": result.get("council", "unknown"),
+        "scraper_type": result.get("scraper_type", "unknown"),
+        "status": "failed",
+        "statusCode": 500,
+        "error": f"{error}: {cause}"[:150] if cause else str(error)[:150],
+    }
+
+
 def load_map_results(scraper_results, s3_client=None):
     """
     The Map's results, and the S3 keys they were read from.
@@ -618,71 +655,40 @@ def delete_map_results(bucket, keys, console, s3_client=None):
 
 def post_processing_handler(event, context):
     """
-    Post-processing handler that runs after all scrapers have completed.
-    Now processes individual scraper results since we store them in job data.
+    Log the run's summary once every scraper has finished.
+
+    Its input is the aggregation step's output (the notification's result
+    sits beside it under "notification"), so the summary and the failures
+    are already worked out; this logs them. It used to be given the
+    notification's output instead, and so always reported nothing.
     """
     console = Console(file=sys.stdout, record=True)
     console.log("Starting post-processing after all scrapers completed")
 
     try:
-        # Extract scraper results from the event
-        scraper_results = flatten_scraper_results(event.get("scraper_results", []))
-        console.log(f"Processing results from {len(scraper_results)} scrapers")
-
-        # Analyze results
-        successful_scrapers = []
-        failed_scrapers = []
-        disabled_scrapers = []
-        total_files_committed = 0
-
-        for result in scraper_results:
-            if not isinstance(result, dict):
-                continue
-            council = result.get("council", "unknown")
-            scraper_type = result.get("scraper_type", "unknown")
-            status = result.get("status", "unknown")
-
-            if status == "completed":
-                successful_scrapers.append(f"{council} ({scraper_type})")
-                if "files_committed" in result:
-                    total_files_committed += result["files_committed"]
-            elif status == "failed":
-                failed_scrapers.append(
-                    f"{council} ({scraper_type}): {result.get('error', 'Unknown error')}"
-                )
-            elif status == "disabled":
-                disabled_scrapers.append(f"{council} ({scraper_type})")
-
-        # Log summary
+        summary = event.get("summary") or {}
+        failed_scrapers = [
+            f"{f.get('council', 'unknown')} ({f.get('scraper_type', 'unknown')}): "
+            f"{f.get('error', 'Unknown error')}"
+            for f in event.get("failed_scrapers") or []
+        ]
         console.log(
-            f"Summary: {len(successful_scrapers)} successful, {len(failed_scrapers)} failed, {len(disabled_scrapers)} disabled"
+            f"Summary: {summary.get('total_succeeded', 0)} successful, "
+            f"{summary.get('total_failed', 0)} failed, "
+            f"{summary.get('total_rate_limited', 0)} rate limited, "
+            f"{summary.get('total_disabled', 0)} disabled, "
+            f"of {summary.get('total_ran', 0)}"
         )
-        console.log(f"Total files committed: {total_files_committed}")
-
-        if failed_scrapers:
-            console.log("Failed scrapers:")
-            for failure in failed_scrapers:
-                console.log(f"  - {failure}")
-
-        # TODO: Add additional post-processing logic here, such as:
-        # - Sending notifications about completion/failures
-        # - Generating summary reports from stored data
-        # - Cleaning up temporary files
-        # - Triggering downstream processes
+        if event.get("report_s3_url"):
+            console.log(f"Run report: {event['report_s3_url']}")
+        for failure in failed_scrapers:
+            console.log(f"  - {failure}")
 
         console.log("Post-processing completed successfully")
         return {
             "statusCode": 200,
-            "message": "Post-processing completed - all scrapers have finished execution",
-            "timestamp": datetime.datetime.utcnow().isoformat(),
-            "summary": {
-                "total_scrapers": len(scraper_results),
-                "successful": len(successful_scrapers),
-                "failed": len(failed_scrapers),
-                "disabled": len(disabled_scrapers),
-                "total_files_committed": total_files_committed,
-            },
-            "failed_scrapers": failed_scrapers if failed_scrapers else None,
+            "timestamp": datetime.datetime.now(datetime.UTC).isoformat(),
+            "total_ran": summary.get("total_ran", 0),
         }
 
     except Exception as e:
@@ -691,7 +697,7 @@ def post_processing_handler(event, context):
         return {
             "statusCode": 500,
             "error": str(e),
-            "timestamp": datetime.datetime.utcnow().isoformat(),
+            "timestamp": datetime.datetime.now(datetime.UTC).isoformat(),
         }
 
 
@@ -719,7 +725,9 @@ def aggregation_handler(event, context):
         map_results, map_result_keys = load_map_results(
             event.get("scraper_results", [])
         )
-        processed_results = flatten_scraper_results(map_results)
+        processed_results = [
+            as_scraper_result(r) for r in flatten_scraper_results(map_results)
+        ]
 
         console.log(f"Processing {len(processed_results)} scraper results")
 

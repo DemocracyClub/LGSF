@@ -212,3 +212,80 @@ def test_aggregation_reports_from_s3_then_removes_the_map_files(
     report = json.loads(fake.objects[result["report_s3_key"]]["Body"])
     assert len(report["scrapers"]) == 4
     assert not [k for k in fake.objects if k.startswith("map-results/")]
+
+
+# --- after aggregation: post-processing and the CLI's summary ---
+
+
+AGGREGATED = {
+    "statusCode": 200,
+    "summary": {
+        "total_ran": 2,
+        "total_succeeded": 1,
+        "total_failed": 1,
+        "total_rate_limited": 0,
+        "total_disabled": 0,
+        "success_rate": "50.00%",
+    },
+    "failed_scrapers": [
+        {"council": "STO", "scraper_type": "councillors", "error": "boom"}
+    ],
+    "report_s3_url": "s3://reports/run-reports/r.json",
+}
+
+
+def test_post_processing_reports_the_aggregation_summary():
+    result = handlers.post_processing_handler(
+        {**AGGREGATED, "notification": {"statusCode": 200}}, None
+    )
+
+    assert result["statusCode"] == 200
+    assert result["total_ran"] == 2
+
+
+def test_wait_prints_the_runs_summary_from_the_executions_output():
+    """The execution's output is aggregation's, with the last steps beside it."""
+    import io
+
+    from lgsf.councillors.commands import Command
+
+    command = Command(["", "--council", "KIR"], io.StringIO())
+    final_status = {
+        "output": {
+            **AGGREGATED,
+            "notification": {"statusCode": 200},
+            "post_processing": {"statusCode": 200, "total_ran": 2},
+        }
+    }
+
+    command._display_execution_report(None, "arn", final_status)
+
+    printed = command.console.export_text()
+    assert "Total scrapers run: 2" in printed
+    assert "Failed: 1" in printed
+    assert "STO" in printed
+
+
+def test_a_result_that_isnt_a_scraper_result_is_a_named_failure(monkeypatch):
+    """As when a run starts mid-deploy: state machine errors, not worker results."""
+    monkeypatch.delenv("S3_REPORTS_BUCKET", raising=False)
+    event = {
+        "scraper_results": [
+            {
+                "Error": "States.Runtime",
+                "Cause": "JSONPath '$.scraper_type' could not be found",
+            },
+            [run("KIR", "councillors")],
+        ]
+    }
+
+    result = handlers.aggregation_handler(event, SimpleNamespace(aws_request_id="r"))
+
+    summary = result["summary"]
+    assert (
+        summary["total_ran"],
+        summary["total_succeeded"],
+        summary["total_failed"],
+    ) == (2, 1, 1)
+    (failure,) = result["failed_scrapers"]
+    assert failure["error"].startswith("States.Runtime: JSONPath")

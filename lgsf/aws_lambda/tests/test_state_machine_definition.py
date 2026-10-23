@@ -150,3 +150,13 @@ def test_the_maps_results_go_to_s3_flattened(template):
 
     assert writer["Parameters"]["Prefix"] == "map-results"
     assert writer["WriterConfig"] == {"OutputType": "JSON", "Transformation": "FLATTEN"}
+
+
+def test_the_executions_output_is_the_aggregation_summary(template):
+    """The last two steps add their results beside it, so --wait can print it."""
+    states = definition(template)["States"]
+
+    assert states["SendNotificationReport"]["ResultPath"] == "$.notification"
+    assert states["PostProcessing"]["ResultPath"] == "$.post_processing"
+    for name in ("SendNotificationReport", "PostProcessing"):
+        assert "OutputPath" not in states[name]
