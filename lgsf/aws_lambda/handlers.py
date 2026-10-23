@@ -541,6 +541,81 @@ def flatten_scraper_results(scraper_results) -> list[dict]:
     return flat
 
 
+def load_map_results(scraper_results, s3_client=None):
+    """
+    The Map's results, and the S3 keys they were read from.
+
+    The Map writes its results to S3 rather than into the execution's
+    state, which is capped at 256 KiB: a result per scraper run for every
+    council and type is well past that. What arrives here is then a
+    pointer to a manifest, {"ResultWriterDetails": {"Bucket", "Key"}},
+    listing the result files. With the FLATTEN transformation each file is
+    a JSON array of the children's outputs, with a council's list of
+    per-type results already spread into it.
+
+    A child execution that itself failed (not a scraper failure, which the
+    state machine catches) is listed under FAILED; it is read as a failed
+    run of unknown council so it still counts.
+
+    A plain list, from a definition without a result writer or a test, is
+    returned as it is, with no keys.
+    """
+    details = (
+        scraper_results.get("ResultWriterDetails")
+        if isinstance(scraper_results, dict)
+        else None
+    )
+    if not details:
+        return scraper_results or [], []
+
+    s3_client = s3_client or boto3.client("s3")
+    bucket = details["Bucket"]
+
+    def read(key):
+        return json.loads(s3_client.get_object(Bucket=bucket, Key=key)["Body"].read())
+
+    manifest = read(details["Key"])
+    keys = [details["Key"]]
+    results = []
+    for status, files in (manifest.get("ResultFiles") or {}).items():
+        for result_file in files:
+            keys.append(result_file["Key"])
+            for item in read(result_file["Key"]):
+                if status == "SUCCEEDED":
+                    results.append(item)
+                else:
+                    results.append(
+                        {
+                            "council": "unknown",
+                            "scraper_type": "unknown",
+                            "status": "failed",
+                            "statusCode": 500,
+                            "error": str(
+                                item.get("Error") or item.get("Cause") or status
+                            )[:150]
+                            if isinstance(item, dict)
+                            else status,
+                        }
+                    )
+    return results, keys
+
+
+def delete_map_results(bucket, keys, console, s3_client=None):
+    """Remove the Map's result files once the report holding them is saved."""
+    if not keys:
+        return
+    try:
+        s3_client = s3_client or boto3.client("s3")
+        for start in range(0, len(keys), 1000):
+            s3_client.delete_objects(
+                Bucket=bucket,
+                Delete={"Objects": [{"Key": k} for k in keys[start : start + 1000]]},
+            )
+    except Exception as e:
+        # Best effort: leftover result files cost a little storage, no more
+        console.log(f"Could not delete map result files: {e}")
+
+
 def post_processing_handler(event, context):
     """
     Post-processing handler that runs after all scrapers have completed.
@@ -639,8 +714,12 @@ def aggregation_handler(event, context):
     )
 
     try:
-        # One entry per scraper run, however the Map nested them
-        processed_results = flatten_scraper_results(event.get("scraper_results", []))
+        # One entry per scraper run, read from where the Map wrote them,
+        # however they were nested
+        map_results, map_result_keys = load_map_results(
+            event.get("scraper_results", [])
+        )
+        processed_results = flatten_scraper_results(map_results)
 
         console.log(f"Processing {len(processed_results)} scraper results")
 
@@ -770,6 +849,14 @@ def aggregation_handler(event, context):
 
             if save_to_s3(s3_bucket, report_s3_key, report_data, console):
                 console.log(f"Run report saved to S3: s3://{s3_bucket}/{report_s3_key}")
+
+                # The report now holds every result, so the Map's copies go
+                if map_result_keys:
+                    delete_map_results(
+                        event["scraper_results"]["ResultWriterDetails"]["Bucket"],
+                        map_result_keys,
+                        console,
+                    )
 
                 # Clean up old reports, keeping only the last 10
                 console.log("Starting cleanup of old reports...")

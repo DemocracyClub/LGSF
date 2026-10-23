@@ -17,7 +17,10 @@ EventBridge (every 24h), input {"all_councils": true}
               RunScraper           Lambda (Docker image, with git): scrapes one
                                    council for one type and pushes at most one
                                    commit to LGSF-Data/<COUNCIL> on GitHub
-       3. Aggregation              Lambda: writes run-reports/<timestamp>.json to S3
+                                   The Map's results go to map-results/ in the
+                                   reports bucket, not into the execution's state
+       3. Aggregation              Lambda: reads them, writes
+                                   run-reports/<timestamp>.json, deletes them
        4. NotificationReport       Lambda: emails a summary via SNS
        5. PostProcessing           Lambda: logs a summary
 ```
@@ -35,9 +38,11 @@ execution name, which ends up in the trailers of every commit it makes and
 names the run report, so a commit can be traced to the report for the run
 that made it.
 
-Storage: the worker writes to GitHub (`LGSF_STORAGE_BACKEND=github`) with a
-GitHub App's credentials. Run reports and per-council run logs for failures
-go to the S3 bucket named in SSM. The dashboard at
+Storage: the worker writes records to GitHub (`LGSF_STORAGE_BACKEND=github`)
+with a GitHub App's credentials, and the documents those records link to
+(minutes, decision papers) to the data bucket (`LGSF_DOCUMENT_STORAGE_BACKEND=s3`),
+which it can list, read and write but not delete from. Run reports and
+per-council run logs for failures go to the reports bucket. The dashboard at
 https://democracyclub.github.io/lgsf-dashboard/ reads those reports.
 
 Logs: each scraper type has a log group, `/aws/lambda/lgsf-scrapers/<type>`,
@@ -58,6 +63,7 @@ Everything environment-specific is read from SSM Parameter Store under
 | `github/app_id`, `github/installation_id`, `github/app_private_key` | The GitHub App the worker commits as |
 | `github/organization` | The organisation holding one repository per council |
 | `s3/reports_bucket` | Run reports and run logs |
+| `s3/data_bucket` | Scraped documents, under `merged-data/<COUNCIL>/documents/`: the content-keyed store made by `scripts/migrate_documents.py --to-prefix merged-data` |
 | `notification/emails` | Comma-separated recipients of the summary |
 | `proxy_url` | Optional outbound proxy for scrapers |
 
