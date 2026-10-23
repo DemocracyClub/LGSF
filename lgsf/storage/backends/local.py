@@ -185,6 +185,13 @@ class LocalFilesystemStorage(BaseStorage):
                 raise ValueError(f"Invalid scraper_object_type: {scraper_object_type}")
             self.scraper_object_type = safe_object_type
 
+    def read_other_type(self, scraper_object_type: str, filename: str) -> Optional[str]:
+        safe_type = "".join(c for c in scraper_object_type if c.isalnum() or c in "_-")
+        path = self.root / self.safe_council_code / safe_type / filename
+        if ".." in Path(filename).parts or not path.is_file():
+            return None
+        return path.read_text(encoding=self.encoding)
+
     @property
     def council_root(self) -> Path:
         """

@@ -286,7 +286,8 @@ class BaseMinutesScraper(DocumentSavingMixin, ScraperBase):
                 f"Documents: {self.documents_downloaded} downloaded "
                 f"({self.documents_already_in_store} of them already in the "
                 f"store, so not written again), "
-                f"{self.documents_skipped} already stored, "
+                f"{self.documents_skipped} already stored "
+                f"({self.documents_from_other_types} of them by another data type), "
                 f"{self.documents_unavailable} unavailable (404, 410 or empty)"
             )
             if self.documents_failed:

@@ -1032,6 +1032,19 @@ class GitHubStorage(BaseStorage):
         return commit_result
 
     @override
+    def read_other_type(self, scraper_object_type: str, filename: str) -> str | None:
+        """From the active session's clone: every type is in the one repository."""
+        session = self._active
+        if session is None or session._closed or ".." in Path(filename).parts:
+            return None
+        session._ensure_cloned()
+        path = os.path.join(session.local_repo_path, scraper_object_type, filename)
+        if not os.path.isfile(path):
+            return None
+        with open(path, encoding="utf-8") as f:
+            return f.read()
+
+    @override
     def _close_session(self, session: StorageSession | None) -> None:
         """Mark the session closed and remove the clone it made. Commits nothing."""
         if isinstance(session, _GitHubSession):

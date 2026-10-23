@@ -360,3 +360,25 @@ def test_a_second_run_carries_on_from_the_first_runs_index(
 
     stored = json.loads(git("show", "main:Minutes/_index.json", cwd=bare_repo))
     assert stored == {"meetings": ["old", "new"]}
+
+
+def test_another_types_file_is_read_from_the_same_clone(
+    bare_repo, tmp_path, monkeypatch
+):
+    from lgsf.storage.backends.github import GitHubStorage
+
+    seed_main(bare_repo, tmp_path, {"Decisions/_index.json": '{"documents": {}}'})
+    session = make_session(
+        bare_repo,
+        tmp_path,
+        monkeypatch,
+        object_type="Minutes",
+        mode=StorageMode.ACCUMULATE,
+    )
+    storage = GitHubStorage.__new__(GitHubStorage)
+    storage._active = session
+
+    assert storage.read_other_type("Decisions", "_index.json") == '{"documents": {}}'
+    assert storage.read_other_type("Councillors", "_index.json") is None
+    assert storage.read_other_type("Decisions", "../README.md") is None
+    session._cleanup_local_repo()

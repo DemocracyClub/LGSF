@@ -556,3 +556,11 @@ def test_an_html_page_is_stored_as_html(fake):
     obj = fake.objects[f"data/KIR/documents/{stored.key}"]
     assert obj["ContentType"].startswith("text/html")
     assert obj["Metadata"]["sha256"] == stored.key.removesuffix(".html")
+
+
+def test_another_types_file_is_read_by_key(fake):
+    fake.objects["data/KIR/Decisions/_index.json"] = {"Body": b'{"documents": {}}'}
+    store = metadata_store(fake, mode=StorageMode.ACCUMULATE)
+
+    assert store.read_other_type("Decisions", "_index.json") == '{"documents": {}}'
+    assert store.read_other_type("Minutes", "_index.json") is None

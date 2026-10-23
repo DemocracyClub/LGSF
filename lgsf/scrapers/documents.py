@@ -2,7 +2,13 @@
 Downloading the documents a scraped record links to, for any data type.
 """
 
+import json
+
+from lgsf.scraper_types import SCRAPER_TYPES
 from lgsf.storage.documents import is_content_key
+
+#: Where each type that stores documents records them, by URL.
+INDEX_FILE_NAME = "_index.json"
 
 
 class DocumentSavingMixin:
@@ -23,6 +29,12 @@ class DocumentSavingMixin:
     BaseDocumentStorage.store), so the same file is stored once per council
     whichever record, or data type, linked it. A scraper never builds a
     key.
+
+    Minutes and decisions often link the same documents. A document this
+    type's index doesn't know is looked up in the other types' indexes for
+    the council before it is downloaded, so a file decisions already
+    fetched isn't fetched again for minutes, or the other way round. One
+    found that way is recorded in this type's index too.
     """
 
     documents_linked = 0
@@ -32,33 +44,79 @@ class DocumentSavingMixin:
     documents_unavailable = 0
     documents_bytes = 0
     documents_already_in_store = 0
+    #: Skipped because another data type had already stored them
+    documents_from_other_types = 0
+
+    _other_types_documents = None
+
+    def other_types_documents(self):
+        """
+        {url: entry} from every other registered type's index for this
+        council, read once per run. Earlier types in the registry win where
+        two name the same URL; the entries are checked like this type's own.
+        """
+        if self._other_types_documents is None:
+            found = {}
+            own = getattr(self, "scraper_object_type", None)
+            read = getattr(
+                getattr(self, "storage_backend", None), "read_other_type", None
+            )
+            for scraper_type in SCRAPER_TYPES:
+                object_type = scraper_type.capitalize()
+                if object_type == own or read is None:
+                    continue
+                try:
+                    text = read(object_type, INDEX_FILE_NAME)
+                    documents = (
+                        (json.loads(text) or {}).get("documents") if text else None
+                    )
+                except (ValueError, OSError) as e:
+                    self.console.log(
+                        f"[yellow]Couldn't read {object_type} index: {e}[/yellow]"
+                    )
+                    continue
+                for url, entry in (documents or {}).items():
+                    if isinstance(entry, dict):
+                        found.setdefault(url, entry)
+            self._other_types_documents = found
+        return self._other_types_documents
 
     def stored_document_metadata(self, url):
         """
         Return the recorded metadata for an already-stored document, or None.
 
-        The index is only trusted as far as the document store agrees with
-        it: an entry whose file has gone is treated as never fetched.
+        This type's index is tried first, then the other types'. An index is
+        only trusted as far as the document store agrees with it: an entry
+        whose file has gone, or that names a key from before documents were
+        named after their content, is treated as never fetched.
         """
-        entry = self.index["documents"].get(url)
-        if not entry:
-            return None
+        own = self.index["documents"].get(url)
+        if self._held(own):
+            return own
 
+        other = self.other_types_documents().get(url)
+        if self._held(other):
+            entry = dict(other)
+            self.index["documents"][url] = entry
+            self.documents_from_other_types += 1
+            return entry
+        return None
+
+    def _held(self, entry):
+        """Whether an index entry names a file the document store has."""
+        if not entry:
+            return False
         key = entry.get("storage_key")
         if not key or not is_content_key(key):
             # A key from before documents were named after their content.
             # The S3 migration renames those; until it has, the document
             # is fetched again and stored under its content key.
-            return None
-
+            return False
         try:
-            if not self.document_storage.exists(key):
-                return None
+            return self.document_storage.exists(key)
         except ValueError:
             # Key written by a backend with a different key format
-            return None
-
-        return entry
+            return False
 
     def save_record_documents(self, record):
         """
