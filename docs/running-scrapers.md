@@ -55,7 +55,8 @@ Output lands in a `data` directory:
 ```
 data/KIR/Councillors/     json/ and raw/, one file per councillor
 data/KIR/Minutes/         json/ and raw/, one file per meeting
-data/KIR/documents/       PDFs and other files linked from meetings
+data/KIR/documents/       PDFs and other files linked from meetings and
+                          decisions, one copy of each, named by content
 ```
 
 Minutes accumulate: each run adds to what's already stored rather than

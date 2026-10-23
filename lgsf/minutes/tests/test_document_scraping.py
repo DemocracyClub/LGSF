@@ -6,12 +6,15 @@ No network: every HTTP call is served by a fake client that records what it
 was asked for.
 """
 
+import hashlib
 import json
 from pathlib import Path
 
 import pytest
 
 from lgsf.conf import settings
+from lgsf.decisions import DecisionBase
+from lgsf.decisions.scrapers import ModGovDecisionsScraper
 from lgsf.minutes import MeetingBase
 from lgsf.minutes.scrapers import ModGovMinutesScraper
 from lgsf.storage.documents.local import LocalDocumentStorage
@@ -26,6 +29,10 @@ class FakeResponse:
     @property
     def text(self):
         return self.content.decode("utf-8")
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise OSError(f"HTTP {self.status_code}")
 
 
 class FakeStorageSession:
@@ -71,9 +78,7 @@ def scraper():
     scraper.meetings = set()
     scraper.new_data = True
     scraper.unchanged_meetings = 0
-    scraper.documents_downloaded = 0
-    scraper.documents_skipped = 0
-    scraper.documents_linked = 0
+    scraper.meetings_saved = 0
     scraper.extra_headers = {}
     scraper.console = FakeConsole()
     scraper.storage_session = FakeStorageSession()
@@ -82,12 +87,16 @@ def scraper():
     scraper.requested = []
     scraper.responses = {}
 
-    def fake_get(url, extra_headers=None):
+    def fake_get(url, extra_headers=None, raise_for_status=True):
         scraper.requested.append((url, dict(extra_headers or {})))
         return scraper.responses.get(url, FakeResponse(content=b"%PDF-default"))
 
     scraper.get = fake_get
     return scraper
+
+
+def content_key_of(content, extension=".pdf"):
+    return hashlib.sha256(content).hexdigest() + extension
 
 
 def make_meeting(documents):
@@ -120,7 +129,7 @@ def test_every_document_is_stored_not_just_the_minutes(scraper):
         ]
     )
 
-    scraper.save_meeting_documents(meeting)
+    scraper.save_record_documents(meeting)
 
     assert scraper.documents_downloaded == 3
     assert [url for url, _ in scraper.requested] == [
@@ -140,13 +149,13 @@ def test_document_metadata_records_hash_and_storage_key(scraper):
         [{"url": "https://ex.gov.uk/a.pdf", "title": "Minutes", "category": "minutes"}]
     )
 
-    scraper.save_meeting_documents(meeting)
+    scraper.save_record_documents(meeting)
 
     document = meeting.documents[0]
     assert document["content_hash"].startswith("sha256:")
     assert document["content_length"] == len(b"%PDF-minutes")
     assert document["storage_backend"] == "local"
-    assert document["storage_key"] == "2026-08-19-2-audit-committee-1.pdf"
+    assert document["storage_key"] == content_key_of(b"%PDF-minutes")
     assert document["etag"] == '"abc"'
     assert document["last_modified"] == "Wed, 19 Aug 2026 00:00:00 GMT"
     assert scraper.document_storage.read(document["storage_key"]) == b"%PDF-minutes"
@@ -157,7 +166,7 @@ def test_documents_already_stored_are_not_downloaded_again(scraper):
     meeting = make_meeting(
         [{"url": "https://ex.gov.uk/a.pdf", "title": "Minutes", "category": "minutes"}]
     )
-    scraper.save_meeting_documents(meeting)
+    scraper.save_record_documents(meeting)
     assert scraper.documents_downloaded == 1
 
     # A second run over the same meeting
@@ -165,7 +174,7 @@ def test_documents_already_stored_are_not_downloaded_again(scraper):
     second_meeting = make_meeting(
         [{"url": "https://ex.gov.uk/a.pdf", "title": "Minutes", "category": "minutes"}]
     )
-    scraper.save_meeting_documents(second_meeting)
+    scraper.save_record_documents(second_meeting)
 
     assert scraper.requested == []
     assert scraper.documents_skipped == 1
@@ -177,12 +186,12 @@ def test_a_skipped_document_still_gets_full_metadata(scraper):
     first = make_meeting(
         [{"url": "https://ex.gov.uk/a.pdf", "title": "Minutes", "category": "minutes"}]
     )
-    scraper.save_meeting_documents(first)
+    scraper.save_record_documents(first)
 
     second = make_meeting(
         [{"url": "https://ex.gov.uk/a.pdf", "title": "Minutes", "category": "minutes"}]
     )
-    scraper.save_meeting_documents(second)
+    scraper.save_record_documents(second)
 
     for key in ("storage_key", "storage_backend", "content_hash", "content_length"):
         assert second.documents[0][key] == first.documents[0][key]
@@ -193,14 +202,14 @@ def test_a_document_missing_from_the_store_is_re_downloaded(scraper):
     meeting = make_meeting(
         [{"url": "https://ex.gov.uk/a.pdf", "title": "Minutes", "category": "minutes"}]
     )
-    scraper.save_meeting_documents(meeting)
+    scraper.save_record_documents(meeting)
     key = meeting.documents[0]["storage_key"]
 
     # Someone deletes the file but the index still lists it
     Path(scraper.document_storage._path(key)).unlink()
     scraper.requested.clear()
 
-    scraper.save_meeting_documents(
+    scraper.save_record_documents(
         make_meeting(
             [
                 {
@@ -217,7 +226,7 @@ def test_a_document_missing_from_the_store_is_re_downloaded(scraper):
 
 
 def test_a_failed_download_does_not_fail_the_scrape(scraper):
-    def exploding_get(url, extra_headers=None):
+    def exploding_get(url, extra_headers=None, raise_for_status=True):
         if "b.pdf" in url:
             raise RuntimeError("connection reset")
         scraper.requested.append((url, dict(extra_headers or {})))
@@ -232,36 +241,93 @@ def test_a_failed_download_does_not_fail_the_scrape(scraper):
         ]
     )
 
-    scraper.save_meeting_documents(meeting)
+    scraper.save_record_documents(meeting)
 
     assert scraper.documents_downloaded == 2
+    assert scraper.documents_failed == 1
     assert "storage_key" not in meeting.documents[1]
     assert any("Failed to download" in m for m in scraper.console.messages)
 
 
+def test_a_document_that_is_gone_is_recorded_as_unavailable(scraper):
+    """Rather than tried again on every run that reads the meeting."""
+    scraper.responses["https://ex.gov.uk/a.pdf"] = FakeResponse(status=404)
+    meeting = make_meeting(
+        [{"url": "https://ex.gov.uk/a.pdf", "title": "Minutes", "category": "minutes"}]
+    )
+
+    scraper.save_record_documents(meeting)
+
+    assert meeting.documents[0]["unavailable"] == 404
+    assert "storage_key" not in meeting.documents[0]
+    assert scraper.documents_unavailable == 1
+    assert scraper.documents_failed == 0
+
+
+def test_an_empty_document_is_recorded_as_unavailable(scraper, data_dir):
+    """A 200 with no body. Fetching it again weeks later gets the same."""
+    scraper.responses["https://ex.gov.uk/a.pdf"] = FakeResponse(content=b"")
+    meeting = make_meeting(
+        [{"url": "https://ex.gov.uk/a.pdf", "title": "Minutes", "category": "minutes"}]
+    )
+
+    scraper.save_record_documents(meeting)
+
+    assert meeting.documents[0]["unavailable"] == "empty"
+    assert "storage_key" not in meeting.documents[0]
+    assert scraper.documents_unavailable == 1
+    assert scraper.documents_failed == 0
+    assert not (data_dir / "ABC" / "documents").exists()
+    assert "https://ex.gov.uk/a.pdf" not in scraper.index["documents"]
+
+
+def test_documents_are_not_fetched_conditionally(scraper):
+    """
+    A document is only requested when the store doesn't have it, so a 304
+    would only mean asking again without the validators.
+    """
+    scraper.index["documents"]["https://ex.gov.uk/a.pdf"] = {
+        "storage_key": content_key_of(b"%PDF-gone"),
+        "etag": '"abc"',
+        "last_modified": "Wed, 19 Aug 2026 00:00:00 GMT",
+    }
+    meeting = make_meeting(
+        [{"url": "https://ex.gov.uk/a.pdf", "title": "Minutes", "category": "minutes"}]
+    )
+
+    scraper.save_record_documents(meeting)
+
+    assert scraper.requested == [("https://ex.gov.uk/a.pdf", {})]
+
+
+def test_failed_and_unavailable_documents_are_reported(scraper):
+    scraper.responses["https://ex.gov.uk/a.pdf"] = FakeResponse(status=410)
+    scraper.responses["https://ex.gov.uk/b.pdf"] = FakeResponse(status=403)
+    meeting = make_meeting(
+        [
+            {"url": "https://ex.gov.uk/a.pdf", "title": "A", "category": "other"},
+            {"url": "https://ex.gov.uk/b.pdf", "title": "B", "category": "other"},
+        ]
+    )
+    scraper.save_record_documents(meeting)
+
+    scraper.report()
+
+    assert any("1 unavailable" in m for m in scraper.console.messages)
+    assert any("1 documents failed" in m for m in scraper.console.messages)
+
+
 def test_documents_with_no_url_are_ignored(scraper):
     meeting = make_meeting([{"title": "Broken link", "category": "other"}])
-    scraper.save_meeting_documents(meeting)
+    scraper.save_record_documents(meeting)
     assert scraper.requested == []
     assert scraper.documents_downloaded == 0
 
 
-@pytest.mark.parametrize(
-    "url,expected",
-    [
-        ("https://ex.gov.uk/doc.pdf", ".pdf"),
-        ("https://ex.gov.uk/doc.DOCX", ".docx"),
-        ("https://ex.gov.uk/doc.xls?v=2", ".xls"),
-        ("https://ex.gov.uk/mgConvert2PDF.aspx?ID=1234", ".pdf"),
-        ("https://ex.gov.uk/Document.ashx?id=abc", ".pdf"),
-    ],
-)
-def test_document_extension_guessing(scraper, url, expected):
-    assert scraper.document_extension({"url": url}) == expected
-
-
-def test_cmis_documents_without_an_attachment_id_get_distinct_keys(scraper):
-    """CMIS URLs are opaque, so keys fall back to a per-meeting index."""
+def test_different_documents_get_different_keys(scraper):
+    """CMIS URLs are opaque, and nothing in the key comes from them."""
+    scraper.responses["https://ex.gov.uk/x?token=aaa"] = FakeResponse(b"%PDF-a")
+    scraper.responses["https://ex.gov.uk/x?token=bbb"] = FakeResponse(b"%PDF-b")
     meeting = make_meeting(
         [
             {"url": "https://ex.gov.uk/x?token=aaa", "title": "A", "category": "other"},
@@ -269,30 +335,55 @@ def test_cmis_documents_without_an_attachment_id_get_distinct_keys(scraper):
         ]
     )
 
-    scraper.save_meeting_documents(meeting)
+    scraper.save_record_documents(meeting)
 
     keys = [document["storage_key"] for document in meeting.documents]
-    assert keys == [
-        "2026-08-19-2-audit-committee-1.pdf",
-        "2026-08-19-2-audit-committee-2.pdf",
-    ]
+    assert keys == [content_key_of(b"%PDF-a"), content_key_of(b"%PDF-b")]
 
 
-def test_attachment_id_is_used_in_the_key_when_present(scraper):
+def test_a_file_linked_from_minutes_and_decisions_is_stored_once(scraper, data_dir):
+    """
+    ModernGov links a report from the meeting as mgConvert2PDF.aspx?ID=N
+    and from the decision as /documents/sN/<title>.pdf. Each type downloads
+    it, since neither can tell from the link that the other has it, but
+    only the first writes it.
+    """
+    meeting_link = "https://democracy.example.gov.uk/mgConvert2PDF.aspx?ID=129839"
+    decision_link = (
+        "https://democracy.example.gov.uk/documents/s129839/Budget%20report.pdf"
+    )
+    report = b"%PDF-1.7 budget report"
+    scraper.responses[meeting_link] = FakeResponse(report)
     meeting = make_meeting(
-        [
-            {
-                "url": "https://ex.gov.uk/a.pdf",
-                "title": "Minutes",
-                "category": "minutes",
-                "attachment_id": "182491",
-            }
-        ]
+        [{"url": meeting_link, "title": "Budget report", "category": "other"}]
     )
-    scraper.save_meeting_documents(meeting)
-    assert (
-        meeting.documents[0]["storage_key"] == "2026-08-19-2-audit-committee-182491.pdf"
+
+    decisions = ModGovDecisionsScraper.__new__(ModGovDecisionsScraper)
+    decisions.council_id = "ABC"
+    decisions.extra_headers = {}
+    decisions.console = FakeConsole()
+    decisions.index = {"decisions": {}, "documents": {}, "windows": {}}
+    decisions.document_storage = LocalDocumentStorage(council_code="ABC")
+    decisions.get = lambda url, **kwargs: FakeResponse(report)
+    decision = DecisionBase(
+        "https://democracy.example.gov.uk/ieDecisionDetails.aspx?ID=1",
+        identifier="1",
+        title="Budget",
+        date="2026-08-19",
     )
+    decision.documents = [{"url": decision_link, "title": "Budget report"}]
+
+    scraper.save_record_documents(meeting)
+    decisions.save_record_documents(decision)
+
+    key = content_key_of(report)
+    assert [p.name for p in (data_dir / "ABC" / "documents").iterdir()] == [key]
+    assert meeting.documents[0]["storage_key"] == key
+    assert decision.documents[0]["storage_key"] == key
+    assert scraper.documents_downloaded == 1
+    assert scraper.documents_already_in_store == 0
+    assert decisions.documents_downloaded == 1
+    assert decisions.documents_already_in_store == 1
 
 
 def test_saved_meeting_json_records_where_each_document_went(scraper):
@@ -311,7 +402,7 @@ def test_saved_meeting_json_records_where_each_document_went(scraper):
         scraper.storage_session.files["json/2026-08-19-2-audit-committee.json"]
     )
     document = written["documents"][0]
-    assert document["storage_key"] == "2026-08-19-2-audit-committee-1.pdf"
+    assert document["storage_key"] == content_key_of(b"%PDF-default")
     assert document["content_hash"].startswith("sha256:")
     assert document["storage_backend"] == "local"
 

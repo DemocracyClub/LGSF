@@ -55,6 +55,9 @@ def test_one_unreadable_page_does_not_lose_the_whole_run():
     scraper.console = FakeConsole()
     scraper.unchanged_decisions = 0
     scraper.failed_decisions = 0
+    scraper.fetched_decisions = 0
+    scraper.consecutive_failures = 0
+    scraper.checkpoint_every = 0
     scraper.decisions = set()
     processed = []
     scraper.process_decision = lambda decision, raw: processed.append(decision)

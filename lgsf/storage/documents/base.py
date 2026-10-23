@@ -18,7 +18,10 @@ from __future__ import annotations
 
 import abc
 import hashlib
+import re
 from dataclasses import dataclass
+
+from lgsf.storage.documents.sniff import sniff_extension
 
 
 @dataclass(frozen=True)
@@ -71,6 +74,33 @@ def hash_content(content: bytes) -> str:
     return "sha256:{}".format(hashlib.sha256(content).hexdigest())
 
 
+def content_key(content: bytes) -> str:
+    """
+    The key a document with these bytes is stored under: the SHA-256 of
+    the bytes, as 64 hex digits, and the extension the bytes say they
+    should have (see lgsf.storage.documents.sniff), such as
+    ``5601de3f...cb704.pdf``.
+
+    The same bytes get the same key whichever page linked them, and
+    whichever data type was scraping, so a council's documents are stored
+    once each.
+    """
+    return hashlib.sha256(content).hexdigest() + sniff_extension(content)
+
+
+_CONTENT_KEY = re.compile(r"[0-9a-f]{64}(\.[0-9a-z]+)?")
+
+
+def is_content_key(key: str) -> bool:
+    """
+    True if ``key`` has the form content_key() gives.
+
+    No key made before documents were named after their content has this
+    form, so it tells the two apart.
+    """
+    return bool(_CONTENT_KEY.fullmatch(key))
+
+
 class BaseDocumentStorage(abc.ABC):
     """
     Abstract base class for document storage backends.
@@ -116,6 +146,27 @@ class BaseDocumentStorage(abc.ABC):
         """
         ...
 
+    def store(self, content: bytes) -> tuple[StoredDocument, bool]:
+        """
+        Store ``content`` under its content_key(), unless something is
+        already stored there.
+
+        Returns the :class:`StoredDocument`, and whether this call wrote
+        the file. A key that's already there holds the same bytes, so it
+        is left as it is.
+        """
+        key = content_key(content)
+        if self.exists(key):
+            stored = StoredDocument(
+                key=key,
+                url=self.url_for(key),
+                content_hash=f"sha256:{key[:64]}",
+                content_length=len(content),
+                backend=self.name,
+            )
+            return stored, False
+        return self.write(key, content), True
+
     @abc.abstractmethod
     def url_for(self, key: str) -> str:
         """
@@ -125,23 +176,3 @@ class BaseDocumentStorage(abc.ABC):
         portable between machines and deployments.
         """
         ...
-
-    def describe(self, key: str) -> StoredDocument | None:
-        """
-        Return a :class:`StoredDocument` for an already-stored document, or
-        None if nothing is stored under ``key``.
-
-        Used to re-record metadata for a document that was skipped because we
-        already had it, so a skipped document's JSON looks identical to a
-        freshly downloaded one's.
-        """
-        if not self.exists(key):
-            return None
-        content = self.read(key)
-        return StoredDocument(
-            key=key,
-            url=self.url_for(key),
-            content_hash=hash_content(content),
-            content_length=len(content),
-            backend=self.name,
-        )

@@ -16,11 +16,13 @@ import requests
 from dateutil.parser import parse
 from dateutil.utils import today
 from rich.console import Console
+from rich.live import Live
 from rich.progress import BarColumn, Progress, TimeElapsedColumn
 from rich.table import Table
 
 from lgsf.conf import settings
 from lgsf.path_utils import _abs_path, load_council_info, load_scraper
+from lgsf.scrapers.progress import LiveProgress
 
 
 class CommandBase(metaclass=abc.ABCMeta):
@@ -191,6 +193,7 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
         self._lock = threading.Lock()
         self._concurrent = False
         self._council_count = 0
+        self._live = None
 
     def create_parser(self):
         self.parser = argparse.ArgumentParser()
@@ -219,8 +222,12 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
         self.parser.add_argument(
             "-r",
             "--refresh",
-            action="store_true",
-            help="Only run scrapers not run recently",
+            nargs="?",
+            const=24,
+            type=float,
+            metavar="HOURS",
+            help="Only run scrapers that haven't completed a run in the last "
+            "HOURS (default 24)",
         )
         self.parser.add_argument(
             "--check-only",
@@ -471,7 +478,8 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
             return
 
         path = self.run_log_path(scraper)
-        if path is None:
+        write_now = getattr(scraper.storage_backend, "write_now", None)
+        if path is None and write_now is None:
             return
 
         entry = {
@@ -485,9 +493,16 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
         }
         if run_log.error and run_log.log:
             entry["log"] = run_log.log
+        content = json.dumps(entry, indent=2, default=str)
+
+        if path is None:
+            # Data that doesn't live on this machine, such as on S3: the log
+            # goes beside it there instead.
+            write_now(self.RUN_LOG_FILE_NAME, content)
+            return
 
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(entry, indent=2, default=str))
+        path.write_text(content)
 
     def run_councils(self):
         self._run_councils(progress=False)
@@ -507,6 +522,12 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
 
         if not progress:
             self._map(to_run, workers, None)
+        elif self.use_live_progress:
+            # Each council's own output is held back until it finishes, so
+            # without this a long run shows nothing for hours.
+            self._live = LiveProgress(total=self._council_count)
+            with Live(self._live, console=self.console, refresh_per_second=2):
+                self._map(to_run, workers, None)
         else:
             with Progress(
                 "[progress.description]{task.description}",
@@ -521,6 +542,16 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
 
         if self._concurrent:
             self.output_run_summary()
+
+    @property
+    def use_live_progress(self):
+        """
+        Show each running council's progress live: only for a local run of
+        several councils at once, in a terminal. Lambda runs one council per
+        invocation with nobody watching, and keeps nothing shared between
+        them.
+        """
+        return self._concurrent and self.console.is_terminal and not self.in_lambda
 
     def _map(self, councils, workers, progress):
         def done():
@@ -613,11 +644,29 @@ class PerCouncilCommandBase(CouncilFilteringCommandBase):
         scraper_cls = load_scraper(council, self.command_name)
         if not scraper_cls:
             return
+        try:
+            self._run_council(scraper_cls, options, console)
+        finally:
+            if self._live:
+                self._live.finish(council, failed=self._failed(council))
+
+    def _failed(self, council):
+        with self._lock:
+            return any(c == council and log.error for c, log in self._results)
+
+    def _run_council(self, scraper_cls, options, console):
+        council = options["council"]
         with scraper_cls(options, console) as scraper:
+            if self._live:
+                scraper.progress = self._live.for_council(council)
             should_run = True
             if scraper.disabled:
                 should_run = False
-            if should_run and options["refresh"] and scraper.run_since():
+            if (
+                should_run
+                and options["refresh"]
+                and scraper.run_since(hours=options["refresh"])
+            ):
                 should_run = False
             if should_run and options["tags"]:
                 required_tags = set(options["tags"].split(","))

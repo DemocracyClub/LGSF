@@ -73,8 +73,31 @@ outside the window — this is normal, not a bug.
 
 Only published decisions are scraped. Forthcoming ones are proposals.
 
-Widening the window makes some councils time out; the list page is generated
-per request over whatever range is asked for.
+The window is read in calendar-aligned 6-month slices (`window_months`),
+because one request over many years makes ModernGov give up. A list request
+that fails slowly is split in half and retried; a quick 404 is a missing page.
+Don't go back to a single request over the whole window.
+
+## Backfills, checkpoints and request rate
+
+`--since YYYY-MM-DD` widens the window for a backfill. `--discover-since`
+instead finds each council's oldest decision (walking forward from 2000 in
+two-year chunks to the first with anything on it) and starts there; the
+answer is kept in `_index.json` as `discovered_since`. A slice read in full,
+with every decision stored or settled, is recorded as complete in
+`_index.json` and skipped for 30 days, so a backfill can be stopped and rerun.
+Progress is committed after every slice and every 50 decision pages, on
+backends with `supports_checkpoints` (local, not GitHub).
+
+Runs over several councils are ordered least-done first: nothing stored,
+then an index but no `_last-run` (stopped part way), then oldest `_last-run`.
+`--refresh HOURS` skips councils that completed within that time. Both are
+how a backfill resumes after credentials expire; see
+`backfill_order` in `lgsf/decisions/commands.py`.
+
+Decisions set `request_interval = 1` (per host, shared across workers) and
+`retries = 3` for timeouts, connection errors and 429/5xx. Retries are off in
+`ScraperBase` for everything else, which relies on Lambda retries.
 
 ## A second run only re-fetches recent decisions
 
@@ -84,19 +107,41 @@ again. The clock runs from the **publication** date, which the list page
 carries, so no request is made to decide this.
 
 Never treated as settled: a decision with no stored file recorded (so a
-previous failure is always retried), one whose stored file has gone, or one
-with no publication date. Set `settled_after_months = None` to re-fetch
+previous failure is always retried), one whose stored file has gone, one
+marked `incomplete` because a document is missing (a failed download, or
+`--skip-documents`), or one with no publication date. A 404/410 document is
+recorded as `unavailable` and doesn't count as missing. Set `settled_after_months = None` to re-fetch
 everything.
 
 Conditional requests are still made for whatever is fetched, so `ETag` and
 `Last-Modified` take over automatically if ModernGov ever sends them.
 
+## S3
+
+`LGSF_STORAGE_BACKEND=s3` with `LGSF_S3_BUCKET` (and optional
+`LGSF_S3_PREFIX`) writes metadata to S3 in the same layout as `data/`;
+documents follow unless `LGSF_DOCUMENT_STORAGE_BACKEND` is set, to
+`<COUNCIL>/documents/`, shared with minutes as in `data/`. It checkpoints like
+local (`supports_checkpoints`), uploading the index after the records it
+names. Existence checks use one listing per council, not a request each.
+
+## Progress is local only
+
+A local run of several councils in a terminal shows a live Rich table
+(`lgsf/scrapers/progress.py`). Scrapers report to `self.progress`, a no-op
+`NullProgress` everywhere else, Lambda included: don't rely on it for
+anything but display.
+
 ## The text goes in the record, not the document store
 
 The decision text is small and is the point of the record, so it lands in
 `data/<COUNCIL>/Decisions/json/` for version control. Attachments go to
-`data/<COUNCIL>/documents/` through the document backend, keyed by their
-`sNNNN` attachment id.
+`data/<COUNCIL>/documents/` through the document backend, shared with
+minutes, each named after its content: the SHA-256 of its bytes and an
+extension sniffed from them (`lgsf/storage/documents/sniff.py`). Don't build
+keys in a scraper; `DocumentSavingMixin.save_record_documents` does the
+saving. A document the index doesn't name is downloaded and then not written
+if the store already has it, so the same file linked twice is stored once.
 
 **Store documents before saving the record's JSON.** The JSON is serialised
 from the document dicts, and storing a document is what adds the hash and

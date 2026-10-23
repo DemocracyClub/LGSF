@@ -82,10 +82,12 @@ scraper has been written for them.
 
 ## The scrape window
 
-Decisions are scraped over a window ending today, set by one class attribute:
+Decisions are scraped over a window ending today: a year by default, or from
+`--since` for a backfill.
 
 ```python
 years_back = 1
+window_months = 6
 ```
 
 Only published decisions are collected. Forthcoming ones are proposals, not
@@ -97,8 +99,192 @@ outside the window — one published in December 2025 may have been decided in
 July 2021. This is why decisions accumulate: filing by decision date means
 records land outside any window a later run would look at.
 
-Widening `years_back` makes some councils time out; the list page is generated
-per request over whatever range you ask for.
+### Slices
+
+The window is read in calendar-aligned slices of `window_months`, newest
+first, one list request per page per slice. ModernGov generates the list per
+request over whatever range is asked for, and a wide range makes it give up:
+Kirklees answers eleven years with an error page after two minutes, but three
+years in eleven seconds.
+
+A list request that fails slowly, or with a timeout or a 5xx, is split in half
+and each half read, down to `min_split_days`. A *quick* 404 is a council that
+doesn't have that page, and is not split.
+
+Slices are aligned to the calendar so that a slice is the same slice from one
+run to the next. That lets a slice be recorded in `_index.json` as **complete**
+once its list pages were read in full and every decision on it was stored with
+all its documents, or is settled. A complete slice is not listed again for
+`relist_after_days` (30); after that it is listed again, which is cheap
+because everything on it is settled, and catches decisions published late with
+an old publication date. Slices that can still change — any ending within
+`settled_after_months` — are never complete.
+
+## A backfill
+
+```bash
+uv run python manage.py decisions --all-councils --discover-since
+```
+
+`--discover-since` finds where each council's history starts and backfills
+from there. How far back that is varies: Kirklees has nothing before 2013,
+and around 11,000 decisions since. `--since YYYY-MM-DD` sets one date for
+every council instead; the two can't be combined.
+
+Discovery walks forward from `discover_floor` (2000-01-01) in
+`discover_chunk_years` (2) chunks, reading both list pages, and stops at the
+first chunk with any decisions on it: its oldest publication date is the
+start. Forward, not back from today, because old ranges are empty or sparse
+and ModernGov answers them quickly, while recent years are dense and slow.
+Gaps in a council's history don't matter, since the first chunk with
+anything on it holds the oldest decision whatever follows. For Kirklees that
+is seven chunks, fourteen fast requests.
+
+Before searching, discovery checks that one of the list pages returns a
+real page (not a 404) for the last month. Some sites answer every page with an error — Enfield and
+Somerset redirect everything to `mgError.aspx` — and searching their history
+would only send the backfill back to 2000 to fail there. A council that fails
+the check gets the default window and nothing is remembered.
+
+A chunk that can't be read might hold the oldest decisions, so discovery
+starts from that chunk: too early costs a few empty slices, too late would
+lose decisions silently. The answer is kept in `_index.json` as
+`discovered_since`, unless the run gave up part way, so a rerun doesn't
+search again. A council with no decisions at all falls back to the default
+window.
+
+A backfill can be stopped and rerun: completed slices are skipped without a
+request, settled decisions in an incomplete slice are skipped without a
+request, and a document already in the document store is not downloaded
+again even if the index never recorded it. Run it again after it finishes to
+pick up anything that failed.
+
+**A run over several councils takes the least-done first:** councils with
+nothing stored, then those stopped part way (an `_index.json` but no
+`_last-run`, which is written only when a run completes), then the rest by
+when their last run completed, oldest first. This is looked up before the
+run starts, with a HEAD and a GET per council on S3 and no listing. So a
+backfill stopped by expiring credentials resumes on councils it hasn't
+reached, and the ones it just finished come last. To skip those entirely:
+
+```bash
+uv run python manage.py decisions --all-councils --discover-since --refresh 36
+```
+
+`--refresh HOURS` (24 if no number is given) skips any council whose last
+run completed in that time. A council that gave up after repeated failures
+still completes its run, so it counts as recent.
+
+**Progress is committed as it goes**, after every slice and every
+`checkpoint_every` (50) decision pages, where the storage backend can do that
+cheaply (`supports_checkpoints`: local storage yes, GitHub no, since each
+commit there is a pull request). An interrupted run loses at most the
+decisions since the last checkpoint.
+
+`--skip-documents` works for a backfill, but every decision it stores with
+documents is marked incomplete, and so is its slice, so a later run without
+the flag goes back for them.
+
+## Writing to S3
+
+For a long run that others should be able to follow, write to S3 instead of
+`data/`. Every data type shares the bucket. A council's decisions sit under
+`<prefix>/<COUNCIL>/Decisions/`, and its documents beside them, in a store
+shared with minutes:
+
+```
+<prefix>/<COUNCIL>/Decisions/json/...
+<prefix>/<COUNCIL>/Decisions/_index.json
+<prefix>/<COUNCIL>/documents/...
+```
+
+That is the layout of `data/`, with the same document keys, so anyone with
+read access can sync it at any point and get a data directory LGSF can read,
+documents included:
+
+```bash
+export LGSF_STORAGE_BACKEND=s3
+export LGSF_S3_BUCKET=<bucket>
+export LGSF_S3_PREFIX=data          # optional
+export AWS_PROFILE=<profile>        # or any other way boto3 finds credentials
+uv run python manage.py decisions --all-councils --discover-since --workers 12
+```
+
+```bash
+aws s3 sync s3://<bucket>/data ./data     # repeat to pick up new data
+```
+
+Documents go to S3 too, to `<COUNCIL>/documents/`, unless
+`LGSF_DOCUMENT_STORAGE_BACKEND` says otherwise.
+
+It behaves as local storage does. Records are staged in memory and uploaded
+at each checkpoint (every 50 decisions and each slice), so S3 is a few
+minutes behind the scrape; documents are uploaded as they are downloaded.
+The index goes up only after the records it names, so a sync mid-run never
+has an index pointing at files that aren't there. There are no commits or
+pull requests as with GitHub: a checkpoint is just uploads.
+
+Each council's keys are listed once, on first use, and existence checks are
+answered from that listing, so a run makes about one request to S3 per file
+it writes, plus a listing per council. Each document also carries its SHA-256
+in the object's user metadata, as `sha256`, so its hash can be read without
+downloading it.
+
+The runner needs `s3:ListBucket` on the bucket and `s3:GetObject` and
+`s3:PutObject` under the prefix, plus `s3:DeleteObject` only for data types
+stored in REPLACE mode (not decisions). Readers need `s3:ListBucket` and
+`s3:GetObject`.
+
+Don't run two machines on the same council at once: each would overwrite
+the other's index.
+
+`--list-failing` reads run logs from `data/` and doesn't see ones on S3;
+they are at `<prefix>/<COUNCIL>/Decisions/runlog.json`.
+
+## Watching a long run
+
+A local run over several councils at once, in a terminal, shows a live table
+with a row per running council: the slice it is on and how many are left,
+decisions done in the slice, documents downloaded, kept and failed, data
+downloaded, requests and retries, and what it is doing right now with how
+long it has been doing it. A request running past its timeout shows red:
+that is a stalled worker, not a busy one. Finished councils drop into the
+totals line, which also names any that failed or gave up.
+
+```bash
+uv run python manage.py decisions --all-councils --discover-since --workers 12
+```
+
+The table only exists there. Scrapers report to `self.progress`, which is a
+`NullProgress` that does nothing unless the command replaces it, and it never
+does in Lambda, for a single council, or when output isn't a terminal. A
+Lambda invocation runs one council with nobody watching and shares nothing
+with any other invocation, and a nightly run is short enough not to need it.
+The same goes for the per-host throttle: it is shared between councils
+within one process, which matters locally, where councils that share a site
+run in parallel threads, and is simply per-council in Lambda.
+
+## Request rate and retries
+
+```python
+request_interval = 1  # seconds between requests to one host
+retries = 3
+```
+
+`request_interval` is the minimum gap between the starts of two requests to
+the same host, shared across every council in the run: several councils share
+one ModernGov site, and `--workers` runs councils in parallel. Override it with
+`--request-interval`.
+
+A request that times out, loses its connection, or gets 429, 500, 502, 503 or
+504 is retried with backoff of 5, 10 then 20 seconds, or whatever
+`Retry-After` asks for, up to five minutes. Retries are off for other scraper
+types (`ScraperBase.retries = 0`), which rely on Lambda retrying a failed
+invocation; decisions run locally, and skip a failed page rather than failing,
+so nothing else would retry it.
+
+At one request a second a council like Kirklees is a few hours of decision
+pages for a full backfill, plus its documents.
 
 ## The record
 
@@ -156,11 +342,30 @@ a `content_hash`, a `storage_key` and the backend holding it, but not a
 resolved URL, which would be specific to whoever ran the scrape.
 
 The files themselves go to `data/<COUNCIL>/documents/` through the pluggable
-document backend. ModernGov document URLs carry an `sNNNN` attachment id,
-which is used as the storage key so the same document is not stored twice.
+document backend. That store is shared with minutes. Each file is named after
+its content: the SHA-256 of its bytes as 64 hex digits, then an extension
+worked out from the bytes by `lgsf/storage/documents/sniff.py`, such as
+`5601de3f01c2dbb3bb49673b2e84e9df7082b0f68661ae586e980f74619cb704.pdf`. So:
 
-A document already in the store is not downloaded again. `--skip-documents`
-skips downloading entirely, which is what you want while iterating on parsing.
+- a file linked from two decisions, or from a decision and a meeting, is
+  stored once
+- an HTML page served from a link ending `.pdf`, as `mgConvert2PDF.aspx`
+  error pages and `mgReasonsRestricted.aspx` pages are, is stored as `.html`
+
+A document whose URL `_index.json` records, with its file still in the store,
+is not downloaded again. Any other document is downloaded, since its key isn't
+known until its bytes are, and then not written if the store already has that
+key. The run report counts those as "already in the store". It means a file
+linked from both minutes and decisions is downloaded by each, and a run that
+stops part way downloads again the documents it stored after its last
+checkpoint.
+
+An index entry whose `storage_key` isn't a content key was written before
+documents were named this way, and is treated as missing, so the document is
+downloaded again and stored under its content key.
+
+`--skip-documents` skips downloading entirely, which is what you want while
+iterating on parsing.
 
 ## Storage
 
@@ -186,12 +391,17 @@ date, so a settled decision is identified without fetching its page at all.
 Kirklees, a year's window: 454 decisions, 396 settled, 31 seconds instead of
 215.
 
-Three things are never treated as settled, because each would mean losing a
+Four things are never treated as settled, because each would mean losing a
 record rather than saving a request:
 
 - A decision the index does not name a stored file for. A run that failed
   records validators but never a filename, so a previous failure is always
   retried however old it is.
+- A decision stored without all its documents, because a download failed or
+  the run was `--skip-documents`. Its index entry is marked `incomplete`. A
+  document that answers 404 or 410, or 200 with no body, is recorded on the
+  record as `unavailable` (the status code, or `"empty"`) and does not count
+  as missing.
 - A decision whose stored file has gone. The index is a cache; the file it
   names is opened before its word is taken.
 - A decision the list page gives no publication date for.
@@ -219,5 +429,15 @@ and lose every decision scraped up to that point.
   decisions are therefore re-fetched and re-parsed in full on every run; see
   above for what that costs and what avoids it.
 - **No CMIS support.**
-- **No pagination.** A council with more decisions in the window than its list
-  page will render in one response will lose the remainder.
+- **No pagination**, but none has been seen: Kirklees renders 3,267
+  decisions over two years in one response, and three one-year ranges give
+  exactly the decisions of the three-year range. Slicing keeps each response
+  far smaller than that.
+- **Some sites error on every page.** Enfield and Somerset redirected every
+  page, decisions or not, to `mgError.aspx` when checked on 2026-10-07, and
+  Rutland takes a minute over any request. A council like that costs a
+  worker up to about 40 minutes before the run gives up on it.
+- **Councils that share a site scrape the same decisions.** Adur and
+  Worthing, Babergh and Mid Suffolk, Broadland and South Norfolk, Eastbourne
+  and Lewes, and South Hams and West Devon each share one ModernGov install,
+  so each pair stores the same decisions twice, once under each council.
