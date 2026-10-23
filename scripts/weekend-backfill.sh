@@ -14,8 +14,10 @@
 # scrape:
 #   1. Brings merged-data/ up to date with data/ (the documents migration
 #      with --to-prefix; it copies only what changed since its last run).
-#   2. Scrapes minutes for every council since $SINCE, records and
-#      documents to merged-data/ on S3. A document decisions already
+#   2. Scrapes minutes for every council, records and documents to
+#      merged-data/ on S3. Each council starts where Poteris's data ends,
+#      and at least a year back (scripts/poteris_since.py, written to
+#      logs/), unless $SINCE gives one date for all. A document decisions already
 #      stored is reused, not downloaded (#533). Minutes checkpoint every
 #      50 meetings, so an interruption keeps what was done.
 #   It repeats the minutes pass, skipping councils that finished in the
@@ -32,7 +34,7 @@
 #   Run a dry run first:  DRY_RUN=1 scripts/weekend-backfill.sh publish
 #
 # Settings, by environment variable:
-#   SINCE          first meeting date for minutes      (default 2022-01-01)
+#   SINCE          one start date for every council    (default: per council, from Poteris)
 #   WORKERS        councils scraped at once            (default 8)
 #   REFRESH_HOURS  skip councils finished this recently (default 72)
 #   MAX_PASSES     minutes passes before giving up     (default 4)
@@ -42,7 +44,7 @@
 set -uo pipefail
 
 STAGE="${1:-}"
-SINCE="${SINCE:-2022-01-01}"
+SINCE="${SINCE:-}"
 WORKERS="${WORKERS:-8}"
 REFRESH_HOURS="${REFRESH_HOURS:-72}"
 MAX_PASSES="${MAX_PASSES:-4}"
@@ -79,7 +81,20 @@ scrape() {
         --to-prefix "$MERGED_PREFIX" "${council_args[@]}" \
         || say "The migration reported problems; see above. Carrying on with minutes."
 
-    say "2/2: minutes since $SINCE into s3://$LGSF_S3_BUCKET/$MERGED_PREFIX"
+    local since_args
+    if [[ -n "$SINCE" ]]; then
+        since_args=(--since "$SINCE")
+        say "2/2: minutes since $SINCE into s3://$LGSF_S3_BUCKET/$MERGED_PREFIX"
+    else
+        local since_file="logs/minutes-since-$(date +%Y%m%d).csv"
+        if [[ ! -s "$since_file" ]]; then
+            say "Working out each council's start from Poteris's data"
+            uv run python -m scripts.poteris_since --out "$since_file" \
+                || { say "Couldn't reach Poteris; set SINCE to run with one date."; exit 1; }
+        fi
+        since_args=(--since-file "$since_file")
+        say "2/2: minutes from each council's date in $since_file into s3://$LGSF_S3_BUCKET/$MERGED_PREFIX"
+    fi
     local pass=1
     while (( pass <= MAX_PASSES )); do
         wait_for_aws
@@ -87,7 +102,7 @@ scrape() {
         # shellcheck disable=SC2046
         LGSF_STORAGE_BACKEND=s3 LGSF_S3_PREFIX="$MERGED_PREFIX" LGSF_DOCUMENT_STORAGE_BACKEND=s3 \
             uv run python manage.py minutes $(which_councils) \
-                --since "$SINCE" --refresh "$REFRESH_HOURS" --workers "$WORKERS" --unpretty
+                "${since_args[@]}" --refresh "$REFRESH_HOURS" --workers "$WORKERS" --unpretty
         if aws_ok; then
             say "Pass $pass finished with credentials still valid."
             break
