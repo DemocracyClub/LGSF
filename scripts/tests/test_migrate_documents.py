@@ -690,3 +690,37 @@ def test_the_command_line_with_to_prefix(fake, swansea, monkeypatch, tmp_path, c
     assert main(["--council", "SWA", "--to-prefix", "merged-data"]) == 0
     assert "to s3://bucket/merged-data" in capsys.readouterr().out
     assert f"merged-data/SWA/documents/{content_key(REPORT, '.pdf')}" in fake.objects
+
+
+def test_shards_split_the_councils_between_processes(
+    fake, monkeypatch, tmp_path, capsys
+):
+    from lgsf.storage import s3
+
+    for council in ("AAA", "BBB", "CCC", "DDD", "EEE"):
+        put(fake, f"data/{council}/Decisions/_index.json", b"{}")
+    monkeypatch.setattr(s3, "get_client", lambda: fake)
+    monkeypatch.setenv("LGSF_S3_BUCKET", "bucket")
+    monkeypatch.setenv("LGSF_S3_PREFIX", "data")
+    monkeypatch.chdir(tmp_path)
+
+    done = []
+    for shard in ("1/2", "2/2"):
+        main(["--shard", shard, "--dry-run"])
+        out = capsys.readouterr().out
+        done.append(
+            sorted(
+                {
+                    line.split(":")[0]
+                    for line in out.splitlines()
+                    if line[:3].isupper() and ":" in line
+                }
+            )
+        )
+
+    assert done == [["AAA", "CCC", "EEE"], ["BBB", "DDD"]]
+
+
+def test_a_bad_shard_is_refused():
+    with pytest.raises(SystemExit):
+        main(["--shard", "3/2"])

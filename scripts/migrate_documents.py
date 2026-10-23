@@ -769,6 +769,17 @@ class Migration:
         return report
 
 
+def parse_shard(value):
+    """'2/4' to (2, 4)."""
+    try:
+        index, count = (int(part) for part in value.split("/"))
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"--shard takes N/M, like 1/4, not {value!r}")
+    if not 1 <= index <= count:
+        raise argparse.ArgumentTypeError(f"--shard {value}: N must be from 1 to M")
+    return index, count
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="python -m scripts.migrate_documents",
@@ -792,6 +803,14 @@ def main(argv=None):
         "to <to-prefix>/<COUNCIL>/documents/, decision JSON and index are "
         "written there rewritten, and everything else is copied unchanged. "
         "Every council is included, not only those with decisions.",
+    )
+    parser.add_argument(
+        "--shard",
+        type=parse_shard,
+        help="N/M: only every Mth council, starting from the Nth (1-based), "
+        "so M processes can share the work: --shard 1/4 to --shard 4/4. "
+        "Councils are independent and each has its own mapping CSV, so the "
+        "processes don't interfere.",
     )
     parser.add_argument(
         "--workers",
@@ -818,6 +837,9 @@ def main(argv=None):
         councils = [s3.safe_name(c.strip(), "council") for c in args.council.split(",")]
     else:
         councils = migration.councils()
+    if args.shard:
+        index, count = args.shard
+        councils = councils[index - 1 :: count]
 
     action = "Deleting old documents" if args.delete_old else "Moving documents"
     dry = " (dry run)" if args.dry_run else ""
