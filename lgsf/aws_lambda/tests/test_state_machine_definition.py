@@ -111,7 +111,7 @@ def test_the_worker_stores_documents_in_the_data_bucket(template):
     env = worker(template)["Environment"]["Variables"]
 
     assert env["LGSF_DOCUMENT_STORAGE_BACKEND"] == "s3"
-    assert env["LGSF_S3_PREFIX"] == "data"
+    assert env["LGSF_S3_PREFIX"] == "merged-data"
     # The bucket's name comes from SSM, so it renders as a reference
     assert "Ref" in env["LGSF_S3_BUCKET"]
     assert env["LGSF_S3_BUCKET"] != env["S3_REPORTS_BUCKET"]
@@ -141,4 +141,4 @@ def test_the_worker_can_list_read_and_write_documents_but_not_delete_them(templa
     object_statement = next(
         s for s in data_statements if "s3:PutObject" in json.dumps(s)
     )
-    assert "/data/*" in json.dumps(object_statement["Resource"])
+    assert "/merged-data/*" in json.dumps(object_statement["Resource"])

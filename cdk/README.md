@@ -60,7 +60,7 @@ Everything environment-specific is read from SSM Parameter Store under
 | `github/app_id`, `github/installation_id`, `github/app_private_key` | The GitHub App the worker commits as |
 | `github/organization` | The organisation holding one repository per council |
 | `s3/reports_bucket` | Run reports and run logs |
-| `s3/data_bucket` | Scraped documents, under `data/<COUNCIL>/documents/`: the same content-keyed store laptop runs with `LGSF_STORAGE_BACKEND=s3` use |
+| `s3/data_bucket` | Scraped documents, under `merged-data/<COUNCIL>/documents/`: the content-keyed store made by `scripts/migrate_documents.py --to-prefix merged-data` |
 | `notification/emails` | Comma-separated recipients of the summary |
 | `proxy_url` | Optional outbound proxy for scrapers |
 

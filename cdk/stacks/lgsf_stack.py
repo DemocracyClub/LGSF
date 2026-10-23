@@ -41,10 +41,12 @@ EXCLUDE_FILES = [
 #: Per-type log groups live here; the worker is told the same prefix.
 SCRAPER_LOG_GROUP_PREFIX = "/aws/lambda/lgsf-scrapers"
 
-#: The prefix data lives under in the data bucket, as in
-#: docs/decision-scrapers.md ("Writing to S3"): documents are at
-#: <prefix>/<COUNCIL>/documents/<sha256><ext>.
-S3_DATA_PREFIX = "data"
+#: The prefix data lives under in the data bucket: documents are at
+#: <prefix>/<COUNCIL>/documents/<sha256><ext>. merged-data/ is the migrated
+#: copy of data/ made by scripts/migrate_documents.py --to-prefix, and the
+#: canonical store from here on; data/ is left as it was for those still
+#: reading the old paths.
+S3_DATA_PREFIX = "merged-data"
 
 
 class LgsfStack(cdk.Stack):
