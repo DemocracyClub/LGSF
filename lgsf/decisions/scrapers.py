@@ -23,6 +23,62 @@ from lgsf.scrapers.progress import NullProgress
 from lgsf.storage.backends.base import StorageMode
 
 
+def normalise_label(label):
+    """
+    A label or heading as compared: lower case, single spaces, no trailing
+    ":" or "?", and no plural "s". "Decisions:" and "Decision" match.
+    """
+    label = " ".join((label or "").lower().split()).rstrip(" :?").strip()
+    return label[:-1] if label.endswith("s") else label
+
+
+#: Every wording of each mgLabel a decision page uses that is read, as seen
+#: across councils. Welsh installs translate some.
+LABELS = {
+    "decision_maker": ("Decision Maker",),
+    "decided_at_meeting": ("Decided at meeting",),
+    "status": ("Decision status",),
+    "is_key_decision": (
+        "Is Key decision?",
+        "Is Significant decision?",
+        "Is Allweddol decision?",
+    ),
+    "is_subject_to_call_in": ("Is subject to call in?",),
+    "publication_date": ("Publication date",),
+    "date": ("Date of decision",),
+    "effective_from": (
+        "Effective from",
+        "Effeithiol O",
+        "Date comes into force if not called in",
+    ),
+    "call_in_deadline": ("Call-in deadline date",),
+    "call_in_count": ("Current call-in count",),
+    "report_author": ("Report author",),
+    "wards_affected": ("Wards affected",),
+}
+
+#: The same for mgSubSubTitleTxt section headings.
+SECTIONS = {
+    "text": ("Decision", "Decisions"),
+    "purpose": ("Purpose",),
+    "reasons": ("Reasons for the decision", "Reasons for decision"),
+    "alternative_options": (
+        "Alternative options considered",
+        "Alternative options",
+    ),
+    "interests_declared": ("Interests and Nature of Interests Declared",),
+}
+
+#: Labels seen but deliberately not read, so they aren't warned about.
+IGNORED_LABELS = ("Contact",)
+
+KNOWN_LABELS = {
+    normalise_label(label)
+    for wordings in (*LABELS.values(), *SECTIONS.values(), IGNORED_LABELS)
+    for label in wordings
+}
+
+
 class DecisionWindow(NamedTuple):
     """One slice of the scrape window. See BaseDecisionsScraper.windows."""
 
@@ -471,7 +527,10 @@ class BaseDecisionsScraper(DocumentSavingMixin, ScraperBase):
         return None
 
     def process_decision(self, decision, decision_raw_str):
-        formatted = self.prettify_decision_str(decision_raw_str)
+        # The decision's own page if the scraper kept it, else what it
+        # was given (a list row, for most).
+        page_html = getattr(decision, "page_html", None)
+        formatted = page_html or self.prettify_decision_str(decision_raw_str)
 
         self.documents_linked += len(getattr(decision, "documents", []) or [])
 
@@ -880,36 +939,48 @@ class ModGovDecisionsScraper(BaseDecisionsScraper):
             self.finish_window(window, complete, len(rows))
             self.progress.add("windows_done")
 
-    def label_value(self, soup, label):
+    def label_paragraph(self, soup, *labels):
         """
-        The text following a ``mgLabel`` span, by label text.
-
-        Labels vary between installs — a decision may carry "Decision
-        Maker:" or "Decided at meeting:" — so callers ask for what they
-        want and get None when it isn't there.
+        The ``<p>`` holding an ``mgLabel`` span with any of these labels, and
+        the span, or (None, None). Matched loosely: see same_label.
         """
-        wanted = label.lower().rstrip(": ")
+        wanted = [normalise_label(label) for label in labels]
         for span in soup.select("span.mgLabel"):
-            if span.get_text(strip=True).lower().rstrip(": ") != wanted:
+            if normalise_label(span.get_text(strip=True)) not in wanted:
                 continue
             parent = span.find_parent("p")
-            if not parent:
-                continue
-            value = parent.get_text(" ", strip=True)
-            prefix = span.get_text(" ", strip=True)
-            return value[len(prefix) :].strip(" :") or None
-        return None
+            if parent:
+                return parent, span
+        return None, None
 
-    def section_text(self, soup, heading):
+    def label_value(self, soup, *labels):
         """
-        The body of a ``mgSubSubTitleTxt`` section, by its heading.
+        The text following a ``mgLabel`` span, by any of its labels.
 
-        A decision page carries its text in one of these, and often a
+        Labels vary between installs ("Is Key decision?", "Is Significant
+        decision?", the Welsh "Is Allweddol decision?"), so callers name
+        every form they know and get None when none is there. Matching
+        ignores case, spacing, a trailing ":" or "?", and a plural "s".
+        """
+        parent, span = self.label_paragraph(soup, *labels)
+        if parent is None:
+            return None
+        value = parent.get_text(" ", strip=True)
+        prefix = span.get_text(" ", strip=True)
+        return value[len(prefix) :].strip(" :") or None
+
+    def section_text(self, soup, *headings):
+        """
+        The body of a ``mgSubSubTitleTxt`` section, by any of its headings,
+        matched as loosely as labels.
+
+        A decision page carries its text in one of these ("Decision:" on
+        most installs, "Decisions:" on a third of them), and often a
         Purpose in another, both wrapped in a WordSection1 block.
         """
-        wanted = heading.lower().rstrip(": ")
+        wanted = [normalise_label(heading) for heading in headings]
         for title in soup.select("h3.mgSubSubTitleTxt"):
-            if title.get_text(strip=True).lower().rstrip(": ") != wanted:
+            if normalise_label(title.get_text(strip=True)) not in wanted:
                 continue
             block = title.find_next_sibling()
             if block is None:
@@ -993,7 +1064,7 @@ class ModGovDecisionsScraper(BaseDecisionsScraper):
         if heading:
             title = heading.get_text(" ", strip=True) or title
 
-        date = self.iso_date(self.label_value(soup, "Date of decision")) or (
+        date = self.iso_date(self.label_value(soup, *LABELS["date"])) or (
             decision_data.get("published_date")
         )
         if not date:
@@ -1004,25 +1075,97 @@ class ModGovDecisionsScraper(BaseDecisionsScraper):
             identifier=decision_data["identifier"],
             title=title,
             date=date,
-            decision_maker=self.label_value(soup, "Decision Maker")
-            or self.label_value(soup, "Decided at meeting"),
+            decision_maker=self.label_value(soup, *LABELS["decision_maker"])
+            or self.label_value(soup, *LABELS["decided_at_meeting"]),
         )
-        decision.status = self.label_value(soup, "Decision status")
+        decision.status = self.label_value(soup, *LABELS["status"])
         decision.is_key_decision = self.yes_no(
-            self.label_value(soup, "Is Key decision?")
+            self.label_value(soup, *LABELS["is_key_decision"])
         )
         decision.is_subject_to_call_in = self.yes_no(
-            self.label_value(soup, "Is subject to call in?")
+            self.label_value(soup, *LABELS["is_subject_to_call_in"])
         )
         decision.is_officer_decision = decision_data.get("is_officer_decision")
         decision.publication_date = self.iso_date(
-            self.label_value(soup, "Publication date")
+            self.label_value(soup, *LABELS["publication_date"])
         )
-        decision.purpose = self.section_text(soup, "Purpose")
-        decision.text = self.section_text(soup, "Decision")
+        decision.purpose = self.section_text(soup, *SECTIONS["purpose"])
+        decision.text = self.section_text(soup, *SECTIONS["text"])
+        decision.reasons = self.section_text(soup, *SECTIONS["reasons"])
+        decision.alternative_options = self.section_text(
+            soup, *SECTIONS["alternative_options"]
+        )
+        decision.effective_from = self.iso_date(
+            self.label_value(soup, *LABELS["effective_from"])
+        )
+        decision.interests_declared = self.section_text(
+            soup, *SECTIONS["interests_declared"]
+        )
+        decision.call_in_deadline = self.iso_date(
+            self.label_value(soup, *LABELS["call_in_deadline"])
+        )
+        count = self.label_value(soup, *LABELS["call_in_count"])
+        decision.call_in_count = int(count) if count and count.isdigit() else None
+        decision.report_author = self.label_value(soup, *LABELS["report_author"])
+        decision.wards_affected = self.label_value(soup, *LABELS["wards_affected"])
+        decision.decided_at_meeting = self.decided_at_meeting(soup, url)
+        decision.issue_id = self.issue_id(soup)
+        decision.install_url = self.base_url
         decision.documents = self.get_documents(soup, url)
         decision.source = self.record_source(url, response)
+        self.note_unrecognised(soup, url)
+        # The page itself goes to raw/, so what isn't read from it today
+        # can be read later without fetching it again.
+        decision.page_html = text
         return decision
+
+    def decided_at_meeting(self, soup, page_url):
+        """
+        The meeting a decision was taken at, from the link in its "Decided
+        at meeting" line: ieListDocuments.aspx?CId=<committee>&MID=<meeting>.
+        """
+        parent, _ = self.label_paragraph(soup, *LABELS["decided_at_meeting"])
+        link = parent.find("a", href=True) if parent else None
+        if not link:
+            return None
+        url = urljoin(page_url, link["href"])
+        query = {k.lower(): v for k, v in parse_qs(urlparse(url).query).items()}
+        return {
+            "meeting_id": (query.get("mid") or [None])[0],
+            "committee_id": (query.get("cid") or [None])[0],
+            "url": url,
+            "title": link.get_text(" ", strip=True) or None,
+        }
+
+    def issue_id(self, soup):
+        """ModernGov's issue id, from the "Find out more about this issue" link."""
+        link = soup.select_one('a[href*="mgIssueHistoryHome.aspx"]')
+        if not link:
+            return None
+        query = {
+            k.lower(): v for k, v in parse_qs(urlparse(link["href"]).query).items()
+        }
+        return (query.get("iid") or [None])[0]
+
+    def note_unrecognised(self, soup, url):
+        """
+        Warn, once per run for each, about a label or section heading this
+        doesn't read, so a new wording is noticed rather than silently
+        leaving a field empty.
+        """
+        seen = getattr(self, "_unrecognised_labels", None)
+        if seen is None:
+            seen = self._unrecognised_labels = set()
+        found = [
+            normalise_label(el.get_text(strip=True))
+            for el in soup.select("span.mgLabel, h3.mgSubSubTitleTxt")
+        ]
+        for label in found:
+            if label and label not in KNOWN_LABELS and label not in seen:
+                seen.add(label)
+                self.console.log(
+                    f"[yellow]Unrecognised decision label {label!r} on {url}[/yellow]"
+                )
 
     def yes_no(self, value):
         """ModernGov writes these as Yes/No text, not a flag."""

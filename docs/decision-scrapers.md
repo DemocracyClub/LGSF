@@ -330,7 +330,30 @@ Three things on these pages need undoing, and all three are silent if missed:
   `&nbsp;` paragraphs Word puts between them are not.
 
 Labels vary between installs. A decision maker may appear as `Decision
-Maker:` or only as `Decided at meeting:`; both are read.
+Maker:` or only as `Decided at meeting:`; both are read. Across 38 pages
+from 32 councils the text was under `Decision:` on 21 and `Decisions:` on 13,
+the key flag is `Is Significant decision?` on some installs, and Welsh
+installs write `Is Allweddol decision?` and `Effeithiol O:`. So labels are
+matched ignoring case, spacing, a trailing `:` or `?` and a plural `s`,
+against every wording in `LABELS` and `SECTIONS` in
+`lgsf/decisions/scrapers.py`. A label or heading not in those is logged once
+per run as `Unrecognised decision label`: add its wording there.
+
+From a ModernGov decision page the record also takes, where shown:
+
+| Field | From |
+| --- | --- |
+| `decided_at_meeting` | The `Decided at meeting:` link, `ieListDocuments.aspx?CId=&MID=`: `meeting_id`, `committee_id`, `url`, `title`. Joins to the meeting record (its `raw_identifier` and `raw_committee_id`) |
+| `issue_id` | The issue history link, `mgIssueHistoryHome.aspx?IId=` |
+| `effective_from` | `Effective from:` (ISO date) |
+| `reasons`, `alternative_options` | The `Reasons for the decision` and `Alternative options considered` sections |
+| `report_author`, `wards_affected` | Those labels |
+| `interests_declared` | The `Interests and Nature of Interests Declared` section, as written (often "None.") |
+| `call_in_deadline`, `call_in_count` | `Call-in deadline date:` (ISO) and `Current call-in Count:`, while a decision can still be called in. `Date comes into force if not called in:` is read as `effective_from` |
+| `install_url` | The scraper's base URL: councils sharing an install list the same decisions |
+
+`raw/` holds the decision page itself, so anything not read from it today
+can be read later without fetching it again. (It used to hold the list row.)
 
 ## Documents, and where they go
 
