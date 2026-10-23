@@ -366,12 +366,16 @@ class StepFunctionInvoker:
                     payload = json.loads(details.get("input") or "{}")
                 except ValueError:
                     payload = {}
+                council_ids = _council_set(payload.get("council_ids"))
                 running.append(
                     {
                         "name": execution["name"],
                         "arn": execution["executionArn"],
-                        "council_ids": _council_set(payload.get("council_ids")),
-                        "all_councils": bool(payload.get("all_councils")),
+                        "council_ids": council_ids,
+                        # The enumerator runs every council when none are
+                        # named, which is how the scheduled run starts.
+                        "all_councils": bool(payload.get("all_councils"))
+                        or not council_ids,
                     }
                 )
         return running
@@ -397,6 +401,7 @@ class StepFunctionInvoker:
         all_councils: bool = False,
         execution_name: Optional[str] = None,
         allow_overlap: bool = False,
+        scraper_types: Optional[list[str]] = None,
     ) -> dict:
         """
         Start a Step Function execution.
@@ -412,6 +417,10 @@ class StepFunctionInvoker:
             all_councils: Whether to run all councils
             execution_name: Optional custom name for the execution
             allow_overlap: Start even if a running execution overlaps
+            scraper_types: The types to run, e.g. ["minutes"]; the daily
+                types if not given. Any running execution covering one of
+                the councils counts as an overlap whatever its types, since
+                a council's types are only kept apart inside one execution.
 
         Returns:
             dict: Response from Step Functions API containing execution ARN and start date
@@ -440,15 +449,19 @@ class StepFunctionInvoker:
         if all_councils:
             input_payload["all_councils"] = True
 
+        if scraper_types:
+            input_payload["scraper_types"] = list(scraper_types)
+
         # Generate execution name if not provided
         if not execution_name:
             timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            label = "-".join(scraper_types) if scraper_types else "scraper"
             if council_ids:
                 # Use first council ID in name for single council runs
                 first_council = council_ids.split(",")[0]
-                execution_name = f"scraper-{first_council}-{timestamp}"
+                execution_name = f"{label}-{first_council}-{timestamp}"
             else:
-                execution_name = f"scraper-all-{timestamp}"
+                execution_name = f"{label}-all-{timestamp}"
 
         # Start the execution
         response = self.client.start_execution(
