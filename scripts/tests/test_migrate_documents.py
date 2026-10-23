@@ -502,3 +502,191 @@ def test_the_command_line(fake, swansea, monkeypatch, tmp_path, capsys):
     assert (tmp_path / "documents-migration" / "SWA.csv").exists()
     out = capsys.readouterr().out
     assert "SWA: 2 old files" in out
+
+
+# ---- --to-prefix: migrate into a copy, leaving the original as it was ----
+
+
+def snapshot(fake, prefix):
+    return {k: dict(v) for k, v in fake.objects.items() if k.startswith(f"{prefix}/")}
+
+
+@pytest.fixture
+def swansea_with_more(fake, swansea):
+    """Swansea's decisions plus files of other types the copy must carry."""
+    put(fake, "data/SWA/Minutes/json/2026-01-01-council.json", b'{"title": "Council"}')
+    put(fake, "data/SWA/Minutes/_index.json", b"{}")
+    put(
+        fake,
+        f"data/SWA/documents/{content_key(b'%PDF already new', '.pdf')}",
+        b"%PDF already new",
+    )
+    put(fake, "data/SWA/Decisions/runlog.json", b"{}")
+    return swansea
+
+
+def to_merged(migration):
+    return migration(to_prefix="merged-data")
+
+
+def test_the_original_prefix_is_left_exactly_as_it_was(
+    fake, migration, swansea_with_more
+):
+    before = snapshot(fake, "data")
+
+    report = to_merged(migration).migrate("SWA")
+
+    assert not report.failed, report.lines()
+    assert snapshot(fake, "data") == before
+    assert not [
+        op
+        for op in fake.calls
+        if op[0] in ("put", "copy", "delete") and op[1].startswith("data/")
+    ]
+
+
+def test_documents_go_to_content_keys_under_the_new_prefix(
+    fake, migration, swansea_with_more
+):
+    to_merged(migration).migrate("SWA")
+
+    copied = fake.objects[f"merged-data/SWA/documents/{content_key(REPORT, '.pdf')}"]
+    assert copied["Body"] == REPORT
+    assert copied["Metadata"] == {"sha256": sha256(REPORT)}
+    assert not [
+        k for k in fake.objects if k.startswith("merged-data/SWA/Decisions/documents/")
+    ]
+
+
+def test_the_copied_json_and_index_name_the_new_keys(
+    fake, migration, swansea_with_more
+):
+    to_merged(migration).migrate("SWA")
+
+    decision_json = json.loads(
+        fake.objects["merged-data/SWA/Decisions/json/2024-02-28-2199.json"]["Body"]
+    )
+    assert decision_json["documents"][0]["storage_key"] == content_key(REPORT, ".pdf")
+    index_json = json.loads(
+        fake.objects["merged-data/SWA/Decisions/_index.json"]["Body"]
+    )
+    assert {d["storage_key"] for d in index_json["documents"].values()} == {
+        content_key(REPORT, ".pdf"),
+        content_key(APPENDIX, ".pdf"),
+    }
+    # and the originals still name the old keys
+    assert (
+        read_json(fake, "json/2024-02-28-2199.json")["documents"][0]["storage_key"]
+        == "2024-02-28-2199-s100029.pdf"
+    )
+
+
+def test_everything_else_is_copied_unchanged(fake, migration, swansea_with_more):
+    to_merged(migration).migrate("SWA")
+
+    for key in (
+        "SWA/Minutes/json/2026-01-01-council.json",
+        "SWA/Minutes/_index.json",
+        "SWA/Decisions/runlog.json",
+        f"SWA/documents/{content_key(b'%PDF already new', '.pdf')}",
+    ):
+        assert (
+            fake.objects[f"merged-data/{key}"]["Body"]
+            == fake.objects[f"data/{key}"]["Body"]
+        ), key
+
+
+def test_a_decision_naming_no_documents_is_copied_not_rewritten(
+    fake, migration, swansea_with_more
+):
+    decision(fake, "2024-03-01-0001")
+
+    to_merged(migration).migrate("SWA")
+
+    key = "SWA/Decisions/json/2024-03-01-0001.json"
+    assert (
+        fake.objects[f"merged-data/{key}"]["Body"]
+        == fake.objects[f"data/{key}"]["Body"]
+    )
+
+
+def test_a_rerun_copies_only_what_changed_since(fake, migration, swansea_with_more):
+    to_merged(migration).migrate("SWA")
+    put(fake, "data/SWA/Minutes/json/2026-02-01-cabinet.json", b'{"title": "Cabinet"}')
+    fake.calls.clear()
+
+    report = to_merged(migration).migrate("SWA")
+
+    assert report.rest_to_copy == 1
+    assert report.to_copy == 0
+    rest_copies = [k for op, k in fake.calls if op == "copy" and "/Minutes/" in k]
+    assert rest_copies == ["merged-data/SWA/Minutes/json/2026-02-01-cabinet.json"]
+
+
+def test_a_dry_run_writes_nothing_anywhere(fake, migration, swansea_with_more):
+    before = dict(fake.objects)
+
+    report = migration(to_prefix="merged-data", dry_run=True).migrate("SWA")
+
+    assert fake.objects == before
+    assert report.to_copy == 2
+    assert report.rest_to_copy == 4
+    assert any("other files unchanged" in line for line in report.lines())
+
+
+def test_a_document_left_on_an_old_key_is_a_problem_in_the_copy(
+    fake, migration, swansea_with_more
+):
+    """It can't be named from merged-data/: old-layout files aren't copied there."""
+    fake.fail_on = content_key(APPENDIX, ".pdf")
+
+    report = to_merged(migration).migrate("SWA")
+
+    assert report.failed
+    assert any("old-layout file" in why for _, _, why in report.problems)
+
+
+def test_every_council_is_included_when_copying(fake, migration):
+    put(fake, "data/SWA/Decisions/_index.json", b"{}")
+    put(fake, "data/KIR/Councillors/json/a.json", b"{}")
+
+    assert to_merged(migration).councils() == ["KIR", "SWA"]
+
+
+def test_a_council_with_no_decisions_is_copied_whole(fake, migration):
+    put(fake, "data/KIR/Councillors/json/a.json", b'{"name": "A"}')
+
+    report = to_merged(migration).migrate("KIR")
+
+    assert not report.failed
+    assert (
+        fake.objects["merged-data/KIR/Councillors/json/a.json"]["Body"]
+        == b'{"name": "A"}'
+    )
+
+
+def test_the_same_prefix_is_not_a_copy(migration):
+    assert migration(to_prefix="data/").to_prefix is None
+
+
+def test_delete_old_is_refused_with_to_prefix(fake, swansea, monkeypatch, tmp_path):
+    from lgsf.storage import s3
+
+    monkeypatch.setattr(s3, "get_client", lambda: fake)
+    monkeypatch.setenv("LGSF_S3_BUCKET", "bucket")
+    monkeypatch.setenv("LGSF_S3_PREFIX", "data")
+    with pytest.raises(SystemExit):
+        main(["--to-prefix", "merged-data", "--delete-old"])
+
+
+def test_the_command_line_with_to_prefix(fake, swansea, monkeypatch, tmp_path, capsys):
+    from lgsf.storage import s3
+
+    monkeypatch.setattr(s3, "get_client", lambda: fake)
+    monkeypatch.setenv("LGSF_S3_BUCKET", "bucket")
+    monkeypatch.setenv("LGSF_S3_PREFIX", "data")
+    monkeypatch.chdir(tmp_path)
+
+    assert main(["--council", "SWA", "--to-prefix", "merged-data"]) == 0
+    assert "to s3://bucket/merged-data" in capsys.readouterr().out
+    assert f"merged-data/SWA/documents/{content_key(REPORT, '.pdf')}" in fake.objects

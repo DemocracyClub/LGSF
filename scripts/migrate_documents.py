@@ -63,6 +63,19 @@ is off on the bucket, so a deleted file can't be got back.
 
 Rerunning is safe: files already mapped aren't read again, keys already
 there aren't copied again, and JSON already rewritten is left alone.
+
+``--to-prefix merged-data`` migrates into a copy instead, leaving the
+original prefix exactly as it was for anyone still reading it. Every
+council is included, not only those with decisions. Documents go to
+``merged-data/<COUNCIL>/documents/<content key>``; decision JSON and the
+index are written there with the new keys (or copied as they are, if they
+name no old document); and every other file of the council, other data
+types and documents already in the new layout included, is copied as it
+is. Everything is copied inside S3; the only reads are those of step 2
+and the JSON. A rerun copies only what has changed in the original since,
+so it can be repeated until everyone has moved over. ``--delete-old``
+doesn't apply. A document whose file couldn't be moved is reported, since
+its old-layout file isn't in the copy.
 """
 
 from __future__ import annotations
@@ -165,6 +178,9 @@ class Report:
     emptied: int = 0
     deletable: int = 0
     deleted: int = 0
+    #: With --to-prefix, the council's other files copied unchanged.
+    rest_to_copy: int = 0
+    rest_bytes: int = 0
     kept: dict = field(default_factory=dict)
     #: (where, key, what's wrong) for each document naming a file that
     #: isn't there or isn't the size it records.
@@ -201,6 +217,11 @@ class Report:
                 f"  {would}rewrite {self.json_rewritten:,} of {self.json_files:,} "
                 f"decision files{index}"
             )
+            if self.rest_to_copy:
+                lines.append(
+                    f"  {would}copy {self.rest_to_copy:,} other files unchanged "
+                    f"({gigabytes(self.rest_bytes)})"
+                )
             lines.append(
                 f"  decision documents: {self.emptied:,} with an empty file, "
                 f'{would}set to unavailable: "empty"; {self.hash_disagreements:,} '
@@ -282,10 +303,14 @@ class Migration:
         dry_run=False,
         mapping_dir=MAPPING_DIR,
         out=print,
+        to_prefix=None,
     ):
         self.client = client
         self.bucket = bucket
         self.prefix = prefix.strip("/")
+        #: Where to write, when not over the original: see --to-prefix.
+        to_prefix = (to_prefix or "").strip("/")
+        self.to_prefix = to_prefix if to_prefix and to_prefix != self.prefix else None
         self.workers = workers
         self.dry_run = dry_run
         self.mapping_dir = Path(mapping_dir)
@@ -300,7 +325,19 @@ class Migration:
         return self.key(council, "Decisions", "documents", key)
 
     def new_key(self, council, key):
-        return self.key(council, "documents", key)
+        return self.dest_key(council, "documents", key)
+
+    def dest_key(self, council, *parts):
+        """Where a file goes: under --to-prefix if given, else where it is."""
+        return s3.join_key(self.to_prefix or self.prefix, council, *parts)
+
+    def copy_as_is(self, source_key, dest_key):
+        """A server-side copy, keeping the object's metadata and type."""
+        self.client.copy_object(
+            Bucket=self.bucket,
+            Key=dest_key,
+            CopySource={"Bucket": self.bucket, "Key": source_key},
+        )
 
     def list(self, root):
         """Every key under ``root``, relative to it, with its size and ETag."""
@@ -339,7 +376,10 @@ class Migration:
         )
 
     def councils(self):
-        """Every council on S3 with a Decisions/_index.json."""
+        """
+        Every council on S3 with a Decisions/_index.json, or with
+        --to-prefix every council at all, since all of it is copied.
+        """
         prefix = f"{self.prefix}/" if self.prefix else ""
         paginator = self.client.get_paginator("list_objects_v2")
         found = []
@@ -348,6 +388,8 @@ class Migration:
         ):
             for common in page.get("CommonPrefixes", []):
                 found.append(common["Prefix"][len(prefix) :].strip("/"))
+        if self.to_prefix:
+            return sorted(found)
         return [
             council
             for council in sorted(found)
@@ -496,7 +538,7 @@ class Migration:
         self.save_mapping(council, mapping)
 
         # 4. Copy each file to its new key, once per key.
-        new = self.list(self.key(council, "documents"))
+        new = self.list(self.dest_key(council, "documents"))
         targets = {}
         for old_key in old:
             moved = mapping.get(old_key)
@@ -522,7 +564,7 @@ class Migration:
             # for the check: what is really there, not what should be.
             available = {
                 key: item["size"]
-                for key, item in self.list(self.key(council, "documents")).items()
+                for key, item in self.list(self.dest_key(council, "documents")).items()
             }
 
         # 5. Rewrite the JSON, the index last.
@@ -533,14 +575,20 @@ class Migration:
         if json_keys:
             self.out(f"{council}: rewriting {len(json_keys):,} decision files")
 
+        dest_json_root = self.dest_key(council, "Decisions", "json")
+
         def rewrite_decision(json_key):
             key = s3.join_key(json_root, json_key)
+            dest = s3.join_key(dest_json_root, json_key)
             data = self.get_json(key)
             result = Rewrite()
             for document in (data or {}).get("documents") or []:
                 rewrite_document(document, mapping, available, result)
-            if result.changed and not self.dry_run:
-                self.put_json(key, data)
+            if not self.dry_run:
+                if result.changed:
+                    self.put_json(dest, data)
+                elif dest != key:
+                    self.copy_as_is(key, dest)
             return result
 
         for json_key, result in zip(
@@ -563,16 +611,25 @@ class Migration:
                 if rewrite_document(entry, mapping, available, result) == "emptied":
                     del documents[url]
             named += [("_index.json", *n) for n in result.named]
+            dest_index_key = self.dest_key(council, "Decisions", "_index.json")
             if result.changed:
                 report.index_rewritten = True
                 if not self.dry_run:
-                    self.put_json(index_key, index)
+                    self.put_json(dest_index_key, index)
+            elif dest_index_key != index_key and not self.dry_run:
+                self.copy_as_is(index_key, dest_index_key)
 
         # 6. Check every file named is there, at the size recorded.
         old_sizes = {k: item["size"] for k, item in old.items()}
         for where, key, length in named:
             if is_content_key(key):
                 size = available.get(key)
+            elif self.to_prefix:
+                # Still an old-layout key, and those aren't copied
+                report.problems.append(
+                    (where, key, f"old-layout file, not in {self.to_prefix}/")
+                )
+                continue
             else:
                 size = old_sizes.get(key)
             if size is None:
@@ -581,7 +638,47 @@ class Migration:
                 report.problems.append(
                     (where, key, f"{size:,} bytes, recorded as {length:,}")
                 )
+
+        # 7. With --to-prefix, everything else the council has.
+        if self.to_prefix:
+            self.copy_rest(council, report)
         return report
+
+    def copy_rest(self, council, report):
+        """
+        Copy, server-side and unchanged, every file of the council's not
+        handled above: other data types, documents already in the new
+        layout, run logs. Not the old decision documents, which went to
+        content keys, nor the decision JSON and index, rewritten above. A
+        file already there with the same size and ETag is skipped, so a
+        rerun copies only what changed since.
+        """
+        source = self.list(self.key(council))
+        dest = self.list(self.dest_key(council))
+        handled = ("Decisions/documents/", "Decisions/json/")
+        to_copy = [
+            key
+            for key, item in source.items()
+            if not key.startswith(handled)
+            and key != "Decisions/_index.json"
+            and dest.get(key) != item
+        ]
+        report.rest_to_copy = len(to_copy)
+        report.rest_bytes = sum(source[k]["size"] for k in to_copy)
+        if self.dry_run or not to_copy:
+            return
+        self.out(f"{council}: copying {len(to_copy):,} other files")
+        for key, result in zip(
+            to_copy,
+            self.in_parallel(
+                lambda k: self.copy_as_is(
+                    self.key(council, k), self.dest_key(council, k)
+                ),
+                to_copy,
+            ),
+        ):
+            if isinstance(result, Exception):
+                report.errors.append(f"copying {key}: {result}")
 
     def copy(self, council, moved):
         self.client.copy_object(
@@ -689,12 +786,22 @@ def main(argv=None):
         help="Delete the old files that have been moved and nothing names",
     )
     parser.add_argument(
+        "--to-prefix",
+        help="Write the migrated data under this prefix instead of over "
+        "the original, which is then left exactly as it was: documents go "
+        "to <to-prefix>/<COUNCIL>/documents/, decision JSON and index are "
+        "written there rewritten, and everything else is copied unchanged. "
+        "Every council is included, not only those with decisions.",
+    )
+    parser.add_argument(
         "--workers",
         type=int,
         default=16,
         help="How many requests to S3 to make at once (default 16)",
     )
     args = parser.parse_args(argv)
+    if args.to_prefix and args.delete_old:
+        parser.error("--delete-old doesn't apply with --to-prefix: nothing is moved")
 
     bucket = s3.bucket_from_environment()
     prefix = s3.prefix_from_environment()
@@ -704,6 +811,7 @@ def main(argv=None):
         prefix,
         workers=args.workers,
         dry_run=args.dry_run,
+        to_prefix=args.to_prefix,
     )
 
     if args.council:
@@ -713,7 +821,10 @@ def main(argv=None):
 
     action = "Deleting old documents" if args.delete_old else "Moving documents"
     dry = " (dry run)" if args.dry_run else ""
-    print(f"{action} in s3://{bucket}/{prefix} for {len(councils)} councils{dry}")
+    where = f"s3://{bucket}/{prefix}"
+    if migration.to_prefix:
+        where += f" to s3://{bucket}/{migration.to_prefix}"
+    print(f"{action} in {where} for {len(councils)} councils{dry}")
 
     failed = []
     for council in councils:
