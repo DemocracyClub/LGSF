@@ -142,3 +142,11 @@ def test_the_worker_can_list_read_and_write_documents_but_not_delete_them(templa
         s for s in data_statements if "s3:PutObject" in json.dumps(s)
     )
     assert "/merged-data/*" in json.dumps(object_statement["Resource"])
+
+
+def test_the_maps_results_go_to_s3_flattened(template):
+    """A result per run for every council and type is past the 256 KiB state limit."""
+    writer = definition(template)["States"]["ParallelScrapers"]["ResultWriter"]
+
+    assert writer["Parameters"]["Prefix"] == "map-results"
+    assert writer["WriterConfig"] == {"OutputType": "JSON", "Transformation": "FLATTEN"}
