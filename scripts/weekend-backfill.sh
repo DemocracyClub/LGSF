@@ -78,7 +78,7 @@ scrape() {
     say "1/2: bringing s3://$LGSF_S3_BUCKET/$MERGED_PREFIX up to date with data/"
     if [[ -n "$COUNCILS" ]]; then council_args=(--council "$COUNCILS"); else council_args=(); fi
     LGSF_S3_PREFIX=data uv run python -m scripts.migrate_documents \
-        --to-prefix "$MERGED_PREFIX" "${council_args[@]}" \
+        --to-prefix "$MERGED_PREFIX" --redo-done --councils-at-once 8 "${council_args[@]}" \
         || say "The migration reported problems; see above. Carrying on with minutes."
 
     local since_args
