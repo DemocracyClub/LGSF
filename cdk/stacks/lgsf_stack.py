@@ -538,11 +538,16 @@ class LgsfStack(cdk.Stack):
         )
 
         # Step 4: Send notification report with results
+        # The last two steps add their results beside the aggregation's
+        # rather than replacing them, so the execution's output is the run's
+        # summary, which `manage.py <type> --aws --wait` prints, and
+        # post-processing sees it too.
         notification_report_task = tasks.LambdaInvoke(
             self,
             "SendNotificationReport",
             lambda_function=self.notification_report_function,
-            output_path="$.Payload",
+            payload_response_only=True,
+            result_path="$.notification",
         )
 
         # Step 5: Post-processing after email is sent
@@ -550,6 +555,8 @@ class LgsfStack(cdk.Stack):
             self,
             "PostProcessing",
             lambda_function=self.post_processing_function,
+            payload_response_only=True,
+            result_path="$.post_processing",
         )
 
         # Chain the steps together
