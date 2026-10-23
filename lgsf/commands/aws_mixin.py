@@ -45,6 +45,11 @@ class AWSInvokableMixin:
             action="store_true",
             help="Wait for AWS execution to complete and show results (requires --aws)",
         )
+        parser.add_argument(
+            "--allow-overlap",
+            action="store_true",
+            help="Start on AWS even if a running execution already covers these councils",
+        )
 
     def handle_aws_invocation(self, options):
         """
@@ -84,6 +89,7 @@ class AWSInvokableMixin:
             result = invoker.invoke(
                 council_ids=council_ids,
                 all_councils=all_councils,
+                allow_overlap=options.get("allow_overlap", False),
             )
 
             # Display results

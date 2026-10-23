@@ -7,7 +7,7 @@ import traceback
 import boto3
 from rich.console import Console
 
-from lgsf.aws_lambda.cloudwatch import CloudWatchLogStream
+from lgsf.aws_lambda.cloudwatch import CloudWatchLogStream, scraper_log_group
 from lgsf.conf import settings
 from lgsf.councillors.commands import Command
 from lgsf.path_utils import load_scraper
@@ -241,7 +241,7 @@ def scraper_worker_handler(event, context):
     scraper_worker_handler to work with Step Functions instead of SQS.
     """
     cw_stream = CloudWatchLogStream(
-        log_group=event["scraper_type"],
+        log_group=scraper_log_group(event["scraper_type"]),
         log_stream=event["council"],
         flush_interval=0.2,  # tune if you log very heavily
         tee_stdout=True,

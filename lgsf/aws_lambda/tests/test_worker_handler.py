@@ -48,7 +48,14 @@ def lambda_environment(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "DATA_DIR_NAME", str(tmp_path))
     monkeypatch.delenv("LGSF_STORAGE_BACKEND", raising=False)
     monkeypatch.delenv("S3_REPORTS_BUCKET", raising=False)
-    monkeypatch.setattr(handlers, "CloudWatchLogStream", lambda **kwargs: io.StringIO())
+    log_groups = []
+
+    def fake_stream(**kwargs):
+        log_groups.append(kwargs["log_group"])
+        return io.StringIO()
+
+    monkeypatch.setattr(handlers, "CloudWatchLogStream", fake_stream)
+    monkeypatch.setattr(handlers, "_log_groups_seen", log_groups, raising=False)
 
     def base_init(self, options, console):
         self.options = options
@@ -140,3 +147,10 @@ def test_a_rate_limited_run_is_reported_as_such_and_commits_nothing(
 
     assert result["statusCode"] == 429
     assert stored(lambda_environment) == FULL_COUNCIL
+
+
+def test_logs_go_to_the_log_group_the_cdk_makes(lambda_environment, monkeypatch):
+    """The CDK creates /aws/lambda/lgsf-scrapers/<type> with retention; the worker must use the same name."""
+    invoke(monkeypatch, FULL_COUNCIL)
+
+    assert handlers._log_groups_seen == ["/aws/lambda/lgsf-scrapers/councillors"]
