@@ -46,6 +46,25 @@ def test_replace_mode_clears_previous_runs(data_dir):
     assert stored_files(root) == ["json/current-councillor.json"]
 
 
+def test_replace_mode_keeps_previous_runs_until_the_commit(data_dir):
+    """A run that fails is abandoned without committing, and must delete nothing."""
+    storage = LocalFilesystemStorage(
+        council_code="ABC",
+        scraper_object_type="Councillors",
+        storage_mode=StorageMode.REPLACE,
+    )
+    with storage.session("run 1") as session:
+        session.write(Path("json/still-here.json"), "{}")
+
+    session = storage.start_session()
+    session.write(Path("json/partial.json"), "{}")
+    assert session.open(Path("json/still-here.json")) == "{}"  # readable meanwhile
+    storage.abort_session(session)
+
+    root = data_dir / "ABC" / "Councillors"
+    assert stored_files(root) == ["json/still-here.json"]
+
+
 def test_accumulate_mode_keeps_previous_runs(data_dir):
     storage = LocalFilesystemStorage(
         council_code="ABC",
@@ -96,22 +115,6 @@ def test_accumulate_mode_can_read_back_earlier_runs(data_dir):
 
     session = storage.start_session()
     assert session.open(Path("_index.json")) == '{"version": 1}'
-    storage.end_session(session, "run 2")
-
-
-def test_replace_mode_cannot_read_back_earlier_runs(data_dir):
-    """The mirror image: replacing means last run's state is gone."""
-    storage = LocalFilesystemStorage(
-        council_code="ABC",
-        scraper_object_type="Councillors",
-        storage_mode=StorageMode.REPLACE,
-    )
-    with storage.session("run 1") as session:
-        session.write(Path("_index.json"), '{"version": 1}')
-
-    session = storage.start_session()
-    with pytest.raises(FileNotFoundError):
-        session.open(Path("_index.json"))
     storage.end_session(session, "run 2")
 
 

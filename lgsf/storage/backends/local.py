@@ -203,8 +203,9 @@ class LocalFilesystemStorage(BaseStorage):
         """
         Create a new local filesystem session for this instance's council.
 
-        This method handles preparation by cleaning the council directory
-        and creating a fresh session ready for file operations.
+        Creates the council directory if needed and a fresh session ready
+        for file operations. Previous runs' files are left in place until
+        the session commits.
 
         Args:
             **kwargs: Additional parameters (currently unused)
@@ -223,14 +224,9 @@ class LocalFilesystemStorage(BaseStorage):
 
         council_root = self.council_root
         try:
-            # In REPLACE mode the latest scrape is the whole truth, so clear
-            # out anything from previous runs. In ACCUMULATE mode previous
-            # runs are history we're adding to, so leave them alone.
-            if self.storage_mode == StorageMode.REPLACE and council_root.exists():
-                import shutil
-
-                shutil.rmtree(council_root)
-
+            # Nothing is removed here: in REPLACE mode the previous run's
+            # files go when this session commits, so a run that fails and
+            # is abandoned leaves them exactly as they were.
             council_root.mkdir(parents=True, exist_ok=True)
         except OSError as e:
             raise RuntimeError(
@@ -275,89 +271,100 @@ class LocalFilesystemStorage(BaseStorage):
         if not commit_message or not commit_message.strip():
             raise ValueError("commit_message cannot be empty")
 
-        try:
-            staged = session._consume_staged()
-            if not staged:
-                return {"skipped": True, "reason": "no changes"}
+        staged = session._consume_staged()
+        if not staged:
+            return {"skipped": True, "reason": "no changes"}
 
-            written_files = []
-            for rel_path, data in staged.items():
-                target = session._root / rel_path
-                try:
-                    target.parent.mkdir(parents=True, exist_ok=True)
+        written_files = []
+        for rel_path, data in staged.items():
+            target = session._root / rel_path
+            try:
+                target.parent.mkdir(parents=True, exist_ok=True)
 
-                    # pathlib-only unique temp file in the same dir
-                    tmp = target.with_name(f".tmp-{uuid4().hex}-{target.name}")
-                    # 'xb' ensures exclusive creation; avoids races
-                    with tmp.open("xb") as f:
-                        f.write(data)
-                        f.flush()
-                    # atomic replace into place
-                    tmp.replace(target)
-                    written_files.append(str(target))
-                except OSError as e:
-                    # Clean up any partial writes
-                    for written_file in written_files:
-                        try:
-                            Path(written_file).unlink(missing_ok=True)
-                        except OSError:
-                            pass  # Best effort cleanup
-                    raise RuntimeError(f"Failed to write {rel_path}: {e}")
-
-            # Local storage finalization: create summary file if run_log provided
-            summary_info = {}
-            run_log = kwargs.get("run_log")
-            if run_log:
-                try:
-                    summary_path = session._root / "scrape_summary.json"
-
-                    if not hasattr(run_log, "finished") or not run_log.finished:
-                        run_log.finish()
-
-                    import json
-
-                    summary_data = {
-                        "council": self.council_code,
-                        "commit_message": commit_message.strip(),
-                        "files_written": len(written_files),
-                        "summary": "Local filesystem scrape completed",
-                    }
-
+                # pathlib-only unique temp file in the same dir
+                tmp = target.with_name(f".tmp-{uuid4().hex}-{target.name}")
+                # 'xb' ensures exclusive creation; avoids races
+                with tmp.open("xb") as f:
+                    f.write(data)
+                    f.flush()
+                # atomic replace into place
+                tmp.replace(target)
+                written_files.append(str(target))
+            except OSError as e:
+                # Clean up any partial writes
+                for written_file in written_files:
                     try:
-                        # as_dict, not as_json: updating a dict with a JSON
-                        # string raises, and the failure is swallowed far
-                        # enough away that the summary file is never written.
-                        summary_data.update(run_log.as_dict)
-                    except (AttributeError, TypeError, ValueError):
-                        pass  # a run log that can't be serialised isn't fatal
+                        Path(written_file).unlink(missing_ok=True)
+                    except OSError:
+                        pass  # Best effort cleanup
+                raise RuntimeError(f"Failed to write {rel_path}: {e}")
 
-                    with summary_path.open("w", encoding="utf-8") as f:
-                        json.dump(summary_data, f, indent=2, default=str)
+        # In REPLACE mode the latest scrape is the whole truth, so
+        # anything from previous runs that this one didn't write goes.
+        # In ACCUMULATE mode previous runs are history we're adding to.
+        # Done here, at commit, and not when the session starts, so a
+        # run that fails and is abandoned deletes nothing.
+        removed_files = []
+        if self.storage_mode == StorageMode.REPLACE:
+            removed_files = self._remove_files_not_in(session._root, staged)
 
-                    summary_info["summary_file"] = str(summary_path)
-                    written_files.append(str(summary_path))
+        # Local storage finalization: create summary file if run_log provided
+        summary_info = {}
+        run_log = kwargs.get("run_log")
+        if run_log:
+            try:
+                summary_path = session._root / "scrape_summary.json"
 
-                except Exception as e:
-                    summary_info["summary_error"] = str(e)
+                if not hasattr(run_log, "finished") or not run_log.finished:
+                    run_log.finish()
 
-            return {
-                "applied": len(staged),
-                "root": str(session._root),
-                "files": written_files,
-                "commit_message": commit_message.strip(),
-                **summary_info,
-            }
-        finally:
-            self._reset_session_state(session)
+                import json
 
-    def _reset_session_state(self, session: Optional[StorageSession]) -> None:
-        """
-        Clean up session state after an error.
+                summary_data = {
+                    "council": self.council_code,
+                    "commit_message": commit_message.strip(),
+                    "files_written": len(written_files),
+                    "summary": "Local filesystem scrape completed",
+                }
 
-        Resets the internal active session tracking to allow new sessions
-        to be created. This is called automatically when session operations fail.
+                try:
+                    # as_dict, not as_json: updating a dict with a JSON
+                    # string raises, and the failure is swallowed far
+                    # enough away that the summary file is never written.
+                    summary_data.update(run_log.as_dict)
+                except (AttributeError, TypeError, ValueError):
+                    pass  # a run log that can't be serialised isn't fatal
 
-        Args:
-            session: The session that failed (currently unused but kept for interface)
-        """
+                with summary_path.open("w", encoding="utf-8") as f:
+                    json.dump(summary_data, f, indent=2, default=str)
+
+                summary_info["summary_file"] = str(summary_path)
+                written_files.append(str(summary_path))
+
+            except Exception as e:
+                summary_info["summary_error"] = str(e)
+
+        return {
+            "applied": len(staged),
+            "root": str(session._root),
+            "files": written_files,
+            "removed": removed_files,
+            "commit_message": commit_message.strip(),
+            **summary_info,
+        }
+
+    @staticmethod
+    def _remove_files_not_in(root: Path, keep: Dict[str, bytes]) -> list[str]:
+        """Delete every file under root whose relative path isn't in keep, and any directory left empty."""
+        removed = []
+        for path in sorted(root.rglob("*"), reverse=True):
+            if path.is_file() and path.relative_to(root).as_posix() not in keep:
+                path.unlink()
+                removed.append(str(path))
+            elif path.is_dir() and not any(path.iterdir()):
+                path.rmdir()
+        return removed
+
+    def _close_session(self, session: Optional[StorageSession]) -> None:
+        """Forget the active session so a new one can start. Nothing on disk to clean."""
         self._active = None

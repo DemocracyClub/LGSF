@@ -1004,42 +1004,37 @@ class GitHubStorage(BaseStorage):
         if not commit_message or not commit_message.strip():
             raise ValueError("commit_message cannot be empty")
 
-        try:
-            # Commit and push the staged files
-            commit_result = session._commit_files(commit_message.strip())
+        # Commit and push the staged files
+        commit_result = session._commit_files(commit_message.strip())
 
-            if commit_result.get("skipped"):
-                skip_reason = commit_result.get("reason", "unknown")
-                logger.info(
-                    f"Skipping GitHub operations for {session.council_code}/"
-                    f"{session.scraper_object_type}: {skip_reason}"
-                )
-                return commit_result
+        if commit_result.get("skipped"):
+            skip_reason = commit_result.get("reason", "unknown")
+            logger.info(
+                f"Skipping GitHub operations for {session.council_code}/"
+                f"{session.scraper_object_type}: {skip_reason}"
+            )
+            return commit_result
 
-            finalization_result = commit_result.copy()
+        finalization_result = commit_result.copy()
 
-            # Create PR and merge (always done, unless skip_merge is set)
-            if not kwargs.get("skip_merge", False):
-                pr_result = session._create_pull_request(commit_result)
-                finalization_result["pull_request"] = pr_result
+        # Create PR and merge (always done, unless skip_merge is set)
+        if not kwargs.get("skip_merge", False):
+            pr_result = session._create_pull_request(commit_result)
+            finalization_result["pull_request"] = pr_result
 
-                # Clean up remote branch if PR was merged
-                if pr_result.get("success") and pr_result.get("merged", False):
-                    branch_cleanup = session._delete_remote_branch()
-                    finalization_result["branch_cleanup"] = branch_cleanup
-                else:
-                    finalization_result["branch_cleanup"] = {"skipped": "pr_not_merged"}
+            # Clean up remote branch if PR was merged
+            if pr_result.get("success") and pr_result.get("merged", False):
+                branch_cleanup = session._delete_remote_branch()
+                finalization_result["branch_cleanup"] = branch_cleanup
+            else:
+                finalization_result["branch_cleanup"] = {"skipped": "pr_not_merged"}
 
-            return finalization_result
-
-        finally:
-            # Always clean up local repository and reset session
-            session._cleanup_local_repo()
-            self._reset_session_state(session)
+        return finalization_result
 
     @override
-    def _reset_session_state(self, session: StorageSession | None) -> None:
-        """Reset session state."""
+    def _close_session(self, session: StorageSession | None) -> None:
+        """Mark the session closed and remove the clone it made. Commits nothing."""
         if isinstance(session, _GitHubSession):
             session._closed = True
+            session._cleanup_local_repo()
         self._active = None

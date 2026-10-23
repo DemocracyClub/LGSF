@@ -427,12 +427,12 @@ class ScraperBase(metaclass=abc.ABCMeta):
         traceback.print_tb(tb, file=error_output)
         error_content = error_output.getvalue()
 
-        # Use existing session if available, otherwise create a new one
+        # Only into a session that is still open. A failed run's session has
+        # been abandoned by now, and opening a new one to commit just this
+        # file would, in REPLACE mode, be a commit saying the council has no
+        # records. The run log records the failure instead.
         if self.storage_session:
             self.storage_session.write(self._error_file_name(), error_content)
-        else:
-            with self.storage_backend.session("Saving error information") as session:
-                session.write(self._error_file_name(), error_content)
 
     def _set_last_run(self):
         timestamp = datetime.datetime.now().isoformat()
@@ -481,8 +481,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
             if exc_type is None:
                 self.finalise()
             else:
-                # On error, reset session without committing
-                self.storage_backend._reset_session_state(self.storage_session)
+                self.abandon_storage()
 
         if not exc_type:
             return
@@ -524,6 +523,8 @@ class ScraperBase(metaclass=abc.ABCMeta):
         """
         Call this to wrap up any operations, e.g committing files
         """
+        if self.storage_session:
+            self._check_or_abandon()
         self._set_last_run()
         # End session if still active
         if self.storage_session:
@@ -531,6 +532,39 @@ class ScraperBase(metaclass=abc.ABCMeta):
                 self.storage_session,
                 f"Scraping {self.service_name} for {self.options['council']} completed",
             )
+            self.storage_session = None
+
+    def check_before_commit(self):
+        """
+        Raise to stop this run's files being committed.
+
+        Called just before a run's storage session is committed, by
+        finalize_storage and finalise. The files a run stages are held
+        until then, and readers downstream treat each commit as the whole
+        truth about the council at that moment: in REPLACE mode a record
+        missing from a commit is taken to have gone. So a run that looks
+        wrong must commit nothing, rather than commit what it has. Types
+        override this with their own sanity checks; councillors refuse a
+        run that found implausibly few. Checkpoints (see checkpoint) commit
+        mid-run and don't go through this.
+        """
+
+    def _check_or_abandon(self):
+        try:
+            self.check_before_commit()
+        except Exception:
+            self.abandon_storage()
+            raise
+
+    def abandon_storage(self):
+        """
+        Throw away everything this run has staged, committing nothing.
+
+        For a run that raised or failed check_before_commit. Whatever an
+        earlier run committed is left exactly as it was.
+        """
+        if self.storage_session:
+            self.storage_backend.abort_session(self.storage_session)
             self.storage_session = None
 
     def _save_file(self, dir_name, file_name, content):
@@ -580,6 +614,8 @@ class ScraperBase(metaclass=abc.ABCMeta):
             Storage result from the backend, or None if no session was active
         """
         if self.storage_session:
+            self._check_or_abandon()
+
             # Check if there are any staged files before finalizing
             # This prevents empty commits when scrapers fail or have no changes
             has_staged_files = False
@@ -592,7 +628,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
                     "skipping commit[/yellow]"
                 )
                 # Clean up session without committing
-                self.storage_backend._reset_session_state(self.storage_session)
+                self.storage_backend.abort_session(self.storage_session)
                 self.storage_session = None
                 return {"skipped": True, "reason": "no files staged"}
 

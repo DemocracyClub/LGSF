@@ -20,7 +20,7 @@ from pathlib import Path
 import pytest
 
 from lgsf.storage.backends.base import StorageMode
-from lgsf.storage.backends.github import _GitHubSession
+from lgsf.storage.backends.github import GitHubStorage, _GitHubSession
 
 
 @pytest.fixture(autouse=True)
@@ -205,3 +205,23 @@ def test_open_reads_a_file_from_an_earlier_run(bare_repo, tmp_path, monkeypatch)
     with pytest.raises(FileNotFoundError):
         session.open(Path("README.md"))  # the root isn't this type's directory
     session._cleanup_local_repo()
+
+
+def test_closing_an_abandoned_session_removes_its_clone(
+    bare_repo, tmp_path, monkeypatch
+):
+    """A run that failed leaves nothing in /tmp for the next invocation to trip over."""
+    session = make_session(bare_repo, tmp_path, monkeypatch)
+    session.write(Path("json/a.json"), "{}")
+    session._ensure_local_repo()
+    assert Path(session.local_repo_path).exists()
+    storage = GitHubStorage.__new__(
+        GitHubStorage
+    )  # the real __init__ needs App credentials
+    storage._active = session
+
+    storage.abort_session(session)
+
+    assert not Path(session.local_repo_path).exists()
+    assert session._closed and storage._active is None
+    assert tree(bare_repo, "main") == ["README.md"]

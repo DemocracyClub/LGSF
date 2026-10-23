@@ -22,8 +22,10 @@ Each item returned will be passed to `get_single_councillor`.
 
 If this pattern doesn’t work for a council, then the required `run` method can
 be overridden. Run needs to call `self.save_councillor` with the raw scraped
-data for each councillor, and a councillor object. It then needs to call
-`self.report()`.
+data for each councillor, and a councillor object, then
+`self.finalize_storage(run_log)` and `self.report()`. Nothing is committed
+until `finalize_storage`, and it refuses a run that found fewer than ten
+councillors, so a broken page can't commit a nearly empty council.
 
 ### `HTMLCouncillorScraper`
 

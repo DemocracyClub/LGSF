@@ -31,6 +31,11 @@ printed as a summary table at the end, and recorded in
 council keeps its most recent run only, and the scraper's console output is
 kept for the ones that failed.
 
+A council that fails commits nothing, whether it raised partway through or
+finished and found implausibly little: whatever its last good run stored is
+left as it was. The same holds in the daily AWS run, where a failed council
+leaves its GitHub repository untouched.
+
 `--list-failing` reads those run logs, so after a full run it will tell you
 what is currently broken. It only knows about councils you have actually run
 on this machine.

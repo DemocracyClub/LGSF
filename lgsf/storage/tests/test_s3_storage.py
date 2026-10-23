@@ -396,7 +396,7 @@ def test_replace_with_a_failed_run_leaves_the_old_data(fake):
     store = metadata_store(fake, mode=StorageMode.REPLACE)
     session = store.start_session()
     session.write(Path("json/current.json"), "{}")
-    store._reset_session_state(session)
+    store.abort_session(session)
 
     assert "data/KIR/Decisions/json/departed.json" in fake.objects
 
