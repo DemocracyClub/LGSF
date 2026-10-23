@@ -98,6 +98,43 @@ rewrote every commit so that the files are at the same paths throughout,
 which is what a reader walking the commits as a log needs. Its docstring
 says how to run it, and running it again is harmless.
 
+## Where the output goes
+
+`LGSF_STORAGE_BACKEND` picks the metadata store; `local` is the default.
+
+| Value | Where | Notes |
+| --- | --- | --- |
+| `local` | `data/<COUNCIL>/<Type>/` | Default. Plain files, no history |
+| `git` | one bare repository per council under `LGSF_GIT_REMOTE` | Production's GitHub path, on this machine |
+| `github` | `LGSF-Data/<COUNCIL>` on GitHub | What the daily AWS run uses; needs GitHub App credentials |
+| `s3` | `LGSF_S3_BUCKET` | Checkpointing types' production store |
+
+Documents (PDFs and the like) have their own setting, `LGSF_DOCUMENT_STORAGE_BACKEND`.
+
+### Running the GitHub path locally
+
+To watch the whole journey without GitHub or AWS, a real scraper committing
+to a repository and a reader importing from it, use the `git` backend:
+
+```bash
+LGSF_STORAGE_BACKEND=git LGSF_GIT_REMOTE=/tmp/lgsf-repos \
+    python manage.py councillors --council KIR
+
+git -C /tmp/lgsf-repos/KIR.git log --format='%h %s'
+git -C /tmp/lgsf-repos/KIR.git log -1 --format='%(trailers)'
+git -C /tmp/lgsf-repos/KIR.git ls-tree -r --name-only main
+```
+
+It runs the GitHub backend's own session code, so what lands on `main` is
+what production would push: the same `<Type>/` layout, at most one commit
+per run with the same subject and trailers, no commit when nothing changed,
+no commit when the run failed, a fast-forward push. The differences are
+that the remote is a bare repository on disk, made with `git init --bare`
+the first time instead of through the GitHub API, and that the clone a run
+writes into lives under `LGSF_GIT_WORKDIR` (default: `lgsf-git-work` in the
+system temp directory). Point a reader at `/tmp/lgsf-repos/KIR.git` as it
+would be pointed at `LGSF-Data/KIR`.
+
 ## Working on a scraper
 
 Install pre-commit hooks:

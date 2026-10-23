@@ -418,10 +418,23 @@ class _GitHubSession(StorageSession):
 
         logger.debug(f"Running git command: {' '.join(cmd)} in {working_dir}")
 
+        # The bot's git, not the developer's: no global or system config,
+        # so no commit signing (which on a laptop can block on a passphrase
+        # prompt), no hooks, no templates. The Lambda has none of those
+        # anyway; this makes a local run behave the same. Identity comes
+        # from the environment, see _configure_git_identity, and the
+        # remote URL carries its own credentials.
+        env = {
+            **os.environ,
+            "GIT_CONFIG_GLOBAL": os.devnull,
+            "GIT_CONFIG_NOSYSTEM": "1",
+        }
+
         try:
             result = subprocess.run(
                 cmd,
                 cwd=working_dir,
+                env=env,
                 check=check,
                 capture_output=capture_output,
                 text=True,
