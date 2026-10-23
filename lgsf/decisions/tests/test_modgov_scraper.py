@@ -505,3 +505,32 @@ def test_the_new_fields_round_trip_through_storage():
             return json.dumps(data)
 
     assert json.loads(DecisionBase.from_storage("x.json", Session()).as_json()) == data
+
+
+def test_conwys_call_in_labels_and_interests_section():
+    marker = '<p><span  class="mgLabel" >Publication date: </span>'
+    body = (
+        fixture("modgov_decision_detail.html")
+        .replace(
+            marker,
+            '<p><span class="mgLabel">Date comes into force if not called in: </span>24/10/2026</p>'
+            '<p><span class="mgLabel">Call-in deadline date: </span>23/10/2026</p>'
+            '<p><span class="mgLabel">Current call-in Count: </span>0</p>' + marker,
+        )
+        .replace(
+            '<h3 class="mgSubSubTitleTxt">Decision:</h3>',
+            '<h3 class="mgSubSubTitleTxt">Interests and Nature of Interests Declared:</h3>'
+            "<div><p>None.</p></div>"
+            '<h3 class="mgSubSubTitleTxt">Decision:</h3>',
+        )
+    )
+    scraper = detail_scraper(body)
+    scraper.console = RecordingConsole()
+
+    decision = scraper.get_single_decision(ROW)
+
+    assert decision.effective_from == "2026-10-24"
+    assert decision.call_in_deadline == "2026-10-23"
+    assert decision.call_in_count == 0
+    assert decision.interests_declared == "None."
+    assert not [m for m in scraper.console.messages if "Unrecognised" in m]

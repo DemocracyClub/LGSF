@@ -348,6 +348,8 @@ From a ModernGov decision page the record also takes, where shown:
 | `effective_from` | `Effective from:` (ISO date) |
 | `reasons`, `alternative_options` | The `Reasons for the decision` and `Alternative options considered` sections |
 | `report_author`, `wards_affected` | Those labels |
+| `interests_declared` | The `Interests and Nature of Interests Declared` section, as written (often "None.") |
+| `call_in_deadline`, `call_in_count` | `Call-in deadline date:` (ISO) and `Current call-in Count:`, while a decision can still be called in. `Date comes into force if not called in:` is read as `effective_from` |
 | `install_url` | The scraper's base URL: councils sharing an install list the same decisions |
 
 `raw/` holds the decision page itself, so anything not read from it today

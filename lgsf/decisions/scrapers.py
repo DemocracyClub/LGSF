@@ -46,7 +46,13 @@ LABELS = {
     "is_subject_to_call_in": ("Is subject to call in?",),
     "publication_date": ("Publication date",),
     "date": ("Date of decision",),
-    "effective_from": ("Effective from", "Effeithiol O"),
+    "effective_from": (
+        "Effective from",
+        "Effeithiol O",
+        "Date comes into force if not called in",
+    ),
+    "call_in_deadline": ("Call-in deadline date",),
+    "call_in_count": ("Current call-in count",),
     "report_author": ("Report author",),
     "wards_affected": ("Wards affected",),
 }
@@ -60,6 +66,7 @@ SECTIONS = {
         "Alternative options considered",
         "Alternative options",
     ),
+    "interests_declared": ("Interests and Nature of Interests Declared",),
 }
 
 #: Labels seen but deliberately not read, so they aren't warned about.
@@ -1091,6 +1098,14 @@ class ModGovDecisionsScraper(BaseDecisionsScraper):
         decision.effective_from = self.iso_date(
             self.label_value(soup, *LABELS["effective_from"])
         )
+        decision.interests_declared = self.section_text(
+            soup, *SECTIONS["interests_declared"]
+        )
+        decision.call_in_deadline = self.iso_date(
+            self.label_value(soup, *LABELS["call_in_deadline"])
+        )
+        count = self.label_value(soup, *LABELS["call_in_count"])
+        decision.call_in_count = int(count) if count and count.isdigit() else None
         decision.report_author = self.label_value(soup, *LABELS["report_author"])
         decision.wards_affected = self.label_value(soup, *LABELS["wards_affected"])
         decision.decided_at_meeting = self.decided_at_meeting(soup, url)
