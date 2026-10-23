@@ -418,6 +418,10 @@ class _GitHubSession(StorageSession):
 
         logger.debug(f"Running git command: {' '.join(cmd)} in {working_dir}")
 
+        # Git runs with whatever configuration the machine has. On a
+        # developer's laptop that includes their commit signing, so a local
+        # run's commits are signed with their key and may wait for them to
+        # approve the signature. The Lambda has no such configuration.
         try:
             result = subprocess.run(
                 cmd,

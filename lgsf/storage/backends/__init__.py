@@ -43,12 +43,13 @@ def get_storage_backend(
                      from environment and options.
         options: Scraper options dictionary for backend detection.
         **kwargs: Additional backend-specific parameters:
-                 - scraper_object_type: For github backend, the type of scraper data
+                 - scraper_object_type: For github and git backends, the type of scraper data
                  - storage_mode: StorageMode.REPLACE (default) or
                    StorageMode.ACCUMULATE
                  - organization: For github backend, the organization name
                  - github_token: For github backend, the authentication token
-                 The s3 backend reads LGSF_S3_BUCKET and LGSF_S3_PREFIX.
+                 The s3 backend reads LGSF_S3_BUCKET and LGSF_S3_PREFIX; the git
+                 backend reads LGSF_GIT_REMOTE (and LGSF_GIT_WORKDIR).
 
     Returns:
         An instance of the requested storage backend tied to the specified council.
@@ -85,6 +86,14 @@ def get_storage_backend(
             github_token=kwargs.get("github_token"),
             storage_mode=storage_mode,
         )
+    elif backend_type == "git":
+        from lgsf.storage.backends.git import LocalGitStorage
+
+        return LocalGitStorage(
+            council_code=council_code,
+            scraper_object_type=kwargs.get("scraper_object_type", "Data"),
+            storage_mode=storage_mode,
+        )
     elif backend_type == "s3":
         from lgsf.storage.backends.s3 import S3Storage
 
@@ -99,7 +108,7 @@ def get_storage_backend(
 
 def get_available_backends() -> list[str]:
     """Return a list of available storage backend types."""
-    return ["local", "github", "s3"]
+    return ["local", "git", "github", "s3"]
 
 
 if __name__ == "__main__":
