@@ -5,6 +5,19 @@ from pathlib import Path
 from slugify import slugify
 
 
+#: Fields written only when the source gives them.
+EXTRA_FIELDS = (
+    "decided_at_meeting",
+    "issue_id",
+    "effective_from",
+    "reasons",
+    "alternative_options",
+    "report_author",
+    "wards_affected",
+    "install_url",
+)
+
+
 @dataclass
 class DecisionBase:
     url: str
@@ -31,6 +44,22 @@ class DecisionBase:
     # Where this decision was fetched from, plus any HTTP validators the
     # server gave us, so the next run can ask "has this changed?"
     source: dict = field(init=False, hash=False, compare=False)
+
+    # More from the decision page, where it says it. See
+    # docs/decision-scrapers.md.
+    #: The meeting the decision was taken at: {"meeting_id", "committee_id",
+    #: "url", "title"}, so a decision joins to the meeting record
+    decided_at_meeting: dict = field(init=False, hash=False, compare=False)
+    #: The source's issue the decision belongs to (ModernGov's IId): one
+    #: issue can be decided in steps, at several meetings
+    issue_id: str = field(init=False, hash=False, compare=False)
+    effective_from: str = field(init=False, hash=False, compare=False)
+    reasons: str = field(init=False, hash=False, compare=False)
+    alternative_options: str = field(init=False, hash=False, compare=False)
+    report_author: str = field(init=False, hash=False, compare=False)
+    wards_affected: str = field(init=False, hash=False, compare=False)
+    #: The base URL of the system the decision was read from; see meetings
+    install_url: str = field(init=False, hash=False, compare=False)
 
     def __repr__(self):
         return "<Decision: {} on {}>".format(self.title, self.date)
@@ -63,6 +92,7 @@ class DecisionBase:
             "text",
             "documents",
             "source",
+            *EXTRA_FIELDS,
         ):
             extras[key] = data.pop(key, None)
 
@@ -88,6 +118,14 @@ class DecisionBase:
             "text": getattr(self, "text", None),
             "documents": getattr(self, "documents", []),
             "source": getattr(self, "source", {}),
+            "decided_at_meeting": getattr(self, "decided_at_meeting", None),
+            "issue_id": getattr(self, "issue_id", None),
+            "effective_from": getattr(self, "effective_from", None),
+            "reasons": getattr(self, "reasons", None),
+            "alternative_options": getattr(self, "alternative_options", None),
+            "report_author": getattr(self, "report_author", None),
+            "wards_affected": getattr(self, "wards_affected", None),
+            "install_url": getattr(self, "install_url", None),
         }
         RAW_FIELDS = ["identifier", "title", "decision_maker", "date"]
         for attr in RAW_FIELDS:

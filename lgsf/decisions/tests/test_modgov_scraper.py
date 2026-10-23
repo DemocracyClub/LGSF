@@ -383,3 +383,125 @@ def test_asks_for_published_decisions_over_the_window():
 def test_dates_are_slash_encoded_the_way_moderngov_wants_them():
     """The DR parameter takes dd/mm/yyyy with the slashes percent-encoded."""
     assert make_scraper().format_date(datetime.date(2026, 1, 5)) == "05%2f01%2f2026"
+
+
+# ---- the rest of the page: links, more fields, and looser labels ----
+
+
+class RecordingConsole:
+    def __init__(self):
+        self.messages = []
+
+    def log(self, message, *args, **kwargs):
+        self.messages.append(str(message))
+
+
+def test_the_meeting_it_was_decided_at_joins_to_the_meeting_record():
+    decision = detail_scraper(
+        fixture("modgov_decision_detail.html")
+    ).get_single_decision(ROW)
+
+    assert decision.decided_at_meeting == {
+        "meeting_id": "4832",
+        "committee_id": "151",
+        "url": f"{BASE_URL}/ieListDocuments.aspx?CId=151&MID=4832",
+        "title": "19/10/2015 - Policy Committee",
+    }
+    assert decision.issue_id == "6535"
+    assert decision.install_url == BASE_URL
+
+
+def test_the_decision_page_itself_is_what_goes_to_raw():
+    body = fixture("modgov_decision_detail.html")
+    scraper = detail_scraper(body)
+    saved = {}
+    scraper.save_documents = False
+    scraper.documents_linked = 0
+    scraper.save_raw = lambda name, content: saved.update(raw=content)
+    scraper.save_json = lambda obj: saved.update(json=obj.as_json())
+
+    decision = scraper.get_single_decision(ROW)
+    scraper.process_decision(decision, ROW)
+
+    assert saved["raw"] == body
+    assert "page_html" not in saved["json"]
+
+
+def test_text_under_a_decisions_heading_is_read():
+    """A third of installs head the text "Decisions:"; Stroud lost 11 of 14."""
+    body = fixture("modgov_decision_detail.html").replace(">Decision:<", ">Decisions:<")
+    assert ">Decisions:<" in body
+
+    decision = detail_scraper(body).get_single_decision(ROW)
+
+    assert decision.text.startswith("The Minutes of the Policy Committee")
+
+
+def test_a_key_decision_under_other_wordings():
+    for wording in ("Is Significant decision?", "Is Allweddol decision?"):
+        body = fixture("modgov_decision_detail.html").replace(
+            "Is Key decision?", wording
+        )
+        assert wording in body
+
+        decision = detail_scraper(body).get_single_decision(ROW)
+
+        assert decision.is_key_decision is False, wording
+
+
+def test_effective_from_in_english_and_welsh():
+    marker = '<p><span  class="mgLabel" >Publication date: </span>'
+    for label in ("Effective from:", "Effeithiol O:"):
+        body = fixture("modgov_decision_detail.html")
+        assert marker in body
+        body = body.replace(
+            marker,
+            f'<p><span class="mgLabel">{label} </span>30/10/2015</p>{marker}',
+        )
+
+        decision = detail_scraper(body).get_single_decision(ROW)
+
+        assert decision.effective_from == "2015-10-30", label
+
+
+def test_an_unrecognised_label_is_warned_about_once():
+    body = fixture("modgov_decision_detail.html").replace(
+        "Is subject to call in?", "Subject to scrutiny?"
+    )
+    scraper = detail_scraper(body)
+    scraper.console = RecordingConsole()
+
+    scraper.get_single_decision(ROW)
+    scraper.get_single_decision(ROW)
+
+    warnings = [
+        m for m in scraper.console.messages if "Unrecognised decision label" in m
+    ]
+    assert len(warnings) == 1
+    assert "subject to scrutiny" in warnings[0]
+
+
+def test_the_fixtures_labels_are_all_recognised():
+    scraper = detail_scraper(fixture("modgov_decision_detail.html"))
+    scraper.console = RecordingConsole()
+
+    scraper.get_single_decision(ROW)
+
+    assert not [m for m in scraper.console.messages if "Unrecognised" in m]
+
+
+def test_the_new_fields_round_trip_through_storage():
+    import json
+
+    from lgsf.decisions.models import DecisionBase
+
+    decision = detail_scraper(
+        fixture("modgov_decision_detail.html")
+    ).get_single_decision(ROW)
+    data = json.loads(decision.as_json())
+
+    class Session:
+        def open(self, name):
+            return json.dumps(data)
+
+    assert json.loads(DecisionBase.from_storage("x.json", Session()).as_json()) == data
