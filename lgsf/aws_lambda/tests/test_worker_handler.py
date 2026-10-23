@@ -16,6 +16,7 @@ from lgsf.conf import settings
 from lgsf.councillors.scrapers import BaseCouncillorScraper
 from lgsf.scrapers.base import ScraperBase
 from lgsf.storage.backends.base import StorageMode
+from lgsf.storage.backends.github import GitHubRateLimitError
 from lgsf.storage.backends.local import LocalFilesystemStorage
 
 FULL_COUNCIL = [f"member-{i:02d}" for i in range(12)]
@@ -116,4 +117,26 @@ def test_too_few_councillors_fails_the_run_and_commits_nothing(
 
     assert (result["statusCode"], result["status"]) == (500, "failed")
     assert result["error"].startswith("ValueError: Not many councillors found (3)")
+    assert stored(lambda_environment) == FULL_COUNCIL
+
+
+def test_a_rate_limited_run_is_reported_as_such_and_commits_nothing(
+    lambda_environment, monkeypatch
+):
+    invoke(monkeypatch, FULL_COUNCIL)
+
+    class RateLimited(ListedCouncillorScraper):
+        names = FULL_COUNCIL
+
+        def finalize_storage(self, run_log=None):
+            raise GitHubRateLimitError(
+                "GitHub rate limit hit on GET repos/LGSF-Data/TST"
+            )
+
+    monkeypatch.setattr(handlers, "load_scraper", lambda council, command: RateLimited)
+    result = handlers.scraper_worker_handler(
+        {"council": "TST", "scraper_type": "councillors"}, context=None
+    )
+
+    assert result["statusCode"] == 429
     assert stored(lambda_environment) == FULL_COUNCIL

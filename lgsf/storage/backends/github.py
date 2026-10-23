@@ -8,7 +8,7 @@ import subprocess
 import time
 import uuid
 from pathlib import Path
-from typing import Any, override
+from typing import Any, Callable, override
 
 import jwt
 import requests
@@ -19,11 +19,118 @@ logger = logging.getLogger(__name__)
 
 
 class GitHubRateLimitError(Exception):
-    """Raised when GitHub rate limit is exhausted and we should fail fast."""
+    """
+    Raised when a GitHub API call hit a rate limit.
+
+    Not retried: the primary limit resets on the hour, and waiting that out
+    inside a Lambda would only time out. The worker reports it as a 429 so
+    the run shows as rate limited rather than failed.
+    """
 
     def __init__(self, message: str, reset_time: int | None = None):
         super().__init__(message)
+        #: Unix time the limit resets, from X-RateLimit-Reset, when known.
         self.reset_time = reset_time
+
+
+#: Responses worth trying again: GitHub's own trouble, not ours.
+RETRYABLE_STATUSES = frozenset({500, 502, 503, 504})
+
+#: A secondary rate limit this short is waited out once; longer is reported.
+MAX_RETRY_AFTER_WAIT = 60
+
+
+def github_api_request(
+    http: Any,
+    method: str,
+    url: str,
+    *,
+    attempts: int = 4,
+    sleep: Callable[[float], None] = time.sleep,
+    **kwargs: Any,
+) -> requests.Response:
+    """
+    One GitHub API call, with the handling every call needs.
+
+    ``http`` is anything with a ``request(method, url, **kwargs)`` method:
+    a requests.Session, or the requests module itself.
+
+    - A connection error or a 5xx is retried, up to ``attempts`` times in
+      all, waiting 1, 2, 4... seconds between tries. The last response is
+      returned as it came, for the caller to raise on.
+    - A rate limit (403 or 429 with X-RateLimit-Remaining at 0 or a
+      Retry-After header) raises GitHubRateLimitError straight away, except
+      a secondary limit asking for under MAX_RETRY_AFTER_WAIT seconds, which
+      is waited out once.
+    - Any other response is returned for the caller to interpret: a 404 on
+      an existence check is an answer, not an error.
+    """
+    kwargs.setdefault("timeout", 30)
+    delay = 1.0
+    waited_for_secondary_limit = False
+    attempt = 0
+    while True:
+        attempt += 1
+        try:
+            response = http.request(method, url, **kwargs)
+        except requests.exceptions.RequestException as e:
+            if attempt >= attempts:
+                raise
+            logger.warning(f"{method} {url} failed ({e}); retrying in {delay:.0f}s")
+            sleep(delay)
+            delay *= 2
+            continue
+
+        if response.status_code in (403, 429) and _is_rate_limited(response):
+            retry_after = _retry_after(response)
+            if (
+                retry_after is not None
+                and retry_after <= MAX_RETRY_AFTER_WAIT
+                and not waited_for_secondary_limit
+            ):
+                logger.warning(
+                    f"{method} {url}: secondary rate limit, waiting {retry_after}s"
+                )
+                waited_for_secondary_limit = True
+                sleep(retry_after)
+                continue
+            raise GitHubRateLimitError(
+                f"GitHub rate limit hit on {method} {url}",
+                reset_time=_reset_time(response),
+            )
+
+        if response.status_code in RETRYABLE_STATUSES and attempt < attempts:
+            logger.warning(
+                f"{method} {url} returned {response.status_code}; retrying in {delay:.0f}s"
+            )
+            sleep(delay)
+            delay *= 2
+            continue
+
+        return response
+
+
+def _is_rate_limited(response: requests.Response) -> bool:
+    headers = response.headers
+    if headers.get("X-RateLimit-Remaining") == "0" or "Retry-After" in headers:
+        return True
+    return "rate limit" in (response.text or "").lower()
+
+
+def _retry_after(response: requests.Response) -> float | None:
+    value = response.headers.get("Retry-After")
+    try:
+        return float(value) if value is not None else None
+    except ValueError:
+        return None
+
+
+def _reset_time(response: requests.Response) -> int | None:
+    value = response.headers.get("X-RateLimit-Reset")
+    try:
+        return int(value) if value is not None else None
+    except ValueError:
+        return None
 
 
 class GitHubAppAuthenticator:
@@ -48,6 +155,8 @@ class GitHubAppAuthenticator:
             "GITHUB_APP_INSTALLATION_ID", ""
         )
         self.private_key = private_key or os.environ.get("GITHUB_APP_PRIVATE_KEY", "")
+        #: What makes the HTTP calls: the requests module, or a stand-in in tests.
+        self._http: Any = requests
 
         self._installation_token: str | None = None
         self._token_expires_at: float | None = None
@@ -77,10 +186,11 @@ class GitHubAppAuthenticator:
             "User-Agent": "LGSF-GitHub-Storage/3.0",
         }
 
-        response = requests.post(
+        response = github_api_request(
+            self._http,
+            "POST",
             f"https://api.github.com/app/installations/{self.installation_id}/access_tokens",
             headers=headers,
-            timeout=30,
         )
         response.raise_for_status()
 
@@ -175,6 +285,15 @@ class _GitHubSession(StorageSession):
     def _generate_run_id(self) -> str:
         """Generate a unique run ID."""
         return f"{str(uuid.uuid4())[:8]}-{int(time.time() * 1000) % 10000:04d}"
+
+    #: time.sleep, replaceable in tests so retries don't wait.
+    _sleep: Callable[[float], None] = staticmethod(time.sleep)
+
+    def _api(self, method: str, url: str, **kwargs: Any) -> requests.Response:
+        """A GitHub API call with retries and rate-limit handling; see github_api_request."""
+        return github_api_request(
+            self.session, method, url, sleep=self._sleep, **kwargs
+        )
 
     def _create_api_session(self) -> requests.Session:
         """Create and configure the GitHub API session."""
@@ -327,34 +446,29 @@ class _GitHubSession(StorageSession):
             raise
 
     def _repo_exists_on_github(self) -> bool:
-        """Check if repository exists on GitHub using API."""
-        try:
-            response = self.session.get(self.api_base_url, timeout=30)
-            return response.status_code == 200
-        except Exception as e:
-            logger.warning(f"Error checking if repo exists: {e}")
+        """
+        Whether the council's repository exists.
+
+        A 404 is the answer "no". Anything else that isn't a 200, once the
+        retries are spent, raises: guessing "no" would go on to try to
+        create the repository, and a rate limit must reach the handler.
+        """
+        response = self._api("GET", self.api_base_url)
+        if response.status_code == 404:
             return False
+        response.raise_for_status()
+        return True
 
     def _check_if_repo_is_empty(self) -> bool:
-        """Check if repository has no commits (is empty) using GitHub API."""
-        try:
-            # Try to get the main branch reference
-            response = self.session.get(
-                f"{self.api_base_url}/git/refs/heads/{self._default_branch}",
-                timeout=30,
-            )
-            # If we get a 404, the branch doesn't exist (empty repo)
-            if response.status_code == 404:
-                logger.info(
-                    f"Repository exists but has no {self._default_branch} branch"
-                )
-                return True
-            # If we get a 200, the branch exists (repo has commits)
-            return False
-        except Exception as e:
-            logger.warning(f"Error checking if repo is empty: {e}")
-            # Assume it's not empty to avoid unnecessary initialization
-            return False
+        """Whether the repository exists but has no main branch yet."""
+        response = self._api(
+            "GET", f"{self.api_base_url}/git/refs/heads/{self._default_branch}"
+        )
+        if response.status_code == 404:
+            logger.info(f"Repository exists but has no {self._default_branch} branch")
+            return True
+        response.raise_for_status()
+        return False
 
     def _create_repository(self) -> None:
         """Create a new repository on GitHub using API and ensure it has an initial commit."""
@@ -371,10 +485,8 @@ class _GitHubSession(StorageSession):
             "auto_init": False,  # We'll create our own initial commit
         }
 
-        response = self.session.post(
-            f"https://api.github.com/orgs/{self.owner}/repos",
-            json=create_data,
-            timeout=30,
+        response = self._api(
+            "POST", f"https://api.github.com/orgs/{self.owner}/repos", json=create_data
         )
 
         if response.status_code == 201:
@@ -408,16 +520,14 @@ class _GitHubSession(StorageSession):
             "branch": self._default_branch,
         }
 
-        response = self.session.put(
-            f"{self.api_base_url}/contents/README.md",
-            json=file_data,
-            timeout=30,
+        response = self._api(
+            "PUT", f"{self.api_base_url}/contents/README.md", json=file_data
         )
 
         if response.status_code in (200, 201):
             logger.info("Initial commit created successfully")
             # Wait a moment for GitHub to process the commit
-            time.sleep(2)
+            self._sleep(2)
         else:
             logger.error(
                 f"Failed to create initial commit: {response.status_code} - {response.text}"
