@@ -7,6 +7,7 @@ import csv
 import hashlib
 import io
 import json
+import re
 import zipfile
 
 import pytest
@@ -708,15 +709,7 @@ def test_shards_split_the_councils_between_processes(
     for shard in ("1/2", "2/2"):
         main(["--shard", shard, "--dry-run"])
         out = capsys.readouterr().out
-        done.append(
-            sorted(
-                {
-                    line.split(":")[0]
-                    for line in out.splitlines()
-                    if line[:3].isupper() and ":" in line
-                }
-            )
-        )
+        done.append(sorted(set(re.findall(r"^\[\d+/\d+\] ([A-Z]{3}):", out, re.M))))
 
     assert done == [["AAA", "CCC", "EEE"], ["BBB", "DDD"]]
 
@@ -724,3 +717,47 @@ def test_shards_split_the_councils_between_processes(
 def test_a_bad_shard_is_refused():
     with pytest.raises(SystemExit):
         main(["--shard", "3/2"])
+
+
+def test_several_councils_at_once_and_a_rerun_skips_the_finished(
+    fake, monkeypatch, tmp_path, capsys
+):
+    from lgsf.storage import s3
+
+    for council in ("AAA", "BBB", "CCC"):
+        put(fake, f"data/{council}/Councillors/json/a.json", b"{}")
+    monkeypatch.setattr(s3, "get_client", lambda: fake)
+    monkeypatch.setenv("LGSF_S3_BUCKET", "bucket")
+    monkeypatch.setenv("LGSF_S3_PREFIX", "data")
+    monkeypatch.chdir(tmp_path)
+
+    assert main(["--to-prefix", "merged-data", "--councils-at-once", "3"]) == 0
+    first = capsys.readouterr().out
+    assert sorted(re.findall(r"^\[\d/3\] ([A-Z]{3}):", first, re.M)) == [
+        "AAA",
+        "BBB",
+        "CCC",
+    ]
+    for council in ("AAA", "BBB", "CCC"):
+        assert f"merged-data/{council}/Councillors/json/a.json" in fake.objects
+
+    fake.calls.clear()
+    assert main(["--to-prefix", "merged-data"]) == 0
+    assert "Skipping 3 councils already copied" in capsys.readouterr().out
+    assert not [op for op in fake.calls if op[0] in ("copy", "put")]
+
+    assert main(["--to-prefix", "merged-data", "--redo-done"]) == 0
+    assert "[3/3]" in capsys.readouterr().out
+
+
+def test_a_council_with_problems_isnt_marked_done(fake, swansea, monkeypatch, tmp_path):
+    from lgsf.storage import s3
+
+    fake.fail_on = content_key(APPENDIX, ".pdf")
+    monkeypatch.setattr(s3, "get_client", lambda: fake)
+    monkeypatch.setenv("LGSF_S3_BUCKET", "bucket")
+    monkeypatch.setenv("LGSF_S3_PREFIX", "data")
+    monkeypatch.chdir(tmp_path)
+
+    assert main(["--council", "SWA", "--to-prefix", "merged-data"]) == 1
+    assert not (tmp_path / "documents-migration" / "SWA.done-merged-data").exists()

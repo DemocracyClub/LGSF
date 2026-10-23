@@ -64,6 +64,12 @@ is off on the bucket, so a deleted file can't be got back.
 Rerunning is safe: files already mapped aren't read again, keys already
 there aren't copied again, and JSON already rewritten is left alone.
 
+Councils are migrated ``--councils-at-once`` at a time (default 4). With
+``--to-prefix``, a council finished without problems is marked in
+``documents-migration/`` and skipped by the next run, so a stopped run
+carries on where it left off by running the same command again;
+``--redo-done`` copies them again, to pick up later changes.
+
 ``--to-prefix merged-data`` migrates into a copy instead, leaving the
 original prefix exactly as it was for anyone still reading it. Every
 council is included, not only those with decisions. Documents go to
@@ -81,10 +87,12 @@ its old-layout file isn't in the copy.
 from __future__ import annotations
 
 import argparse
+import datetime
 import csv
 import hashlib
 import json
 import sys
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -425,6 +433,17 @@ class Migration:
 
     def mapping_path(self, council):
         return self.mapping_dir / f"{council}.csv"
+
+    def done_path(self, council):
+        """Marks a council copied to --to-prefix without problems."""
+        return self.mapping_dir / f"{council}.done-{self.to_prefix}"
+
+    def is_done(self, council):
+        return self.done_path(council).exists()
+
+    def mark_done(self, council):
+        self.mapping_dir.mkdir(parents=True, exist_ok=True)
+        self.done_path(council).write_text(datetime.datetime.now().isoformat())
 
     def load_mapping(self, council):
         path = self.mapping_path(council)
@@ -805,6 +824,21 @@ def main(argv=None):
         "Every council is included, not only those with decisions.",
     )
     parser.add_argument(
+        "--councils-at-once",
+        type=int,
+        default=4,
+        help="How many councils to migrate at the same time (default 4). Each "
+        "makes up to --workers requests to S3 at once.",
+    )
+    parser.add_argument(
+        "--redo-done",
+        action="store_true",
+        help="With --to-prefix, copy again councils an earlier run finished "
+        "without problems, e.g. to pick up what has been written to the "
+        "original since. Without it they are skipped, so a stopped run "
+        "carries on where it left off.",
+    )
+    parser.add_argument(
         "--shard",
         type=parse_shard,
         help="N/M: only every Mth council, starting from the Nth (1-based), "
@@ -848,20 +882,40 @@ def main(argv=None):
         where += f" to s3://{bucket}/{migration.to_prefix}"
     print(f"{action} in {where} for {len(councils)} councils{dry}")
 
+    skipping = []
+    if migration.to_prefix and not args.dry_run and not args.redo_done:
+        skipping = [c for c in councils if migration.is_done(council=c)]
+        councils = [c for c in councils if c not in skipping]
+        if skipping:
+            print(
+                f"Skipping {len(skipping)} councils already copied by an earlier "
+                "run (--redo-done to copy them again)"
+            )
+
     failed = []
-    for council in councils:
+    print_lock = threading.Lock()
+    finished = [0]
+
+    def one(council):
         try:
             if args.delete_old:
                 report = migration.delete_old(council)
             else:
                 report = migration.migrate(council)
         except Exception as e:
-            print(f"{council}: failed: {type(e).__name__}: {e}", flush=True)
-            failed.append(council)
-            continue
-        print("\n".join(report.lines()), flush=True)
-        if report.failed:
-            failed.append(council)
+            lines, ok = [f"{council}: failed: {type(e).__name__}: {e}"], False
+        else:
+            lines, ok = report.lines(), not report.failed
+            if ok and migration.to_prefix and not args.dry_run:
+                migration.mark_done(council)
+        with print_lock:
+            finished[0] += 1
+            print(f"[{finished[0]}/{len(councils)}]", "\n".join(lines), flush=True)
+            if not ok:
+                failed.append(council)
+
+    with ThreadPoolExecutor(max(1, args.councils_at_once)) as pool:
+        list(pool.map(one, councils))
 
     if failed:
         print(f"Councils with errors or problems: {', '.join(failed)}")
