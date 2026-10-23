@@ -260,6 +260,9 @@ class _GitHubSession(StorageSession):
         # Session state
         self._staged: dict[str, bytes] = {}
         self._closed: bool = False
+        #: Whether this session has cloned (or updated) the repository, so
+        #: that what earlier runs stored can be read.
+        self._cloned: bool = False
 
         # Local Git repository path (in Lambda's /tmp)
         self.local_repo_path: str = f"/tmp/lgsf-repos/{self.council_code}"
@@ -784,7 +787,9 @@ class _GitHubSession(StorageSession):
             content = self._staged[key]
             return content.decode("utf-8") if mode == "r" else content
 
-        # Try to read from the local repository, under this type's directory
+        # Read what earlier runs stored, from a clone of the repository,
+        # made the first time anything is read
+        self._ensure_cloned()
         file_path = os.path.join(self._type_dir, key)
         if os.path.exists(file_path):
             with open(file_path, "rb") as f:
@@ -792,6 +797,30 @@ class _GitHubSession(StorageSession):
             return content.decode("utf-8") if mode == "r" else content
 
         raise FileNotFoundError(f"File not found: {filename}")
+
+    @override
+    def exists(self, filename: Path) -> bool:
+        """Staged in this session, or in the repository: a path check, not a read."""
+        self._assert_open()
+        key = str(filename).replace("\\", "/")
+        if key in self._staged:
+            return True
+        self._ensure_cloned()
+        return os.path.isfile(os.path.join(self._type_dir, key))
+
+    def _ensure_cloned(self) -> None:
+        """
+        Clone the repository, once per session, so reads see what earlier
+        runs stored.
+
+        Without this a read before the commit found no clone and reported
+        the file missing: a scraper's _index.json was never read, so every
+        run started from an empty index and then committed one holding
+        only its own window, over the one in the repository.
+        """
+        if not self._cloned:
+            self._ensure_local_repo()
+            self._cloned = True
 
     def _assert_open(self) -> None:
         """Assert that the session is still open."""

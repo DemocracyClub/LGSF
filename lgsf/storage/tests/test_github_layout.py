@@ -262,3 +262,101 @@ def test_a_run_that_overlaps_another_fails_instead_of_overwriting(
     session._cleanup_local_repo()
 
     assert tree(bare_repo, "main") == ["Councillors/json/fast.json", "README.md"]
+
+
+# --- reading what earlier runs stored, with no clone made yet ---
+
+
+def test_a_new_session_reads_what_earlier_runs_stored(bare_repo, tmp_path, monkeypatch):
+    """As a scraper does first thing: read its _index.json before writing anything."""
+    run(
+        bare_repo,
+        tmp_path,
+        monkeypatch,
+        {"_index.json": '{"seen": ["a"]}'},
+        object_type="Minutes",
+        mode=StorageMode.ACCUMULATE,
+    )
+
+    session = make_session(
+        bare_repo,
+        tmp_path,
+        monkeypatch,
+        object_type="Minutes",
+        mode=StorageMode.ACCUMULATE,
+    )
+
+    assert session.open(Path("_index.json")) == '{"seen": ["a"]}'
+    session._cleanup_local_repo()
+
+
+def test_exists_sees_stored_files_without_reading_them(
+    bare_repo, tmp_path, monkeypatch
+):
+    run(
+        bare_repo,
+        tmp_path,
+        monkeypatch,
+        {"json/a.json": "{}"},
+        object_type="Decisions",
+        mode=StorageMode.ACCUMULATE,
+    )
+
+    session = make_session(
+        bare_repo,
+        tmp_path,
+        monkeypatch,
+        object_type="Decisions",
+        mode=StorageMode.ACCUMULATE,
+    )
+    session.write(Path("json/staged.json"), "{}")
+
+    assert session.exists(Path("json/a.json"))
+    assert session.exists(Path("json/staged.json"))
+    assert not session.exists(Path("json/never.json"))
+    session._cleanup_local_repo()
+
+
+def test_the_repository_is_cloned_once_per_session(bare_repo, tmp_path, monkeypatch):
+    session = make_session(bare_repo, tmp_path, monkeypatch)
+    clones = []
+    real = session._ensure_local_repo
+    monkeypatch.setattr(
+        session, "_ensure_local_repo", lambda: clones.append(1) or real()
+    )
+
+    for name in ("_index.json", "json/a.json", "json/b.json"):
+        session.exists(Path(name))
+
+    assert clones == [1]
+    session._cleanup_local_repo()
+
+
+def test_a_second_run_carries_on_from_the_first_runs_index(
+    bare_repo, tmp_path, monkeypatch
+):
+    """
+    The run reads the stored index, adds to it, and commits: the result keeps
+    both runs' entries. Before reads cloned, the second run saw no index and
+    its commit replaced the first run's with its own.
+    """
+    import json
+
+    kwargs = {"object_type": "Minutes", "mode": StorageMode.ACCUMULATE}
+    run(
+        bare_repo,
+        tmp_path,
+        monkeypatch,
+        {"_index.json": json.dumps({"meetings": ["old"]})},
+        **kwargs,
+    )
+
+    session = make_session(bare_repo, tmp_path, monkeypatch, **kwargs)
+    index = json.loads(session.open(Path("_index.json")))
+    index["meetings"].append("new")
+    session.write(Path("_index.json"), json.dumps(index))
+    session._commit_files(MESSAGE)
+    session._cleanup_local_repo()
+
+    stored = json.loads(git("show", "main:Minutes/_index.json", cwd=bare_repo))
+    assert stored == {"meetings": ["old", "new"]}
