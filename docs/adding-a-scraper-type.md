@@ -242,12 +242,24 @@ class BaseCommitteesScraper(ScraperBase):
 | `self.base_url` | From `services.<type>.base_url` in metadata.json |
 | `self.council_metadata` | The whole `CouncilMetadata` |
 | `self.finalize_storage(run_log)` | Commits. Call once, at the end of `run()` |
+| `self.check_before_commit()` | Override with sanity checks; raise to commit nothing |
 
 Also set on the class: `http_lib` (`wreq` default, or `requests` / `httpx` /
 `playwright`), `timeout` (default 30 — CMIS month calendars need 120),
 `verify_requests`, `disabled`, `use_proxy`, `extra_headers`.
 
 **Do not add HTTP retry logic.** Lambda retries at the invocation level.
+
+**A run that fails commits nothing.** Everything `save_raw` and `save_json`
+stage is held until `finalize_storage`, and a run that raises before then,
+or whose `check_before_commit` raises, is thrown away: whatever the last
+good run committed stays as it was. Downstream readers treat each commit
+as the whole truth about the council, so in REPLACE mode a partial commit
+would say the records it hadn't reached had gone. Put "does this look like
+a real scrape?" checks in `check_before_commit`, not in `report()`, which
+runs after the commit. Councillors refuse a run with fewer than
+`minimum_councillors` (10). A type that checkpoints mid-run commits at each
+checkpoint regardless, which is why only ACCUMULATE types do that.
 
 ---
 

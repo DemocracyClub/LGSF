@@ -1039,7 +1039,8 @@ class GitHubStorage(BaseStorage):
 
     @override
     def _reset_session_state(self, session: StorageSession | None) -> None:
-        """Reset session state."""
+        """Close the session, and remove any clone it made, committing nothing."""
         if isinstance(session, _GitHubSession):
             session._closed = True
+            session._cleanup_local_repo()
         self._active = None

@@ -203,8 +203,9 @@ class LocalFilesystemStorage(BaseStorage):
         """
         Create a new local filesystem session for this instance's council.
 
-        This method handles preparation by cleaning the council directory
-        and creating a fresh session ready for file operations.
+        Creates the council directory if needed and a fresh session ready
+        for file operations. Previous runs' files are left in place until
+        the session commits.
 
         Args:
             **kwargs: Additional parameters (currently unused)
@@ -223,14 +224,9 @@ class LocalFilesystemStorage(BaseStorage):
 
         council_root = self.council_root
         try:
-            # In REPLACE mode the latest scrape is the whole truth, so clear
-            # out anything from previous runs. In ACCUMULATE mode previous
-            # runs are history we're adding to, so leave them alone.
-            if self.storage_mode == StorageMode.REPLACE and council_root.exists():
-                import shutil
-
-                shutil.rmtree(council_root)
-
+            # Nothing is removed here: in REPLACE mode the previous run's
+            # files go when this session commits, so a run that fails and
+            # is abandoned leaves them exactly as they were.
             council_root.mkdir(parents=True, exist_ok=True)
         except OSError as e:
             raise RuntimeError(
@@ -304,6 +300,15 @@ class LocalFilesystemStorage(BaseStorage):
                             pass  # Best effort cleanup
                     raise RuntimeError(f"Failed to write {rel_path}: {e}")
 
+            # In REPLACE mode the latest scrape is the whole truth, so
+            # anything from previous runs that this one didn't write goes.
+            # In ACCUMULATE mode previous runs are history we're adding to.
+            # Done here, at commit, and not when the session starts, so a
+            # run that fails and is abandoned deletes nothing.
+            removed_files = []
+            if self.storage_mode == StorageMode.REPLACE:
+                removed_files = self._remove_files_not_in(session._root, staged)
+
             # Local storage finalization: create summary file if run_log provided
             summary_info = {}
             run_log = kwargs.get("run_log")
@@ -344,11 +349,24 @@ class LocalFilesystemStorage(BaseStorage):
                 "applied": len(staged),
                 "root": str(session._root),
                 "files": written_files,
+                "removed": removed_files,
                 "commit_message": commit_message.strip(),
                 **summary_info,
             }
         finally:
             self._reset_session_state(session)
+
+    @staticmethod
+    def _remove_files_not_in(root: Path, keep: Dict[str, bytes]) -> list[str]:
+        """Delete every file under root whose relative path isn't in keep, and any directory left empty."""
+        removed = []
+        for path in sorted(root.rglob("*"), reverse=True):
+            if path.is_file() and path.relative_to(root).as_posix() not in keep:
+                path.unlink()
+                removed.append(str(path))
+            elif path.is_dir() and not any(path.iterdir()):
+                path.rmdir()
+        return removed
 
     def _reset_session_state(self, session: Optional[StorageSession]) -> None:
         """

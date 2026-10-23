@@ -360,12 +360,15 @@ def scraper_worker_handler(event, context):
             run_log.error = traceback.format_exc()
             run_log.finish()
 
-            # This probably means finalize_storage hasn't been called.
-            # Let's do that ourselves then
+            # A run that failed commits nothing. Whatever it staged before
+            # failing is a partial picture of the council, and readers of
+            # the repositories treat each commit as the whole truth, so
+            # committing it would say the councillors it hadn't reached
+            # had left. The run log and error still go to S3 below.
             try:
-                scraper.finalize_storage(run_log)
-            except Exception:
-                pass  # Ignore finalization errors
+                scraper.abandon_storage()
+            except Exception as abandon_error:
+                console.log(f"Could not discard staged files: {abandon_error}")
 
             console.log(f"Error scraping {council}: {e}")
 

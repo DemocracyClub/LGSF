@@ -91,11 +91,19 @@ class BaseCouncillorScraper(ScraperBase):
         self.save_raw(file_name, raw_content)
         self.save_json(councillor_obj)
 
-    def report(self):
-        if len(self.councillors) < 10:
+    #: A council with fewer members than this hasn't been scraped, it has
+    #: been misread: the smallest UK councils have a dozen or so. Below it
+    #: the run commits nothing, since a commit missing most of the council
+    #: would read downstream as most of the council having left.
+    minimum_councillors = 10
+
+    def check_before_commit(self):
+        if len(self.councillors) < self.minimum_councillors:
             raise ValueError(
                 "Not many councillors found ({})".format(len(self.councillors))
             )
+
+    def report(self):
         if self.new_data:
             self.console.log(
                 f"Found {len(self.councillors)} councillors with some new data"
