@@ -135,6 +135,9 @@ writes into lives under `LGSF_GIT_WORKDIR` (default: `lgsf-git-work` in the
 system temp directory). Point a reader at `/tmp/lgsf-repos/KIR.git` as it
 would be pointed at `LGSF-Data/KIR`.
 
+The commits are made with your own git configuration, so if you sign your
+commits, each run that has something to commit will ask you to sign it.
+
 ## Working on a scraper
 
 Install pre-commit hooks:
