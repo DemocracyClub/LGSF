@@ -540,6 +540,9 @@ output shows them.
 - `ScraperBase.__init__` → `CouncilMetadata.for_council(code)` →
   `get_service_metadata(service_name)` → `self.base_url`.
 - `ScraperBase.__init__` → `get_storage_backend(..., scraper_object_type,
-  storage_mode)` → session rooted at `data/<CODE>/<Type>/`.
+  storage_mode)` → session rooted at `data/<CODE>/<Type>/` locally, or at
+  `<Type>/` in the council's repository with the GitHub backend. Your type's
+  files live in its own directory on every backend, so a REPLACE run of
+  your type deletes only its own files.
 - `self.document_storage` → `get_document_storage_backend(...)` → rooted at
   `data/<CODE>/documents/`.
