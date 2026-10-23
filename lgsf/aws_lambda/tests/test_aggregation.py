@@ -264,3 +264,28 @@ def test_wait_prints_the_runs_summary_from_the_executions_output():
     assert "Total scrapers run: 2" in printed
     assert "Failed: 1" in printed
     assert "STO" in printed
+
+
+def test_a_result_that_isnt_a_scraper_result_is_a_named_failure(monkeypatch):
+    """As when a run starts mid-deploy: state machine errors, not worker results."""
+    monkeypatch.delenv("S3_REPORTS_BUCKET", raising=False)
+    event = {
+        "scraper_results": [
+            {
+                "Error": "States.Runtime",
+                "Cause": "JSONPath '$.scraper_type' could not be found",
+            },
+            [run("KIR", "councillors")],
+        ]
+    }
+
+    result = handlers.aggregation_handler(event, SimpleNamespace(aws_request_id="r"))
+
+    summary = result["summary"]
+    assert (
+        summary["total_ran"],
+        summary["total_succeeded"],
+        summary["total_failed"],
+    ) == (2, 1, 1)
+    (failure,) = result["failed_scrapers"]
+    assert failure["error"].startswith("States.Runtime: JSONPath")

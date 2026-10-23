@@ -541,6 +541,43 @@ def flatten_scraper_results(scraper_results) -> list[dict]:
     return flat
 
 
+#: The statuses the worker reports. Anything else reaching aggregation
+#: isn't a worker result.
+SCRAPER_STATUSES = ("completed", "failed", "disabled")
+
+
+def as_scraper_result(result):
+    """
+    A Map result as a scraper result, or as a failure if it isn't one.
+
+    A council's item can end with something other than the worker's
+    result: a Step Functions error ({"Error", "Cause"}) when the state
+    machine itself went wrong, as when a run starts against a definition
+    that doesn't match the Lambdas' code mid-deploy. Counted as a run but
+    in no category, that hid the problem; as a failure it names it.
+    """
+    if not isinstance(result, dict):
+        return {
+            "council": "unknown",
+            "scraper_type": "unknown",
+            "status": "failed",
+            "statusCode": 500,
+            "error": f"Unexpected result: {str(result)[:150]}",
+        }
+    if result.get("status") in SCRAPER_STATUSES or result.get("statusCode") == 429:
+        return result
+    error = result.get("error") or result.get("Error") or "Unexpected result"
+    cause = result.get("cause") or result.get("Cause")
+    return {
+        **result,
+        "council": result.get("council", "unknown"),
+        "scraper_type": result.get("scraper_type", "unknown"),
+        "status": "failed",
+        "statusCode": 500,
+        "error": f"{error}: {cause}"[:150] if cause else str(error)[:150],
+    }
+
+
 def load_map_results(scraper_results, s3_client=None):
     """
     The Map's results, and the S3 keys they were read from.
@@ -688,7 +725,9 @@ def aggregation_handler(event, context):
         map_results, map_result_keys = load_map_results(
             event.get("scraper_results", [])
         )
-        processed_results = flatten_scraper_results(map_results)
+        processed_results = [
+            as_scraper_result(r) for r in flatten_scraper_results(map_results)
+        ]
 
         console.log(f"Processing {len(processed_results)} scraper results")
 
