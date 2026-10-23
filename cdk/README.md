@@ -17,7 +17,10 @@ EventBridge (every 24h), input {"all_councils": true}
               RunScraper           Lambda (Docker image, with git): scrapes one
                                    council for one type and pushes at most one
                                    commit to LGSF-Data/<COUNCIL> on GitHub
-       3. Aggregation              Lambda: writes run-reports/<timestamp>.json to S3
+                                   The Map's results go to map-results/ in the
+                                   reports bucket, not into the execution's state
+       3. Aggregation              Lambda: reads them, writes
+                                   run-reports/<timestamp>.json, deletes them
        4. NotificationReport       Lambda: emails a summary via SNS
        5. PostProcessing           Lambda: logs a summary
 ```

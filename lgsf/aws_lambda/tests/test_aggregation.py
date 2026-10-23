@@ -117,3 +117,98 @@ def test_without_an_execution_name_the_request_id_is_used_as_before(monkeypatch)
     )
 
     assert saved["data"]["execution_id"] == "req-1"
+
+
+# --- results written to S3 by the Map ---
+
+import json  # noqa: E402
+
+import pytest  # noqa: E402
+
+from lgsf.storage.tests.test_s3_storage import FakeS3  # noqa: E402
+
+
+@pytest.fixture
+def written_map_results(monkeypatch):
+    """What the Map's result writer leaves in the reports bucket, FLATTENed."""
+
+    class ReportsS3(FakeS3):
+        def put_object(self, Bucket, Key, Body, **kwargs):
+            # boto3 takes a str body too, as save_to_s3 sends
+            body = Body.encode() if isinstance(Body, str) else Body
+            return super().put_object(Bucket=Bucket, Key=Key, Body=body, **kwargs)
+
+    fake = ReportsS3()
+    monkeypatch.setattr(handlers.boto3, "client", lambda name: fake)
+    prefix = "map-results/abc-run"
+
+    def put(key, value):
+        fake.put_object(Bucket="reports", Key=key, Body=json.dumps(value).encode())
+
+    put(
+        f"{prefix}/SUCCEEDED_0.json", [run("ABC", "councillors"), run("ABC", "minutes")]
+    )
+    put(f"{prefix}/SUCCEEDED_1.json", [run("KIR", "councillors")])
+    put(
+        f"{prefix}/FAILED_0.json",
+        [{"Error": "States.Timeout", "Cause": "child timed out"}],
+    )
+    put(
+        f"{prefix}/manifest.json",
+        {
+            "DestinationBucket": "reports",
+            "MapRunArn": "arn:aws:states:eu-west-2:1:mapRun:x",
+            "ResultFiles": {
+                "SUCCEEDED": [
+                    {"Key": f"{prefix}/SUCCEEDED_0.json", "Size": 1},
+                    {"Key": f"{prefix}/SUCCEEDED_1.json", "Size": 1},
+                ],
+                "FAILED": [{"Key": f"{prefix}/FAILED_0.json", "Size": 1}],
+                "PENDING": [],
+            },
+        },
+    )
+    pointer = {
+        "MapRunArn": "arn:aws:states:eu-west-2:1:mapRun:x",
+        "ResultWriterDetails": {"Bucket": "reports", "Key": f"{prefix}/manifest.json"},
+    }
+    return fake, pointer
+
+
+def test_results_are_read_from_the_manifest_the_map_wrote(written_map_results):
+    fake, pointer = written_map_results
+
+    results, keys = handlers.load_map_results(pointer)
+
+    assert [(r["council"], r["scraper_type"], r["status"]) for r in results] == [
+        ("ABC", "councillors", "completed"),
+        ("ABC", "minutes", "completed"),
+        ("KIR", "councillors", "completed"),
+        ("unknown", "unknown", "failed"),
+    ]
+    assert results[-1]["error"] == "States.Timeout"
+    assert len(keys) == 4
+
+
+def test_a_plain_list_needs_no_s3():
+    results = [[run("ABC", "councillors")]]
+    assert handlers.load_map_results(results) == (results, [])
+
+
+def test_aggregation_reports_from_s3_then_removes_the_map_files(
+    written_map_results, monkeypatch
+):
+    fake, pointer = written_map_results
+    monkeypatch.setenv("S3_REPORTS_BUCKET", "reports")
+    monkeypatch.setattr(handlers, "cleanup_old_reports", lambda *a, **k: None)
+
+    result = handlers.aggregation_handler(
+        {"execution_id": "daily-1", "scraper_results": pointer},
+        SimpleNamespace(aws_request_id="req"),
+    )
+
+    assert result["summary"]["total_ran"] == 4
+    assert result["summary"]["total_failed"] == 1
+    report = json.loads(fake.objects[result["report_s3_key"]]["Body"])
+    assert len(report["scrapers"]) == 4
+    assert not [k for k in fake.objects if k.startswith("map-results/")]

@@ -7,6 +7,7 @@ from aws_cdk import aws_events as events
 from aws_cdk import aws_events_targets as targets
 from aws_cdk import aws_iam, aws_logs
 from aws_cdk import aws_lambda as aws_lambda
+from aws_cdk import aws_s3 as s3
 from aws_cdk import aws_sns as sns
 from aws_cdk import aws_ssm as ssm
 from aws_cdk import aws_stepfunctions as sfn
@@ -48,6 +49,10 @@ SCRAPER_LOG_GROUP_PREFIX = "/aws/lambda/lgsf-scrapers"
 #: reading the old paths.
 S3_DATA_PREFIX = "merged-data"
 
+#: Where the Map writes its results in the reports bucket; aggregation
+#: reads them into the run report and deletes them.
+MAP_RESULTS_PREFIX = "map-results"
+
 
 class LgsfStack(cdk.Stack):
     """Main LGSF CDK stack with Step Functions orchestration."""
@@ -59,6 +64,13 @@ class LgsfStack(cdk.Stack):
         **kwargs,
     ) -> None:
         super().__init__(scope, construct_id, **kwargs)
+
+        # Without this the Map's result_writer_v2 is silently left out of
+        # the definition. Set here, before any construct is added, so the
+        # deploy and the tests both get it.
+        self.node.set_context(
+            "@aws-cdk/aws-stepfunctions:useDistributedMapResultWriterV2", True
+        )
 
         self.dc_environment = self.node.try_get_context("dc-environment")
         self._stack_name = construct_id
@@ -430,7 +442,23 @@ class LgsfStack(cdk.Stack):
                 "execution_id.$": "$$.Execution.Name",
             },
             max_concurrency=10,
-            result_path="$.scraper_results",  # Store results in job data
+            # The results go to S3, not into the execution's state: state is
+            # capped at 256 KiB, and a result per run for every council and
+            # type is past that once there's more than one type. FLATTEN
+            # spreads each council's list of per-type results into one
+            # array per file. What lands in $.scraper_results is a pointer
+            # to the manifest, which aggregation reads.
+            result_writer_v2=sfn.ResultWriterV2(
+                bucket=s3.Bucket.from_bucket_name(
+                    self, "ReportsBucket", self.s3_reports_bucket
+                ),
+                prefix=MAP_RESULTS_PREFIX,
+                writer_config=sfn.WriterConfig(
+                    output_type=sfn.OutputType.JSON,
+                    transformation=sfn.Transformation.FLATTEN,
+                ),
+            ),
+            result_path="$.scraper_results",
             label="CouncilScraping",  # Base name for scraper executions
             tolerated_failure_percentage=100,  # Allow all scrapers to fail without failing the map
         )
