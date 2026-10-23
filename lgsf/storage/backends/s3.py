@@ -182,42 +182,39 @@ class S3Storage(BaseStorage):
         if not commit_message or not commit_message.strip():
             raise ValueError("commit_message cannot be empty")
 
-        try:
-            staged = session._consume_staged()
-            if not staged:
-                return {"skipped": True, "reason": "no changes"}
+        staged = session._consume_staged()
+        if not staged:
+            return {"skipped": True, "reason": "no changes"}
 
-            run_log = kwargs.get("run_log")
-            if run_log:
-                staged["scrape_summary.json"] = self._summary(
-                    commit_message, len(staged), run_log
-                )
+        run_log = kwargs.get("run_log")
+        if run_log:
+            staged["scrape_summary.json"] = self._summary(
+                commit_message, len(staged), run_log
+            )
 
-            # Bookkeeping files - the index, _last-run - go up only once
-            # everything else has, so an index on S3 never names a file
-            # that isn't there yet, for a later run or for someone syncing
-            # mid-run. An upload failing part way leaves earlier files in
-            # place and the index unchanged, so they are fetched again.
-            data = {k: v for k, v in staged.items() if not k.startswith("_")}
-            bookkeeping = {k: v for k, v in staged.items() if k.startswith("_")}
-            with ThreadPoolExecutor(self.upload_workers) as pool:
-                list(pool.map(lambda item: self.put(*item), data.items()))
-            for key, value in bookkeeping.items():
-                self.put(key, value)
+        # Bookkeeping files - the index, _last-run - go up only once
+        # everything else has, so an index on S3 never names a file
+        # that isn't there yet, for a later run or for someone syncing
+        # mid-run. An upload failing part way leaves earlier files in
+        # place and the index unchanged, so they are fetched again.
+        data = {k: v for k, v in staged.items() if not k.startswith("_")}
+        bookkeeping = {k: v for k, v in staged.items() if k.startswith("_")}
+        with ThreadPoolExecutor(self.upload_workers) as pool:
+            list(pool.map(lambda item: self.put(*item), data.items()))
+        for key, value in bookkeeping.items():
+            self.put(key, value)
 
-            deleted = []
-            if self.storage_mode == StorageMode.REPLACE:
-                deleted = self._delete_all_but(set(staged))
+        deleted = []
+        if self.storage_mode == StorageMode.REPLACE:
+            deleted = self._delete_all_but(set(staged))
 
-            return {
-                "applied": len(staged),
-                "root": f"s3://{self.bucket}/{self.root}",
-                "files": [self.url_for(key) for key in staged],
-                "deleted": len(deleted),
-                "commit_message": commit_message.strip(),
-            }
-        finally:
-            self._reset_session_state(session)
+        return {
+            "applied": len(staged),
+            "root": f"s3://{self.bucket}/{self.root}",
+            "files": [self.url_for(key) for key in staged],
+            "deleted": len(deleted),
+            "commit_message": commit_message.strip(),
+        }
 
     def _summary(self, commit_message, files_written, run_log) -> bytes:
         """The scrape_summary.json the local backend writes alongside."""
@@ -250,5 +247,5 @@ class S3Storage(BaseStorage):
                 self.listing.discard(key)
         return stale
 
-    def _reset_session_state(self, session: Optional[StorageSession]) -> None:
+    def _close_session(self, session: Optional[StorageSession]) -> None:
         self._active = None

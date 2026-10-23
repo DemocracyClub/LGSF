@@ -564,7 +564,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
         earlier run committed is left exactly as it was.
         """
         if self.storage_session:
-            self.storage_backend._reset_session_state(self.storage_session)
+            self.storage_backend.abort_session(self.storage_session)
             self.storage_session = None
 
     def _save_file(self, dir_name, file_name, content):
@@ -628,7 +628,7 @@ class ScraperBase(metaclass=abc.ABCMeta):
                     "skipping commit[/yellow]"
                 )
                 # Clean up session without committing
-                self.storage_backend._reset_session_state(self.storage_session)
+                self.storage_backend.abort_session(self.storage_session)
                 self.storage_session = None
                 return {"skipped": True, "reason": "no files staged"}
 

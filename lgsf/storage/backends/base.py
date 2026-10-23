@@ -212,7 +212,7 @@ class BaseStorage(abc.ABC):
             session.write(Path("data.txt"), content)
             storage.end_session(session, "Manual commit")
         except Exception:
-            storage._reset_session_state(session)  # Cleanup
+            storage.abort_session(session)  # Commits nothing
             raise
 
     Implementation Requirements:
@@ -221,7 +221,8 @@ class BaseStorage(abc.ABC):
     - File operations within a session must be atomic
     - Backend-specific preparation should happen in _start_session()
     - Backend-specific finalization should happen in _end_session()
-    - Optionally implement _reset_session_state() for cleanup on errors
+    - Optionally implement _abort_session() for the failure path and
+      _close_session() for cleanup that must run however a session ends
 
     Thread Safety:
     - Individual storage instances are generally not thread-safe
@@ -346,9 +347,12 @@ class BaseStorage(abc.ABC):
 
         Note:
             After end_session() is called (successfully or not), the session
-            should be considered closed and must not be used for further operations.
+            is closed and must not be used for further operations.
         """
-        return self._end_session(session, commit_message, **kwargs)
+        try:
+            return self._end_session(session, commit_message, **kwargs)
+        finally:
+            self.close_session(session)
 
     @abc.abstractmethod
     def _end_session(self, session: StorageSession, commit_message: str, **kwargs):
@@ -359,7 +363,9 @@ class BaseStorage(abc.ABC):
         1. Commit all staged changes atomically
         2. Perform any backend-specific finalization
         3. Return information about the commit
-        4. Clean up session state
+
+        It needn't clean up: _close_session() runs afterwards whether or not
+        this raised.
 
         Args:
             session: Session to commit
@@ -371,23 +377,54 @@ class BaseStorage(abc.ABC):
         """
         ...
 
-    def _reset_session_state(self, session: Optional[StorageSession]) -> None:
+    def abort_session(self, session: Optional[StorageSession]) -> None:
         """
-        Reset session state after an error occurs.
+        End a session without committing anything it staged.
 
-        This method is called when an exception occurs during session operations
-        to allow backends to clean up any internal state or temporary resources.
-        The default implementation does nothing.
+        For a run that failed, or that finished but shouldn't be believed.
+        Whatever the previous session committed is left as it was. The
+        session is closed afterwards, so this is the whole of the failure
+        path: a scraper that raises calls this and nothing else.
 
         Args:
-            session: The session that encountered an error, or None if no session
-                    was successfully created.
-
-        Note:
-            This method should be idempotent and should not raise exceptions.
-            It's intended for cleanup operations only.
+            session: The session to abandon, or None if none was created.
         """
-        pass
+        try:
+            self._abort_session(session)
+        finally:
+            self.close_session(session)
+
+    def _abort_session(self, session: Optional[StorageSession]) -> None:
+        """
+        Backend-specific handling of a session that is being abandoned.
+
+        Runs only on the failure path, before _close_session(). Nothing is
+        committed here, and the default does nothing: it exists so a backend
+        can record or report an abandoned run without that being confused
+        with closing. Should not raise.
+        """
+
+    def close_session(self, session: Optional[StorageSession]) -> None:
+        """
+        Release whatever a session holds. Runs however the session ended.
+
+        Called after _end_session() whether it committed, skipped or raised,
+        and after _abort_session(). Backends drop their active-session
+        marker and remove temporary resources here, such as a clone on
+        disk. Idempotent, and safe to call with a session already closed.
+        """
+        self._close_session(session)
+
+    def _close_session(self, session: Optional[StorageSession]) -> None:
+        """
+        Backend-specific cleanup that must run however a session ends.
+
+        The default does nothing. Implementations should be idempotent and
+        should not raise.
+
+        Args:
+            session: The session that ended, or None if none was created.
+        """
 
     @contextlib.contextmanager
     def session(self, commit_message: str, **kwargs) -> Iterator[StorageSession]:
@@ -398,7 +435,8 @@ class BaseStorage(abc.ABC):
         handles session lifecycle:
         - Creates a new session on entry (with backend-specific preparation)
         - Commits changes on successful exit (with backend-specific finalization)
-        - Performs cleanup on exceptions
+        - Aborts, committing nothing, if the block raises
+        - Closes the session either way
 
         Args:
             commit_message: Descriptive message for the changes. Will be used when
@@ -430,7 +468,7 @@ class BaseStorage(abc.ABC):
         sess = self.start_session(**kwargs)
         try:
             yield sess
-            self.end_session(sess, commit_message, **kwargs)
         except Exception:
-            self._reset_session_state(sess)
+            self.abort_session(sess)
             raise
+        self.end_session(sess, commit_message, **kwargs)

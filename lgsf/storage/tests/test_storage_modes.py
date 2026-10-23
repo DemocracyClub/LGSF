@@ -59,7 +59,7 @@ def test_replace_mode_keeps_previous_runs_until_the_commit(data_dir):
     session = storage.start_session()
     session.write(Path("json/partial.json"), "{}")
     assert session.open(Path("json/still-here.json")) == "{}"  # readable meanwhile
-    storage._reset_session_state(session)
+    storage.abort_session(session)
 
     root = data_dir / "ABC" / "Councillors"
     assert stored_files(root) == ["json/still-here.json"]
