@@ -23,9 +23,9 @@ class AWSInvokableMixin:
     - Automatic Step Function ARN discovery
     - Console output of AWS execution status and reports
 
-    Usage:
-        class Command(AWSInvokableMixin, PerCouncilCommandBase):
-            command_name = "councillors"
+    PerCouncilCommandBase includes it, so every scraper type's command has
+    --aws. The type sent to the Step Function is the command's name, which
+    must be registered in lgsf.scraper_types.
     """
 
     def add_aws_argument(self, parser):
@@ -90,6 +90,9 @@ class AWSInvokableMixin:
                 council_ids=council_ids,
                 all_councils=all_councils,
                 allow_overlap=options.get("allow_overlap", False),
+                # This command's type only: `manage.py minutes --aws` runs
+                # minutes, not the whole daily set.
+                scraper_types=[self.command_name],
             )
 
             # Display results

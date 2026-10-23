@@ -24,6 +24,12 @@ class BaseSettings(object):
 
         self.RUN_LOGGER: Type[RunLog] = RunLog
 
+        from lgsf.scraper_types import SCRAPER_TYPES
+
+        #: The per-council scraper types the AWS run knows, in run order;
+        #: see lgsf.scraper_types. APPS below also holds utility commands.
+        self.SCRAPER_TYPES = SCRAPER_TYPES
+
         self.APPS = (
             "councillors",
             "minutes",

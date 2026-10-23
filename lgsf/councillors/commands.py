@@ -1,10 +1,9 @@
 from rich.table import Table
 
-from lgsf.commands.aws_mixin import AWSInvokableMixin
 from lgsf.commands.base import PerCouncilCommandBase
 
 
-class Command(AWSInvokableMixin, PerCouncilCommandBase):
+class Command(PerCouncilCommandBase):
     command_name = "councillors"
 
     # The scheduled production job behind this dashboard runs councillors

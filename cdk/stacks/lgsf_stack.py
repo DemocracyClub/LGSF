@@ -1,3 +1,6 @@
+import sys
+from pathlib import Path
+
 import aws_cdk as cdk
 import aws_cdk.aws_lambda_python_alpha as aws_lambda_python
 from aws_cdk import aws_events as events
@@ -9,6 +12,15 @@ from aws_cdk import aws_ssm as ssm
 from aws_cdk import aws_stepfunctions as sfn
 from aws_cdk import aws_stepfunctions_tasks as tasks
 from constructs import Construct
+
+# The scraper type registry lives in the lgsf package, which isn't installed
+# (package = false) and isn't on the path when cdk runs cdk/app.py. It has
+# no imports of its own, so loading it needs only the repository root.
+_REPO_ROOT = str(Path(__file__).resolve().parents[2])
+if _REPO_ROOT not in sys.path:
+    sys.path.insert(0, _REPO_ROOT)
+
+from lgsf.scraper_types import SCRAPER_TYPES  # noqa: E402
 
 EXCLUDE_FILES = [
     "cdk.out",
@@ -363,15 +375,40 @@ class LgsfStack(cdk.Stack):
             output_path="$.Payload",
         )
 
-        # Step 2: Fan-out to parallel scraper executions with distributed map
+        # Step 2: one item per council, in parallel. Each item is a child
+        # workflow execution, where $$.Execution.Name would name the child,
+        # so this execution's own name is put into each item here, where
+        # the context is still this execution's.
         parallel_scrapers_map = sfn.DistributedMap(
             self,
             "ParallelScrapers",
             items_path="$.councils",
+            item_selector={
+                "council.$": "$$.Map.Item.Value.council",
+                "scraper_types.$": "$$.Map.Item.Value.scraper_types",
+                "execution_id.$": "$$.Execution.Name",
+            },
             max_concurrency=10,
             result_path="$.scraper_results",  # Store results in job data
             label="CouncilScraping",  # Base name for scraper executions
             tolerated_failure_percentage=100,  # Allow all scrapers to fail without failing the map
+        )
+
+        # Within a council, its scraper types one at a time, in the order
+        # the enumerator gives (lgsf.scraper_types). So no two scrapes of
+        # one council ever push to its repository at once. Each type's
+        # result, success or caught failure, is one element of the list
+        # this returns; aggregation flattens them.
+        council_types_map = sfn.Map(
+            self,
+            "RunCouncilScraperTypes",
+            items_path="$.scraper_types",
+            item_selector={
+                "council.$": "$.council",
+                "scraper_type.$": "$$.Map.Item.Value",
+                "execution_id.$": "$.execution_id",
+            },
+            max_concurrency=1,
         )
 
         # Individual scraper task with Catch block to handle failures gracefully
@@ -379,13 +416,13 @@ class LgsfStack(cdk.Stack):
             self,
             "RunScraper",
             lambda_function=self.scraper_worker_function,
-            # The council and type from the enumerator, plus this execution's
-            # name so the commits a run makes can be traced to its run report.
+            # The council, the type, and the execution's name, so the
+            # commits a run makes can be traced to its run report.
             payload=sfn.TaskInput.from_object(
                 {
                     "council": sfn.JsonPath.string_at("$.council"),
                     "scraper_type": sfn.JsonPath.string_at("$.scraper_type"),
-                    "execution_id": sfn.JsonPath.string_at("$$.Execution.Name"),
+                    "execution_id": sfn.JsonPath.string_at("$.execution_id"),
                 }
             ),
             retry_on_service_exceptions=False,
@@ -413,13 +450,21 @@ class LgsfStack(cdk.Stack):
             result_path="$.error_info",
         )
 
-        parallel_scrapers_map.item_processor(scraper_task)
+        council_types_map.item_processor(scraper_task)
+        parallel_scrapers_map.item_processor(council_types_map)
 
         # Step 3: Aggregate results from the distributed map
         aggregation_task = tasks.LambdaInvoke(
             self,
             "AggregateResults",
             lambda_function=self.aggregation_function,
+            payload=sfn.TaskInput.from_object(
+                {
+                    "scraper_results": sfn.JsonPath.object_at("$.scraper_results"),
+                    # Names the report the way commit trailers name the run
+                    "execution_id": sfn.JsonPath.string_at("$$.Execution.Name"),
+                }
+            ),
             output_path="$.Payload",
         )
 
@@ -455,18 +500,10 @@ class LgsfStack(cdk.Stack):
             removal_policy=cdk.RemovalPolicy.DESTROY,
         )
 
-        # Create scraper-type specific log groups
+        # A log group per registered scraper type, with retention; the
+        # worker writes each council's run as a stream in its type's group.
         self.scraper_log_groups = {}
-        # Current scraper types - add more as they're implemented
-        scraper_types = [
-            "councillors",
-            "metadata",
-            "templates",
-            "meetings",
-            "committees",
-        ]
-
-        for scraper_type in scraper_types:
+        for scraper_type in SCRAPER_TYPES:
             log_group = aws_logs.LogGroup(
                 self,
                 f"ScraperLogGroup{scraper_type.title()}",
@@ -609,8 +646,15 @@ class LgsfStack(cdk.Stack):
         )
 
         # Add Step Functions target to the rule with execution role
+        # Every current council, the daily types (lgsf.scraper_types). Said
+        # explicitly rather than left to EventBridge, which would otherwise
+        # pass its own event as the execution's input.
         self.scraper_orchestration_rule.add_target(
-            targets.SfnStateMachine(self.step_function, role=eventbridge_role)
+            targets.SfnStateMachine(
+                self.step_function,
+                role=eventbridge_role,
+                input=events.RuleTargetInput.from_object({"all_councils": True}),
+            )
         )
 
     def create_outputs(self) -> None:

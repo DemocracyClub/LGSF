@@ -310,8 +310,9 @@ class Command(PerCouncilCommandBase):
 `self.scraped_items` (populated from each scraper's `report_items`).
 
 `command_name` must match the package directory name — `load_command()` imports
-`<type>.commands` by that string. Add `AWSInvokableMixin` only when the type
-will run on Lambda.
+`<type>.commands` by that string. `PerCouncilCommandBase` includes `--aws`,
+which starts the Step Function for this type only; see section 6 for what
+the type needs before that works.
 
 ---
 
@@ -323,6 +324,24 @@ subcommand does not exist:
 ```python
 self.APPS = ("councillors", "minutes", "committees", "templates", ...)
 ```
+
+**`lgsf/scraper_types.py`** — add to `SCRAPER_TYPES` to run the type in
+AWS. The daily Step Function reads this at run time, so no CDK change is
+needed, and the next deploy makes the type's log group:
+
+```python
+SCRAPER_TYPES = {
+    "councillors": {"daily": True},
+    "minutes": {"daily": False},
+    "committees": {"daily": False},   # new: on request only, to start with
+}
+```
+
+Order is the order a council's types run in: they run one after another so
+that no two push to the council's repository at once. Leave `daily` off
+until `manage.py committees --aws --council <CODE> --wait` has worked for a
+few councils and the run report shows each fits inside the worker's
+15-minute limit; then turn it on and it joins the next scheduled run.
 
 **`lgsf/metadata/models.py`** — nothing. `CouncilMetadata` keys services by
 name, so a new service works as soon as a council's `metadata.json` declares

@@ -107,3 +107,30 @@ def test_the_message_says_how_to_proceed():
     assert isinstance(
         raised.value, ValueError
     )  # the CLI already prints ValueErrors plainly
+
+
+def test_the_scheduled_run_has_no_councils_in_its_input_and_still_blocks():
+    """EventBridge starts the daily run with no council list: that's every council."""
+    inv = invoker({"daily-6f2a": {}})
+
+    with pytest.raises(ExecutionOverlapError, match="daily-6f2a \\(all councils\\)"):
+        inv.invoke(council_ids="ABC")
+
+
+def test_another_type_running_on_the_council_still_counts_as_an_overlap():
+    """A council's types are only kept apart within one execution."""
+    inv = invoker(
+        {"councillors-KIR-1": {"council_ids": "KIR", "scraper_types": ["councillors"]}}
+    )
+
+    with pytest.raises(ExecutionOverlapError):
+        inv.invoke(council_ids="KIR", scraper_types=["minutes"])
+
+
+def test_the_scraper_types_go_in_the_input_and_the_name():
+    inv = invoker({})
+
+    result = inv.invoke(council_ids="KIR", scraper_types=["minutes"])
+
+    assert result["input"] == {"council_ids": "KIR", "scraper_types": ["minutes"]}
+    assert result["execution_name"].startswith("minutes-KIR-")

@@ -138,6 +138,21 @@ would be pointed at `LGSF-Data/KIR`.
 The commits are made with your own git configuration, so if you sign your
 commits, each run that has something to commit will ask you to sign it.
 
+## Running on AWS
+
+Any scraper type's command can run on AWS instead of this machine, through
+the same Step Function as the daily run, for that type only:
+
+```bash
+python manage.py minutes --aws --council KIR --wait
+python manage.py councillors --aws --all-councils
+```
+
+`--wait` waits for the run and prints its report. The run refuses to start
+while another execution covers one of the same councils; `--allow-overlap`
+starts it anyway. The daily run does the types marked `daily` in
+`lgsf/scraper_types.py`; see `cdk/README.md`.
+
 ## Working on a scraper
 
 Install pre-commit hooks:

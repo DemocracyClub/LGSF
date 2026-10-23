@@ -3,14 +3,17 @@ import json
 import os
 import sys
 import traceback
+from importlib import import_module
 
 import boto3
 from rich.console import Console
 
 from lgsf.aws_lambda.cloudwatch import CloudWatchLogStream, scraper_log_group
+from lgsf.commands.base import PerCouncilCommandBase
 from lgsf.conf import settings
-from lgsf.councillors.commands import Command
 from lgsf.path_utils import load_scraper
+from lgsf.scraper_types import daily_scraper_types
+from lgsf.scraper_types import ordered as ordered_scraper_types
 from lgsf.storage.backends.github import GitHubRateLimitError
 
 # Disable formatting in Rich
@@ -147,85 +150,109 @@ class ScraperException(Exception):
         return base_msg
 
 
+def _requested_scraper_types(event) -> list[str]:
+    """
+    The types a run asked for, in run order: the ``scraper_types`` it named
+    (a list, or a comma-separated string), or the daily ones if it named
+    none. Raises ValueError for a type that isn't registered.
+    """
+    requested = event.get("scraper_types")
+    if isinstance(requested, str):
+        requested = [t.strip() for t in requested.split(",") if t.strip()]
+    if not requested:
+        return daily_scraper_types()
+    return ordered_scraper_types(requested)
+
+
+def _councils_for_type(scraper_type, council_ids, console):
+    """The councils with a scraper of this type, as the CLI would choose them."""
+    # By full path: path_utils.load_command_module relies on manage.py
+    # putting lgsf/ on sys.path, which the Lambda doesn't.
+    command_cls = import_module(f"lgsf.{scraper_type}.commands").Command
+    if council_ids:
+        command = command_cls(argv=["", "--council", council_ids], stdout=sys.stdout)
+    else:
+        command = command_cls(argv=["", "--all-councils"], stdout=sys.stdout)
+    command.options = {
+        "all_councils": not council_ids,
+        "council": council_ids or None,
+        "exclude_missing": True,
+        "exclude_disabled": True,
+        "tags": None,
+        "verbose": True,
+    }
+    # The base class's selection, not the type's own: decisions reorders
+    # its councils for a laptop backfill by reading each one's stored
+    # state, which here would mean a GitHub backend, and an App token
+    # request, per council. Order doesn't matter to the Map.
+    councils = PerCouncilCommandBase.councils_to_run.fget(command)
+    if not council_ids:
+        # For automated runs, only scrape current councils
+        councils = [c for c in councils if c.current]
+    console.log(f"{scraper_type}: {len(councils)} councils")
+    return [c.council_id for c in councils]
+
+
 def council_enumerator_handler(event, context):
     """
-    Enumerate all councils that need to be scraped and return them as a list.
-    This replaces the queue_builder_handler for Step Functions orchestration.
+    List what a run should scrape: each council, with the scraper types it
+    has, in run order.
 
-    Input event format:
+    Input event format (every key optional):
     {
-        "council_ids": "ABC,XYZ,PQR" (optional - comma-separated council IDs)
-        "all_councils": true/false (optional - if true, runs all councils)
+        "council_ids": "ABC,XYZ",          # default: every current council
+        "scraper_types": ["minutes"],      # default: the daily types
     }
 
-    If neither is provided, defaults to all councils.
+    Output, for the Step Function's Map over councils:
+    {
+        "councils": [{"council": "ABC", "scraper_types": ["councillors", "minutes"]}, ...],
+        "total_councils": 2,
+        "total_runs": 3,
+    }
+
+    Each council's types run one after another (the state machine's inner
+    Map has a concurrency of 1), so no two scrapes of one council write to
+    its repository at once. A type is a type registered in
+    lgsf.scraper_types; any other is refused with a 400.
     """
     console = Console(file=sys.stdout, record=True)
     console.log("Starting council enumeration for Step Functions orchestration")
 
+    council_ids_param = event.get("council_ids", "") or ""
+
     try:
-        # Extract input parameters from event
-        council_ids_param = event.get("council_ids", "")
+        scraper_types = _requested_scraper_types(event)
+    except ValueError as e:
+        console.log(str(e))
+        return {"statusCode": 400, "error": str(e), "councils": []}
 
-        # Build the Command based on input
-        if council_ids_param:
-            # Run specific councils - Command already handles comma-separated values
-            console.log(f"Running specific councils: {council_ids_param}")
-            councillors_command = Command(
-                argv=["", "--council", council_ids_param], stdout=sys.stdout
-            )
-            councillors_command.options = {
-                "all_councils": False,
-                "council": council_ids_param,
-                "exclude_missing": True,
-                "exclude_disabled": True,
-                "tags": None,
-                "verbose": True,
-            }
-        else:
-            # Run all councils (default behavior)
-            console.log("Running all councils (excluding disabled)")
-            councillors_command = Command(
-                argv=["", "--all-councils"], stdout=sys.stdout
-            )
-            councillors_command.options = {
-                "all_councils": True,
-                "exclude_missing": True,
-                "exclude_disabled": True,
-                "council": None,
-                "tags": None,
-                "verbose": True,
-            }
+    try:
+        types_by_council: dict[str, list[str]] = {}
+        for scraper_type in scraper_types:
+            for council_id in _councils_for_type(
+                scraper_type, council_ids_param, console
+            ):
+                types_by_council.setdefault(council_id, []).append(scraper_type)
 
-        # Get councils from the command - it handles all the parsing logic
-        councils = councillors_command.councils_to_run
+        council_list = [
+            {"council": council_id, "scraper_types": types}
+            for council_id, types in types_by_council.items()
+        ]
+        total_runs = sum(len(c["scraper_types"]) for c in council_list)
+        console.log(
+            f"Enumerated {len(council_list)} councils, {total_runs} scraper runs"
+        )
 
-        # Filter to only current councils (unless specific councils were requested)
-        if not council_ids_param:
-            # For automated runs, only scrape current councils
-            console.log("Filtering to current councils only for automated run")
-            councils = [c for c in councils if c.current]
-            console.log(f"Filtered to {len(councils)} current councils")
-
-        # Convert councils to a format suitable for Step Functions Map state
-        council_list = []
-        for council in councils:
-            council_data = {
-                "scraper_type": "councillors",
-                "council": council.council_id,
-            }
-            council_list.append(council_data)
-
-        console.log(f"Enumerated {len(council_list)} councils for processing")
-
-        # Return in the format expected by Step Functions Map state
         return {
             "statusCode": 200,
             "councils": council_list,
             "total_councils": len(council_list),
+            "total_runs": total_runs,
             "input_params": {
                 "council_ids": council_ids_param if council_ids_param else "all",
                 "all_councils": not bool(council_ids_param),
+                "scraper_types": scraper_types,
             },
         }
 
@@ -495,6 +522,25 @@ def scraper_worker_handler(event, context):
         }
 
 
+def flatten_scraper_results(scraper_results) -> list[dict]:
+    """
+    One dict per scraper run, from what the Map over councils returns.
+
+    Each council's item runs its types in an inner Map, so its result is a
+    list of per-type results; older executions returned one dict per
+    council. A Lambda result may also still be wrapped in "Payload".
+    Anything else is passed through for the caller to skip.
+    """
+    flat = []
+    for result in scraper_results or []:
+        items = result if isinstance(result, list) else [result]
+        for item in items:
+            if isinstance(item, dict) and "Payload" in item:
+                item = item["Payload"]
+            flat.append(item)
+    return flat
+
+
 def post_processing_handler(event, context):
     """
     Post-processing handler that runs after all scrapers have completed.
@@ -505,7 +551,7 @@ def post_processing_handler(event, context):
 
     try:
         # Extract scraper results from the event
-        scraper_results = event.get("scraper_results", [])
+        scraper_results = flatten_scraper_results(event.get("scraper_results", []))
         console.log(f"Processing results from {len(scraper_results)} scrapers")
 
         # Analyze results
@@ -515,6 +561,8 @@ def post_processing_handler(event, context):
         total_files_committed = 0
 
         for result in scraper_results:
+            if not isinstance(result, dict):
+                continue
             council = result.get("council", "unknown")
             scraper_type = result.get("scraper_type", "unknown")
             status = result.get("status", "unknown")
@@ -581,22 +629,18 @@ def aggregation_handler(event, context):
     console = Console(file=sys.stdout, record=True)
     console.log("Starting result aggregation")
 
-    # Get S3 bucket name and execution ID from environment
     s3_bucket = os.environ.get("S3_REPORTS_BUCKET")
-    execution_id = context.aws_request_id if context else "unknown"
+    # The Step Functions execution's name, which the state machine passes
+    # in: the same value the worker puts in each commit's LGSF-Execution-Id
+    # trailer, so a commit leads to its report. Older definitions didn't
+    # pass it; fall back to this Lambda's request id as before.
+    execution_id = event.get("execution_id") or (
+        context.aws_request_id if context else "unknown"
+    )
 
     try:
-        # Extract scraper results from the distributed map output
-        scraper_results = event.get("scraper_results", [])
-
-        # Handle both direct results and nested Payload structure from Lambda invocations
-        processed_results = []
-        for result in scraper_results:
-            # If the result has a Payload key, extract it (Lambda invocation result)
-            if isinstance(result, dict) and "Payload" in result:
-                processed_results.append(result["Payload"])
-            else:
-                processed_results.append(result)
+        # One entry per scraper run, however the Map nested them
+        processed_results = flatten_scraper_results(event.get("scraper_results", []))
 
         console.log(f"Processing {len(processed_results)} scraper results")
 
@@ -778,7 +822,7 @@ def send_report_notification_handler(event, context):
         # Build notification subject and message
         total_failed = summary.get("total_failed", 0)
         total_rate_limited = summary.get("total_rate_limited", 0)
-        subject = f"LGSF Scraper Report: {summary.get('total_ran', 0)} councils - {total_failed} failed, {total_rate_limited} rate limited"
+        subject = f"LGSF Scraper Report: {summary.get('total_ran', 0)} scraper runs - {total_failed} failed, {total_rate_limited} rate limited"
 
         message = f"""LGSF Scraper Execution Report
 {"=" * 60}

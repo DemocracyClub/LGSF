@@ -20,6 +20,7 @@ from rich.live import Live
 from rich.progress import BarColumn, Progress, TimeElapsedColumn
 from rich.table import Table
 
+from lgsf.commands.aws_mixin import AWSInvokableMixin
 from lgsf.conf import settings
 from lgsf.path_utils import _abs_path, load_council_info, load_scraper
 from lgsf.scrapers.progress import LiveProgress
@@ -181,9 +182,12 @@ class CouncilFilteringCommandBase(CommandBase):
         return sorted(disabled_councils, key=lambda d: d["code"])
 
 
-class PerCouncilCommandBase(CouncilFilteringCommandBase):
+class PerCouncilCommandBase(AWSInvokableMixin, CouncilFilteringCommandBase):
     """
-    For commands that operate on a list of councils and run scrapers
+    For commands that operate on a list of councils and run scrapers.
+
+    Every one can run on AWS with --aws (see AWSInvokableMixin): the Step
+    Function is told this command's name as the scraper type.
     """
 
     def __init__(self, argv, stdout, pretty=False):
