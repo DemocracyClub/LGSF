@@ -1,6 +1,21 @@
+import csv
+import datetime
+
 from rich.table import Table
 
 from lgsf.commands.base import PerCouncilCommandBase
+
+
+def read_since_file(path):
+    """{council code: ISO start date} from a CSV with council and since columns."""
+    with open(path, newline="") as f:
+        return {
+            row["council"].strip().upper(): datetime.date.fromisoformat(
+                row["since"].strip()
+            ).isoformat()
+            for row in csv.DictReader(f)
+            if row.get("council") and row.get("since")
+        }
 
 
 class Command(PerCouncilCommandBase):
@@ -12,6 +27,21 @@ class Command(PerCouncilCommandBase):
             action="store_true",
             help="Find and record documents but don't download them. Useful "
             "for checking a scraper works without pulling every PDF.",
+        )
+        parser.add_argument(
+            "--since",
+            type=lambda value: datetime.date.fromisoformat(value).isoformat(),
+            help="Scrape meetings from this date (YYYY-MM-DD) rather than "
+            "the last few weeks. For a backfill; it can be stopped and rerun. "
+            "CMIS councils list one month per request, about 40 seconds each, "
+            "before any meeting is saved.",
+        )
+        parser.add_argument(
+            "--since-file",
+            type=read_since_file,
+            help="A CSV with council and since columns giving each council's "
+            "own start date, as scripts/poteris_since.py writes. A council not "
+            "in it starts at --since, or the last few weeks.",
         )
 
     def output_report(self):
