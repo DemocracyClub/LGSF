@@ -200,6 +200,18 @@ class _GitHubSession(StorageSession):
         return self._branch_name
 
     @property
+    def _type_dir(self) -> str:
+        """
+        Where this session's files live in the local clone: ``<repo>/<Type>/``.
+
+        Each data type (Councillors, Minutes, Decisions...) has its own
+        directory in a council's repository, mirroring the local backend's
+        ``data/<COUNCIL>/<Type>/``. Staged paths such as ``json/x.json`` are
+        relative to this.
+        """
+        return os.path.join(self.local_repo_path, self.scraper_object_type)
+
+    @property
     def api_base_url(self) -> str:
         """Returns GitHub API base URL for this repository"""
         return f"https://api.github.com/repos/{self.owner}/{self.repo}"
@@ -690,8 +702,8 @@ class _GitHubSession(StorageSession):
             content = self._staged[key]
             return content.decode("utf-8") if mode == "r" else content
 
-        # Try to read from local repository
-        file_path = os.path.join(self.local_repo_path, key)
+        # Try to read from the local repository, under this type's directory
+        file_path = os.path.join(self._type_dir, key)
         if os.path.exists(file_path):
             with open(file_path, "rb") as f:
                 content = f.read()
@@ -711,8 +723,8 @@ class _GitHubSession(StorageSession):
         This performs all operations locally using Git CLI:
         1. Ensure local repo is ready
         2. Create new branch
-        3. Delete all files in scraper folder
-        4. Write new files
+        3. In REPLACE mode, delete <Type>/ in the clone
+        4. Write the staged files under <Type>/
         5. Stage and commit
         6. Check for changes
         7. Push to remote
@@ -728,11 +740,16 @@ class _GitHubSession(StorageSession):
             # Create and checkout new branch
             self._create_and_checkout_branch()
 
+            # Everything this session stages lives under <Type>/ in the
+            # repository, the same layout as the local backend's
+            # data/<COUNCIL>/<Type>/, so each data type has its own
+            # directory and one type's run can't touch another's files.
+            #
             # In REPLACE mode the latest scrape is the whole truth, so clear
-            # the folder first and let the commit record the deletions. In
-            # ACCUMULATE mode previous runs are history we're adding to, so
+            # that directory first and let the commit record the deletions.
+            # In ACCUMULATE mode previous runs are history we're adding to, so
             # keep them and let git diff pick up only what actually changed.
-            scraper_dir = os.path.join(self.local_repo_path, self.scraper_object_type)
+            scraper_dir = self._type_dir
             if self.storage_mode == StorageMode.REPLACE and os.path.exists(scraper_dir):
                 logger.info(f"Deleting existing files in {self.scraper_object_type}/")
                 shutil.rmtree(scraper_dir)
@@ -742,7 +759,7 @@ class _GitHubSession(StorageSession):
             # Write all staged files to disk
             logger.info(f"Writing {len(self._staged)} files to local repository")
             for file_path, content in self._staged.items():
-                full_path = os.path.join(self.local_repo_path, file_path)
+                full_path = os.path.join(scraper_dir, file_path)
                 os.makedirs(os.path.dirname(full_path), exist_ok=True)
                 with open(full_path, "wb") as f:
                     f.write(content)

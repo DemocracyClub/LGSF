@@ -63,6 +63,18 @@ Minutes accumulate: each run adds to what's already stored rather than
 replacing it, because a meeting from last year is still a fact. Councillors
 replace, because someone who has left the council should disappear.
 
+The GitHub backend, which the daily AWS run uses, writes the same layout
+into one repository per council in the LGSF-Data organisation: `main` of
+`LGSF-Data/KIR` holds `Councillors/json/`, `Councillors/raw/` and so on.
+Each data type has its own directory so a run of one type can't add to or
+delete another's files. A councillors run replaces exactly the contents of
+`Councillors/` and leaves the rest of the repository alone. Repositories
+written before this layout had `json/` and `raw/` at the root, and older
+history had other arrangements again; `scripts/migrate_github_layout.py`
+rewrote every commit so that the files are at the same paths throughout,
+which is what a reader walking the commits as a log needs. Its docstring
+says how to run it, and running it again is harmless.
+
 ## Working on a scraper
 
 Install pre-commit hooks:

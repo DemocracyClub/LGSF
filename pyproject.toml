@@ -24,6 +24,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "git-filter-repo>=2.47.0",
     "ipdb==0.13.13",
     "pre-commit==4.2.0",
     "pystache==0.6.8",
