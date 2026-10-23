@@ -1,0 +1,394 @@
+<?xml version="1.0" encoding="utf-8"?>
+<meeting>
+  <meetingid>1570</meetingid>
+  <meetingdate>19/02/2026</meetingdate>
+  <meetingstatus>Confirmed</meetingstatus>
+  <isdisplayallowed>True</isdisplayallowed>
+  <meetingtime>7.00 pm</meetingtime>
+  <meetingactualstarttime>7.00 pm</meetingactualstarttime>
+  <meetingplannedfinishtime>11.00 pm</meetingplannedfinishtime>
+  <meetingactualfinishtime>2.22 am</meetingactualfinishtime>
+  <meetinglocation>Council Chamber</meetinglocation>
+  <iswebcast>False</iswebcast>
+  <agendaid>1570</agendaid>
+  <agendapublished>True</agendapublished>
+  <decisionpublished>False</decisionpublished>
+  <minutepublished>True</minutepublished>
+  <meetingroom>
+    <roomtitle>Council Chamber</roomtitle>
+    <roomdisplaytitle>Chamber</roomdisplaytitle>
+    <bookingfromdate>14/09/2021, 19:00</bookingfromdate>
+    <bookingtodate>14/09/2021, 21:00</bookingtodate>
+    <bookedbytitle>Council</bookedbytitle>
+    <bookingcomment>
+    </bookingcomment>
+    <directionstext>
+    </directionstext>
+    <displaylocationtitle>Stroud District Council</displaylocationtitle>
+    <addresssummary>Council Chamber</addresssummary>
+  </meetingroom>
+  <agendaitems>
+    <agendaitem>
+      <agendaitemid>5573</agendaitemid>
+      <agendaitemtitle>Apologies</agendaitemtitle>
+      <agendatext>&lt;div class="WordSection1"&gt;
+&lt;p class="MsoNormal"&gt;&lt;span style=""&gt;To receive apologies for
+absence.&lt;/span&gt;&lt;/p&gt;
+&lt;/div&gt;
+</agendatext>
+      <actualmeetingdate>19/02/2026</actualmeetingdate>
+      <agendaitemnumber>1</agendaitemnumber>
+      <agendaitemsubnumber>
+      </agendaitemsubnumber>
+      <fulldisplaynumberformat>CL.054</fulldisplaynumberformat>
+      <authorusername>
+      </authorusername>
+      <commentlabel1>Presented By</commentlabel1>
+      <commenttext1>
+      </commenttext1>
+      <commentlabel2>Actions</commentlabel2>
+      <commenttext2>
+      </commenttext2>
+      <minutesnonemptyhtmlbody>&lt;div class="WordSection1"&gt;
+&lt;p class="MsoNormal"&gt;&lt;span style=""&gt;Apologies for absence were
+received from Councillors Cohen, Edmunds, Haynes, Parker, Prenter
+and Paul Turner. The Chair confirmed that Councillor Ananthan may
+arrive late to the meeting.&lt;/span&gt;&lt;/p&gt;
+&lt;/div&gt;
+</minutesnonemptyhtmlbody>
+      <declarationcount>0</declarationcount>
+      <iscallin>False</iscallin>
+      <iscomment>False</iscomment>
+      <isdecision>False</isdecision>
+      <isdecisionpublished>False</isdecisionpublished>
+      <isminutepublished>True</isminutepublished>
+      <ispubliccanspeak>False</ispubliccanspeak>
+      <isrestricted>False</isrestricted>
+      <isdisplayallowed>True</isdisplayallowed>
+      <meetingdate>19/02/2026</meetingdate>
+      <meetingtime>7.00 pm</meetingtime>
+      <minutesitemnumber>54</minutesitemnumber>
+      <minutesitemsubnumber>
+      </minutesitemsubnumber>
+      <preferreddate>19/02/2026</preferreddate>
+      <refertocommittee>Council</refertocommittee>
+    </agendaitem>
+    <agendaitem>
+      <agendaitemid>5576</agendaitemid>
+      <agendaitemtitle>Minutes</agendaitemtitle>
+      <agendatext>&lt;div class="WordSection1"&gt;
+&lt;p class="MsoNormal"&gt;&lt;span style=""&gt;To approve the minutes of the
+meeting held on 18 December 2025.&lt;/span&gt;&lt;/p&gt;
+&lt;/div&gt;
+</agendatext>
+      <actualmeetingdate>19/02/2026</actualmeetingdate>
+      <agendaitemnumber>3</agendaitemnumber>
+      <agendaitemsubnumber>
+      </agendaitemsubnumber>
+      <fulldisplaynumberformat>CL.056</fulldisplaynumberformat>
+      <authorusername>
+      </authorusername>
+      <commentlabel1>Presented By</commentlabel1>
+      <commenttext1>
+      </commenttext1>
+      <commentlabel2>Actions</commentlabel2>
+      <commenttext2>
+      </commenttext2>
+      <minutesnonemptyhtmlbody>&lt;div class="WordSection1"&gt;
+&lt;p style="font-weight: bold" class="MsoNormal"&gt;&lt;span style=
+""&gt;RESOLVED&lt;span style=""&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;/span&gt; That the
+Minutes of the meeting held on 18 December 2025 were approved as a
+correct record&lt;/span&gt;&lt;/p&gt;
+&lt;/div&gt;
+</minutesnonemptyhtmlbody>
+      <declarationcount>0</declarationcount>
+      <iscallin>False</iscallin>
+      <iscomment>False</iscomment>
+      <isdecision>False</isdecision>
+      <isdecisionpublished>False</isdecisionpublished>
+      <isminutepublished>True</isminutepublished>
+      <ispubliccanspeak>False</ispubliccanspeak>
+      <isrestricted>False</isrestricted>
+      <isdisplayallowed>True</isdisplayallowed>
+      <meetingdate>19/02/2026</meetingdate>
+      <meetingtime>7.00 pm</meetingtime>
+      <minutesitemnumber>56</minutesitemnumber>
+      <minutesitemsubnumber>
+      </minutesitemsubnumber>
+      <preferreddate>19/02/2026</preferreddate>
+      <refertocommittee>Council</refertocommittee>
+      <linkeddocuments>
+        <linkeddoc>
+          <attachmentid>18071</attachmentid>
+          <title>Minutes , 18/12/2025 Council</title>
+          <isurl>False</isurl>
+          <url>https://Stroud.moderngov.co.uk/mgConvert2PDF.aspx?ID=18071</url>
+          <isrestricted>False</isrestricted>
+          <restrictionsRef>
+          </restrictionsRef>
+          <itemnum>1</itemnum>
+          <publicationdate>11/02/2026</publicationdate>
+          <meetingdate>19/02/2026</meetingdate>
+          <decisiondate>19/02/2026</decisiondate>
+          <committeetitle>Council</committeetitle>
+          <isdecisionattachment>False</isdecisionattachment>
+          <ownertitle>Minutes</ownertitle>
+        </linkeddoc>
+      </linkeddocuments>
+    </agendaitem>
+    <agendaitem>
+      <agendaitemid>5494</agendaitemid>
+      <agendaitemtitle>Treasury Management Strategy, Annual Investment Strategy and Minimum Revenue Provision Policy Statement 2026/27</agendaitemtitle>
+      <agendatext>&lt;div class="WordSection1"&gt;
+&lt;p class="MsoNormal"&gt;&lt;span style=""&gt;This report outlines the
+Council&amp;rsquo;s Prudential Indicators for 2026/27 &amp;ndash; 2028/29
+and sets out the Treasury Strategy for this period. It fulfils
+three key reports required by the Local Government Act
+2003:&lt;/span&gt;&lt;/p&gt;
+&lt;p class="MsoNormal" style=
+"margin-left:24.0pt; text-indent:-18.0pt"&gt;&lt;span style=
+""&gt;&lt;span style=""&gt;1)&lt;span style=
+"font:7.0pt &amp;quot;Times New Roman&amp;quot;"&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
+&lt;span style=""&gt;reporting Prudential Indicators required by the
+CIPFA Prudential Code for Capital Finance in Local
+Authorities,&lt;/span&gt;&lt;/p&gt;
+&lt;p class="MsoNormal" style=
+"margin-left:24.0pt; text-indent:-18.0pt"&gt;&lt;span style=
+""&gt;&lt;span style=""&gt;2)&lt;span style=
+"font:7.0pt &amp;quot;Times New Roman&amp;quot;"&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
+&lt;span style=""&gt;a Treasury Management Strategy in accordance with
+the CIPFA Code of Practice on Treasury Management,&lt;/span&gt;&lt;/p&gt;
+&lt;p class="MsoNormal" style=
+"margin-left:24.0pt; text-indent:-18.0pt"&gt;&lt;span style=
+""&gt;&lt;span style=""&gt;3)&lt;span style=
+"font:7.0pt &amp;quot;Times New Roman&amp;quot;"&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
+&lt;span style=""&gt;an Investment Strategy in accordance with the
+Ministry of Housing, Community and Local Government (MHCLG)
+Investment Guidance.&lt;/span&gt;&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&lt;span style=""&gt;It also fulfils the statutory
+duty to approve a Minimum Revenue Provision Policy (MRP) Statement
+for 2026/27&lt;/span&gt;&lt;/p&gt;
+&lt;/div&gt;
+</agendatext>
+      <actualmeetingdate>19/02/2026</actualmeetingdate>
+      <agendaitemnumber>5</agendaitemnumber>
+      <agendaitemsubnumber>a)  </agendaitemsubnumber>
+      <fulldisplaynumberformat>CL.059</fulldisplaynumberformat>
+      <authorusername>Joseph Abbey</authorusername>
+      <commentlabel1>Presented By</commentlabel1>
+      <commenttext1>
+      </commenttext1>
+      <commentlabel2>Actions</commentlabel2>
+      <commenttext2>
+      </commenttext2>
+      <minutesnonemptyhtmlbody>&lt;div class="WordSection1"&gt;
+&lt;p class="MsoNormal" style="text-align:justify"&gt;The Chair of the
+Audit and Standards Committee, Councillor Hughes, introduced the
+report and advised that a small amendment had been approved by the
+Audit and Standards Committee which had not been reflected in the
+published papers, this would be introduced as an amendment in
+debate.&lt;/p&gt;
+&lt;p class="MsoNormal" style="text-align:justify"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;p class="MsoNormal" style="text-align:justify"&gt;Councillor Hughes
+outlined that the report set out the Council&amp;rsquo;s treasury
+management strategy, investment strategy, minimum revenue provision
+and ethical investment policy, with no significant changes from
+previous years. He referred to the updated capital spending plans
+on page 21 table 3.1 and capital financing arrangements, including
+the use of borrowing. He explained the approach to minimum revenue
+provision for the General Fund and the earmarked reserve for the
+Housing Revenue Account. He referred to the estimated future
+balances set out at page 23, table 3.4, noting that while these
+were estimates and likely to change, balances were expected to
+reduce over time as reserves and capital receipts were used and
+further borrowing undertaken.&lt;/p&gt;
+&lt;p class="MsoNormal" style="text-align:justify"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;p class="MsoNormal" style="text-align:justify"&gt;He highlighted the
+forecast borrowing position, borrowing limits and the continued use
+of internal borrowing. He outlined the annual investment strategy,
+noting that the introduction of IFRS 9 for existing investments had
+been deferred to April 2029 and that an earmarked investment risk
+reserve was held to mitigate potential impacts. Councillor Hughes
+also advised that the current ethical investment policy remained in
+place pending completion of a revised policy currently under
+review.&lt;/p&gt;
+&lt;p class="MsoNormal" style="text-align:justify"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;p class="MsoNormal" style="text-align:justify"&gt;Proposed by
+Councillor Hughes and seconded by Councillor Kennedy.&lt;/p&gt;
+&lt;p class="MsoNormal" style="text-align:justify"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;p class="MsoNormal" style="text-align:justify"&gt;Councillor Braun
+proposed an amendment to include the changes Audit and Standards
+Committee had agreed to, this included adding &amp;lsquo;subject to
+further considerations being given to funding raised through
+community climate based investments&amp;rsquo; after
+&amp;lsquo;2026/27&amp;rsquo; in paragraph b) of the decision. Councillor
+Pearcy seconded the amendment.&lt;/p&gt;
+&lt;p class="MsoNormal" style="text-align:justify"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;p class="MsoNormal" style="text-align:justify"&gt;Councillors Hughes
+and Kennedy accepted the proposal as a friendly amendment.&lt;/p&gt;
+&lt;p class="MsoNormal" style="text-align:justify"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;p class="MsoNormal" style="text-align:justify"&gt;Councillor Luff
+drew attention to the Council&amp;rsquo;s comparatively low level of
+borrowing in relation to other councils and commented that this
+reflected good financial management whilst still being able to
+invest in local communities.&lt;/p&gt;
+&lt;p class="MsoNormal" style="text-align:justify"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;p class="MsoNormal" style="text-align:justify"&gt;Councillor Kennedy
+described the Treasury Management report as an important
+transparency tool which showed how the council managed its money,
+debt and investments. The report demonstrated that capital spending
+plans were affordable, prudent and sustainable and that the Council
+had significant unused capacity to invest in capital expenditure in
+an affordable and sustainable way. He noted that losses in the
+Lothbury and Hermes property funds had been offset by an investment
+risk reserve, and that there was no impact on wider Council
+finances. He emphasised the importance of environmental, social and
+governance considerations within the investment strategy, which was
+currently under review.&lt;/p&gt;
+&lt;p class="MsoNormal" style="text-align:justify"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;p class="MsoNormal" style="text-align:justify"&gt;Councillor Hughes
+thanked Maxine and Joseph for drafting the report and the rest of
+the team for their hard work. He also highlighted the continued
+good management of the Council and urged Members to support the
+resolution.&lt;/p&gt;
+&lt;p class="MsoNormal" style="text-align:justify"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;p class="MsoNormal" style="text-align:justify"&gt;On being put to the
+vote, the Motion was carried with 40 votes in favour, 0 against and
+3 abstentions.&lt;/p&gt;
+&lt;p class="MsoNormal" style="text-align:justify"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;table class="MsoNormalTable" border="0" cellspacing="0"
+cellpadding="0" style="border-collapse:collapse"&gt;
+&lt;tbody&gt;
+&lt;tr style=""&gt;
+&lt;td style="padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p class="MsoNormal" style=
+"font-weight: bold; text-align: justify"&gt;&lt;span style=
+"color:black"&gt;RESOLVED&lt;/span&gt;&lt;/p&gt;
+&lt;/td&gt;
+&lt;td style="padding:0cm 5.4pt 0cm 5.4pt"&gt;
+&lt;p style=
+"font-weight: bold; margin-bottom: 0cm; margin-left: 16.1pt; margin-right: 0cm; margin-top: 0cm; text-align: justify"&gt;
+&lt;span style="color:black"&gt;To:&lt;/span&gt;&lt;/p&gt;
+&lt;p class="MsoListParagraphCxSpFirst" style=
+"margin-top:0cm; margin-right:0cm; margin-bottom:0cm; margin-left:36.35pt; text-align:justify; text-indent:-18.0pt"&gt;
+&lt;b style=""&gt;&lt;span style=""&gt;&lt;span style=""&gt;a)&lt;span style=
+"font:7.0pt &amp;quot;Times New Roman&amp;quot;"&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/b&gt;
+&lt;b style=""&gt;&lt;span style=""&gt;adopt the Prudential Indicators and
+Limits for 2026/27 to 2028/29,&lt;/span&gt;&lt;/b&gt;&lt;/p&gt;
+&lt;p class="MsoListParagraphCxSpMiddle" style=
+"margin-top:0cm; margin-right:0cm; margin-bottom:0cm; margin-left:36.35pt; text-align:justify; text-indent:-18.0pt"&gt;
+&lt;b style=""&gt;&lt;span style=""&gt;&lt;span style=""&gt;b)&lt;span style=
+"font:7.0pt &amp;quot;Times New Roman&amp;quot;"&gt;&amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/b&gt;
+&lt;b style=""&gt;&lt;span style=""&gt;approve the Treasury
+Management&lt;/span&gt;&lt;/b&gt; &lt;b style=""&gt;&lt;span style=""&gt;Strategy for
+2026/27, subject to further considerations being given to funding
+raised through community climate based investments, and the
+Treasury Prudential Indicators,&lt;/span&gt;&lt;/b&gt;&lt;/p&gt;
+&lt;p class="MsoListParagraphCxSpMiddle" style=
+"margin-top:0cm; margin-right:0cm; margin-bottom:0cm; margin-left:36.35pt; text-align:justify; text-indent:-18.0pt"&gt;
+&lt;b style=""&gt;&lt;span style=""&gt;&lt;span style=""&gt;c)&lt;span style=
+"font:7.0pt &amp;quot;Times New Roman&amp;quot;"&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/b&gt;
+&lt;b style=""&gt;&lt;span style=""&gt;approve the Investment Strategy
+&lt;span style="color:black"&gt;for 2026/27, and the detailed criteria
+for Specified and Non-specified Investments,&lt;/span&gt;&lt;/span&gt;&lt;/b&gt;&lt;/p&gt;
+&lt;p class="MsoListParagraphCxSpMiddle" style=
+"margin-top:0cm; margin-right:0cm; margin-bottom:0cm; margin-left:36.35pt; text-align:justify; text-indent:-18.0pt"&gt;
+&lt;b style=""&gt;&lt;span style=""&gt;&lt;span style=""&gt;d)&lt;span style=
+"font:7.0pt &amp;quot;Times New Roman&amp;quot;"&gt;&amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/b&gt;
+&lt;b style=""&gt;&lt;span style=""&gt;approve the MRP Statement for 2026/27;
+and&lt;/span&gt;&lt;/b&gt;&lt;/p&gt;
+&lt;p class="MsoListParagraphCxSpLast" style=
+"margin-top:0cm; margin-right:0cm; margin-bottom:0cm; margin-left:36.35pt; text-align:justify; text-indent:-18.0pt"&gt;
+&lt;b style=""&gt;&lt;span style=""&gt;&lt;span style=""&gt;e)&lt;span style=
+"font:7.0pt &amp;quot;Times New Roman&amp;quot;"&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/b&gt;
+&lt;b style=""&gt;&lt;span style=""&gt;approve the Ethical Investment
+Policy&lt;/span&gt;&lt;/b&gt;&lt;/p&gt;
+&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p class="MsoNormal" style="text-align:justify"&gt;&lt;span style=
+""&gt;&amp;nbsp;&lt;/span&gt;&lt;/p&gt;
+&lt;p class="MsoNormal"&gt;&amp;nbsp;&lt;/p&gt;
+&lt;/div&gt;
+</minutesnonemptyhtmlbody>
+      <declarationcount>0</declarationcount>
+      <iscallin>False</iscallin>
+      <iscomment>False</iscomment>
+      <isdecision>False</isdecision>
+      <isdecisionpublished>False</isdecisionpublished>
+      <isminutepublished>True</isminutepublished>
+      <ispubliccanspeak>False</ispubliccanspeak>
+      <isrestricted>False</isrestricted>
+      <isdisplayallowed>True</isdisplayallowed>
+      <meetingdate>19/02/2026</meetingdate>
+      <meetingtime>7.00 pm</meetingtime>
+      <minutesitemnumber>59</minutesitemnumber>
+      <minutesitemsubnumber>
+      </minutesitemsubnumber>
+      <preferreddate>19/02/2026</preferreddate>
+      <refertocommittee>Council</refertocommittee>
+      <linkeddocuments>
+        <linkeddoc>
+          <attachmentid>18072</attachmentid>
+          <title>Item 5a - Treasury Management Strategy</title>
+          <isurl>False</isurl>
+          <url>https://Stroud.moderngov.co.uk/mgConvert2PDF.aspx?ID=18072</url>
+          <isrestricted>False</isrestricted>
+          <restrictionsRef>
+          </restrictionsRef>
+          <itemnum>1</itemnum>
+          <publicationdate>11/02/2026</publicationdate>
+          <meetingdate>19/02/2026</meetingdate>
+          <decisiondate>19/02/2026</decisiondate>
+          <committeetitle>Council</committeetitle>
+          <isdecisionattachment>False</isdecisionattachment>
+          <ownertitle>Treasury Management Strategy, Annual Investment Strategy and Minimum Revenue Provision Policy Statement 2026/27</ownertitle>
+        </linkeddoc>
+        <linkeddoc>
+          <attachmentid>18040</attachmentid>
+          <title>Appendix A - Investments as at 31 December 2025</title>
+          <isurl>False</isurl>
+          <url>https://Stroud.moderngov.co.uk/mgConvert2PDF.aspx?ID=18040</url>
+          <isrestricted>False</isrestricted>
+          <restrictionsRef>
+          </restrictionsRef>
+          <itemnum>2</itemnum>
+          <publicationdate>11/02/2026</publicationdate>
+          <meetingdate>19/02/2026</meetingdate>
+          <decisiondate>19/02/2026</decisiondate>
+          <committeetitle>Council</committeetitle>
+          <isdecisionattachment>False</isdecisionattachment>
+          <ownertitle>Treasury Management Strategy, Annual Investment Strategy and Minimum Revenue Provision Policy Statement 2026/27</ownertitle>
+        </linkeddoc>
+        </linkeddocuments>
+    </agendaitem>
+    </agendaitems>
+  <attendees>
+    <attendee membertype="U" memberid="2566" name="Councillor Kate Kay" roledescription="Chair" attendance="Present, as expected" politicalparty="GP" ward="N" keyposts="Chair of Council">
+      <url>https://Stroud.moderngov.co.uk/mgUserInfo.aspx?UID=2566</url>
+      <photosmallurl>https://Stroud.moderngov.co.uk/UserData/6/6/5/Info00002566/smallpic.jpg</photosmallurl>
+      <photobigurl>https://Stroud.moderngov.co.uk/UserData/6/6/5/Info00002566/bigpic.jpg</photobigurl>
+    </attendee>
+    <attendee membertype="U" memberid="2567" name="Councillor Matthew Sargeant" roledescription="Vice-Chair" attendance="Present, as expected" politicalparty="GP" ward="PU" keyposts="Vice Chair of Council">
+      <url>https://Stroud.moderngov.co.uk/mgUserInfo.aspx?UID=2567</url>
+      <photosmallurl>https://Stroud.moderngov.co.uk/UserData/7/6/5/Info00002567/smallpic.jpg</photosmallurl>
+      <photobigurl>https://Stroud.moderngov.co.uk/UserData/7/6/5/Info00002567/bigpic.jpg</photobigurl>
+    </attendee>
+    <attendee membertype="U" memberid="2438" name="Councillor Shyama Ananthan" roledescription="Councillor" attendance="Present, as expected" politicalparty="LAB" ward="STF">
+      <url>https://Stroud.moderngov.co.uk/mgUserInfo.aspx?UID=2438</url>
+      <photosmallurl>https://Stroud.moderngov.co.uk/UserData/8/3/4/Info00002438/smallpic.jpg</photosmallurl>
+      <photobigurl>https://Stroud.moderngov.co.uk/UserData/8/3/4/Info00002438/bigpic.jpg</photobigurl>
+    </attendee>
+    <attendee membertype="U" memberid="2241" name="Councillor Linda Cohen" roledescription="Councillor" attendance="Apologies" politicalparty="LIBDEM" ward="WUE" keyposts="Leader of the Liberal Democrats Group">
+      <url>https://Stroud.moderngov.co.uk/mgUserInfo.aspx?UID=2241</url>
+      <photosmallurl>https://Stroud.moderngov.co.uk/UserData/1/4/2/Info00002241/smallpic.jpg</photosmallurl>
+      <photobigurl>https://Stroud.moderngov.co.uk/UserData/1/4/2/Info00002241/bigpic.jpg</photobigurl>
+    </attendee>
+    <attendee membertype="U" memberid="147" name="Councillor Jonathan Edmunds" roledescription="Councillor" attendance="Apologies" politicalparty="GP" ward="RWR">
+      <url>https://Stroud.moderngov.co.uk/mgUserInfo.aspx?UID=147</url>
+      <photosmallurl>https://Stroud.moderngov.co.uk/UserData/7/4/1/Info00000147/smallpic.jpg</photosmallurl>
+      <photobigurl>https://Stroud.moderngov.co.uk/UserData/7/4/1/Info00000147/bigpic.jpg</photobigurl>
+    </attendee>
+    </attendees>
+</meeting>

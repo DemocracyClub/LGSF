@@ -18,6 +18,35 @@ from lgsf.scrapers.documents import DocumentSavingMixin
 from lgsf.storage.backends.base import StorageMode
 
 
+_DATE_PATTERNS = (
+    (re.compile(r"\b(\d{1,2})[/.](\d{1,2})[/.](\d{4})\b"), "dmy"),
+    (re.compile(r"\b(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+)\s+(\d{4})\b"), "d month y"),
+)
+
+
+def dates_in(text):
+    """The ISO dates written in a title, as 18/12/2025 or 18 December 2025."""
+    found = set()
+    for pattern, kind in _DATE_PATTERNS:
+        for match in pattern.finditer(text or ""):
+            try:
+                if kind == "dmy":
+                    day, month, year = (int(g) for g in match.groups())
+                    found.add(datetime.date(year, month, day).isoformat())
+                else:
+                    day, month, year = match.groups()
+                    found.add(
+                        datetime.datetime.strptime(
+                            f"{int(day)} {month[:3]} {year}", "%d %b %Y"
+                        )
+                        .date()
+                        .isoformat()
+                    )
+            except ValueError:
+                continue
+    return found
+
+
 class BaseMinutesScraper(DocumentSavingMixin, ScraperBase):
     tags = []
     class_tags = []
@@ -266,9 +295,20 @@ class BaseMinutesScraper(DocumentSavingMixin, ScraperBase):
                     f"download[/yellow]"
                 )
 
-    def categorise_document(self, title):
+    def categorise_document(self, title, meeting_date=None):
+        """
+        "minutes", "previous_minutes", "agenda" or "other", from a title.
+
+        A meeting's papers usually include the minutes of the meeting before
+        it, for approval ("Minutes , 18/12/2025 Council" on a 19 February
+        meeting). A minutes document whose title names a date other than
+        the meeting's is "previous_minutes", not this meeting's minutes.
+        """
         lowered = title.lower()
         if "minute" in lowered:
+            named = dates_in(title)
+            if meeting_date and named and meeting_date not in named:
+                return "previous_minutes"
             return "minutes"
         if "agenda" in lowered:
             return "agenda"
@@ -420,7 +460,22 @@ class ModGovMinutesScraper(BaseMinutesScraper):
             minutes_published_tag and minutes_published_tag.text.strip() == "True"
         )
         meeting.source = getattr(self, "_pending_source", {})
-        meeting.documents = self.get_documents(detail)
+        meeting.documents = self.get_documents(detail, meeting_date=date)
+        meeting.times = {
+            "scheduled": self.tag_text(detail, "meetingtime"),
+            "actual_start": self.tag_text(detail, "meetingactualstarttime"),
+            "actual_finish": self.tag_text(detail, "meetingactualfinishtime"),
+            "planned_finish": self.tag_text(detail, "meetingplannedfinishtime"),
+        }
+        meeting.published = {
+            "agenda": self.tag_bool(detail, "agendapublished"),
+            "decisions": self.tag_bool(detail, "decisionpublished"),
+            "minutes": self.tag_bool(detail, "minutepublished"),
+        }
+        meeting.is_webcast = self.tag_bool(detail, "iswebcast")
+        meeting.agenda_items = self.get_agenda_items(detail)
+        meeting.attendance = self.get_attendance(detail)
+        meeting.install_url = self.base_url
 
         self.save_minutes_html(meeting, detail)
 
@@ -433,31 +488,126 @@ class ModGovMinutesScraper(BaseMinutesScraper):
         """ModernGov dates are dd/mm/yyyy; store ISO format."""
         return datetime.datetime.strptime(date_str, self.DATE_FORMAT).date().isoformat()
 
-    def get_documents(self, detail):
+    @staticmethod
+    def tag_text(element, name):
+        """A child element's text, stripped, or None if absent or empty."""
+        tag = element.find(name, recursive=False) if element else None
+        if tag is None:
+            return None
+        return tag.text.strip() or None
+
+    @classmethod
+    def tag_bool(cls, element, name):
+        """A ModernGov "True"/"False" child as a bool, or None."""
+        value = cls.tag_text(element, name)
+        return None if value is None else value == "True"
+
+    @classmethod
+    def tag_int(cls, element, name):
+        value = cls.tag_text(element, name)
+        try:
+            return int(value) if value is not None else None
+        except ValueError:
+            return None
+
+    def get_documents(self, detail, meeting_date=None):
+        """
+        The meeting's documents, each once, with the agenda item it is
+        attached to and what ModernGov says about it.
+        """
         documents = []
         seen = set()
         for linked_doc in detail.find_all("linkeddoc"):
-            url_tag = linked_doc.find("url")
-            title_tag = linked_doc.find("title")
-            attachment_id_tag = linked_doc.find("attachmentid")
-            if not url_tag or not url_tag.text.strip():
-                continue
-            url = url_tag.text.strip()
-            if url in seen:
+            url = self.tag_text(linked_doc, "url")
+            if not url or url in seen:
                 continue
             seen.add(url)
-            title = title_tag.text.strip() if title_tag else ""
+            title = self.tag_text(linked_doc, "title") or ""
+            item = linked_doc.find_parent("agendaitem")
             documents.append(
                 {
                     "title": title,
                     "url": url,
-                    "attachment_id": attachment_id_tag.text.strip()
-                    if attachment_id_tag
+                    "attachment_id": self.tag_text(linked_doc, "attachmentid"),
+                    "category": self.categorise_document(title, meeting_date),
+                    "agenda_item_id": self.tag_text(item, "agendaitemid")
+                    if item
                     else None,
-                    "category": self.categorise_document(title),
+                    "owner_title": self.tag_text(linked_doc, "ownertitle"),
+                    "publication_date": self.parse_optional_date(
+                        self.tag_text(linked_doc, "publicationdate")
+                    ),
+                    "is_restricted": self.tag_bool(linked_doc, "isrestricted"),
+                    "is_decision_attachment": self.tag_bool(
+                        linked_doc, "isdecisionattachment"
+                    ),
                 }
             )
         return documents
+
+    def parse_optional_date(self, value):
+        try:
+            return self.parse_date(value) if value else None
+        except ValueError:
+            return value
+
+    def get_agenda_items(self, detail):
+        """Each agenda item in ModernGov's order, with the ids of its documents."""
+        items = []
+        for item in detail.find_all("agendaitem"):
+            items.append(
+                {
+                    "id": self.tag_text(item, "agendaitemid"),
+                    "number": self.tag_int(item, "agendaitemnumber"),
+                    "sub_number": self.tag_text(item, "agendaitemsubnumber"),
+                    # The minute reference, e.g. Stroud's "CL.025a"
+                    "display_number": self.tag_text(item, "fulldisplaynumberformat"),
+                    "minutes_number": self.tag_int(item, "minutesitemnumber"),
+                    "minutes_sub_number": self.tag_text(item, "minutesitemsubnumber"),
+                    "title": self.tag_text(item, "agendaitemtitle"),
+                    "agenda_html": self.tag_text(item, "agendatext"),
+                    "minutes_html": self.tag_text(item, "minutesnonemptyhtmlbody"),
+                    "is_decision": self.tag_bool(item, "isdecision"),
+                    "is_decision_published": self.tag_bool(item, "isdecisionpublished"),
+                    "is_minute_published": self.tag_bool(item, "isminutepublished"),
+                    "is_call_in": self.tag_bool(item, "iscallin"),
+                    "is_restricted": self.tag_bool(item, "isrestricted"),
+                    "is_public_can_speak": self.tag_bool(item, "ispubliccanspeak"),
+                    "declaration_count": self.tag_int(item, "declarationcount"),
+                    "refer_to_committee": self.tag_text(item, "refertocommittee"),
+                    "preferred_date": self.tag_text(item, "preferreddate"),
+                    "document_ids": [
+                        self.tag_text(doc, "attachmentid")
+                        for doc in item.find_all("linkeddoc")
+                        if self.tag_text(doc, "attachmentid")
+                    ],
+                }
+            )
+        return items
+
+    def get_attendance(self, detail):
+        """
+        Everyone ModernGov lists against the meeting, as it gives them.
+        member_id is the id the ModernGov councillors scraper uses, so
+        attendance joins to councillors.
+        """
+        attendance = []
+        attendees = detail.find("attendees")
+        for attendee in attendees.find_all("attendee") if attendees else []:
+            attendance.append(
+                {
+                    "member_id": attendee.get("memberid") or None,
+                    "member_type": attendee.get("membertype") or None,
+                    "name": attendee.get("name") or None,
+                    "role": attendee.get("roledescription") or None,
+                    "attendance": attendee.get("attendance") or None,
+                    "party": attendee.get("politicalparty") or None,
+                    "ward": attendee.get("ward") or None,
+                    "key_posts": attendee.get("keyposts") or None,
+                    "url": self.tag_text(attendee, "url"),
+                }
+            )
+        return attendance
 
     def save_minutes_html(self, meeting, detail):
         """
@@ -756,7 +906,7 @@ class CMISMinutesScraper(BaseMinutesScraper):
                 summary[label] = value
         return summary
 
-    def get_documents(self, detail_soup):
+    def get_documents(self, detail_soup, meeting_date=None):
         documents = []
         seen = set()
         for item in detail_soup.select("li.DocumentListItem"):
@@ -773,7 +923,7 @@ class CMISMinutesScraper(BaseMinutesScraper):
                     "title": title,
                     "url": url,
                     "attachment_id": None,
-                    "category": self.categorise_document(title),
+                    "category": self.categorise_document(title, meeting_date),
                 }
             )
         return documents
@@ -810,7 +960,10 @@ class CMISMinutesScraper(BaseMinutesScraper):
         # page and fall back to whatever the list view gave us.
         meeting.location = summary.get("Venue") or row["venue"]
         meeting.source = source
-        meeting.documents = self.get_documents(detail_soup)
+        meeting.documents = self.get_documents(
+            detail_soup, meeting_date=row["date"].isoformat()
+        )
+        meeting.install_url = self.base_url
         meeting.minutes_published = any(
             document["category"] == "minutes" for document in meeting.documents
         )

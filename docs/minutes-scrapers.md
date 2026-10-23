@@ -73,15 +73,40 @@ meeting.documents = [
         "title": "Minutes of the previous meeting",
         "url": "https://.../minutes.pdf",
         "attachment_id": "12345",
-        "category": self.categorise_document(title),
+        "category": self.categorise_document(title, date),
     }
 ]
 meeting.minutes_published = True
 ```
 
+Pass the meeting's date to `categorise_document`: a minutes document whose
+title names another date (the previous meeting's, up for approval) is then
+`"previous_minutes"`, not this meeting's `"minutes"`.
+
 `identifier` must be stable across runs — an id from the source system, not a
 row number. It ends up in the filename, so an unstable one silently creates
 duplicates.
+
+## What a meeting's JSON holds
+
+Every scraper writes the fields above. These say more about the meeting,
+and are filled where the source gives them: ModernGov gives all of them,
+CMIS and custom scrapers fill what they can and leave the rest empty
+(`{}`, `[]` or `null`).
+
+| Field | What it is | ModernGov source |
+| --- | --- | --- |
+| `times` | `scheduled`, `actual_start`, `actual_finish`, `planned_finish`, as given, e.g. `"7.00 pm"`. No dates: an actual finish can be after midnight | `meetingtime`, `meetingactualstarttime`, `meetingactualfinishtime`, `meetingplannedfinishtime` |
+| `published` | `agenda`, `decisions`, `minutes`, each true or false | `agendapublished`, `decisionpublished`, `minutepublished` |
+| `is_webcast` | Whether the meeting is webcast | `iswebcast` |
+| `install_url` | The base URL of the system the meeting came from. Councils sharing one install list the same meetings: the same install and `raw_identifier` is the same meeting | the scraper's base URL |
+| `agenda_items` | In the source's order. Each has `id`, `number`, `sub_number`, `display_number` (the minute reference, e.g. Stroud's `CL.025a`), `minutes_number`, `minutes_sub_number`, `title`, `agenda_html`, `minutes_html`, `is_decision`, `is_decision_published`, `is_minute_published`, `is_call_in`, `is_restricted`, `is_public_can_speak`, `declaration_count`, `refer_to_committee`, `preferred_date`, and `document_ids`, the `attachment_id`s of its documents | `agendaitem` and its children |
+| `attendance` | Each person listed, with `member_id`, `member_type`, `name`, `role`, `attendance` (e.g. `"Present, as expected"`, `"Apologies"`), `party`, `ward`, `key_posts`, `url`. `member_id` is the councillors scraper's id, so attendance joins to councillors | `attendee` attributes |
+
+Each document in `documents` also gives, from ModernGov, the
+`agenda_item_id` it hangs from, `owner_title`, `publication_date` (ISO),
+`is_restricted` and `is_decision_attachment`. A meeting's own minutes are
+often not a document at all but the `minutes_html` of its items.
 
 ## The scrape window
 
