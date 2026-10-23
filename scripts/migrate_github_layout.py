@@ -232,6 +232,8 @@ def _migrate_clone(
         result.action = "already-migrated"
         result.commits_after = result.commits_before
         result.new_main = result.old_main
+        if delete_other_branches and not dry_run:
+            result.branches_deleted = delete_remote_branches(clone)
         return result
 
     if clashes := ambiguous_commits(clone):
@@ -296,20 +298,37 @@ def _migrate_clone(
         cwd=clone,
     )
 
-    others = [
-        name.decode()
-        for name in out(
-            ["for-each-ref", "--format=%(refname:short)", "refs/heads/"], clone
-        ).split()
-        if name.decode() != DEFAULT_BRANCH
-    ]
-    if others:
-        if delete_other_branches:
-            git(["push", "--quiet", "origin", "--delete", *others], cwd=clone)
-            result.branches_deleted = len(others)
-        else:
+    if delete_other_branches:
+        result.branches_deleted = delete_remote_branches(clone)
+    else:
+        others = other_branches(clone, "refs/heads/")
+        if others:
             git(["push", "--quiet", "--force", "origin", *others], cwd=clone)
     return result
+
+
+def other_branches(clone: Path, prefix: str) -> list[str]:
+    """Branch names under prefix other than the default branch."""
+    names = out(["for-each-ref", "--format=%(refname)", prefix], clone).decode().split()
+    return [
+        name.removeprefix(prefix)
+        for name in names
+        if name.removeprefix(prefix) not in (DEFAULT_BRANCH, "HEAD")
+    ]
+
+
+def delete_remote_branches(clone: Path) -> int:
+    """
+    Delete every branch but the default one on origin. After filter-repo the
+    branches are local refs; in an untouched clone they are remote-tracking.
+    """
+    others = sorted(
+        set(other_branches(clone, "refs/heads/"))
+        | set(other_branches(clone, "refs/remotes/origin/"))
+    )
+    if others:
+        git(["push", "--quiet", "origin", "--delete", *others], cwd=clone)
+    return len(others)
 
 
 def run(

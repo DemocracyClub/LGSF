@@ -304,6 +304,27 @@ def test_other_branches_are_deleted_on_request(realistic, tmp_path):
     assert realistic.branches() == ["main"]
 
 
+def test_stray_branches_are_deleted_even_when_nothing_needs_rewriting(tmp_path):
+    repo = Repo(tmp_path, "DEF")
+    repo.commit("Updated DEF", {"README.md": "x", "Councillors/json/c.json": "{}"})
+    git("branch", "--quiet", "backup-original-main", "main", cwd=repo.work)
+    git("branch", "--quiet", "DEF-2026-01-01-orphan", "main", cwd=repo.work)
+    repo.push("main", "backup-original-main", "DEF-2026-01-01-orphan")
+    before = repo.commits()
+
+    result = migrate_repo(
+        "DEF",
+        str(repo.bare),
+        tmp_path / "work",
+        dry_run=False,
+        delete_other_branches=True,
+    )
+
+    assert (result.action, result.branches_deleted) == ("already-migrated", 2)
+    assert repo.branches() == ["main"]
+    assert repo.commits() == before
+
+
 def test_push_fails_if_main_moved_since_the_clone(realistic, tmp_path, monkeypatch):
     import scripts.migrate_github_layout as module
 
