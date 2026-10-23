@@ -20,7 +20,7 @@ the state machine reads the list at run time.
 
 SCRAPER_TYPES: dict[str, dict] = {
     "councillors": {"daily": True},
-    "minutes": {"daily": False},
+    "minutes": {"daily": True},
     "decisions": {"daily": False},
 }
 
