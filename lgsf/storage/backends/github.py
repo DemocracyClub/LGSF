@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import base64
-import datetime
 import logging
 import os
 import shutil
@@ -161,12 +160,9 @@ class _GitHubSession(StorageSession):
             f"{self.owner}/{self.repo}.git"
         )
 
-        # Branch management
-        self.today: str = datetime.datetime.now().strftime("%Y-%m-%d")
-        self._branch_name: str | None = None
         self._default_branch: str = "main"
 
-        # GitHub API session (only for repo creation and PR/merge)
+        # GitHub API session (only for creating a repository that doesn't exist)
         self.session: requests.Session = self._create_api_session()
 
         # CRITICAL: Check that Git is available immediately
@@ -191,13 +187,6 @@ class _GitHubSession(StorageSession):
             }
         )
         return session
-
-    @property
-    def branch_name(self) -> str:
-        """Returns unique branch name in format: {council}-{date}-{run_id}"""
-        if not self._branch_name:
-            self._branch_name = f"{self.council_code}-{self.today}-{self.run_id}"
-        return self._branch_name
 
     @property
     def _type_dir(self) -> str:
@@ -600,31 +589,10 @@ class _GitHubSession(StorageSession):
                 shutil.rmtree(self.local_repo_path)
                 self._ensure_local_repo()
 
-    def _create_and_checkout_branch(self) -> None:
-        """Create a new branch from main and check it out."""
-        logger.info(f"Creating and checking out branch: {self.branch_name}")
-
-        # Ensure we're on main first
-        self._run_git_command(["checkout", self._default_branch])
-
-        # Create and checkout new branch
-        self._run_git_command(["checkout", "-b", self.branch_name])
-
-        logger.info(f"Now on branch: {self.branch_name}")
-
     def _has_uncommitted_changes(self) -> bool:
         """Check if there are uncommitted changes in the working directory."""
         result = self._run_git_command(
             ["diff", "--cached", "--quiet"], check=False, capture_output=True
-        )
-        return result.returncode != 0
-
-    def _has_changes_from_main(self) -> bool:
-        """Check if current branch has changes compared to main."""
-        result = self._run_git_command(
-            ["diff", "--quiet", f"origin/{self._default_branch}"],
-            check=False,
-            capture_output=True,
         )
         return result.returncode != 0
 
@@ -718,180 +686,89 @@ class _GitHubSession(StorageSession):
 
     def _commit_files(self, commit_message: str) -> dict[str, Any]:
         """
-        Commit all staged files to the local Git repository.
+        Commit the staged files on main and push.
 
-        This performs all operations locally using Git CLI:
-        1. Ensure local repo is ready
-        2. Create new branch
-        3. In REPLACE mode, delete <Type>/ in the clone
-        4. Write the staged files under <Type>/
-        5. Stage and commit
-        6. Check for changes
-        7. Push to remote
-        8. Create PR and merge
+        All of it is local git apart from the push:
+        1. Clone (or update) main
+        2. In REPLACE mode, delete <Type>/ in the clone
+        3. Write the staged files under <Type>/
+        4. Stage and commit; nothing to commit means no push
+        5. Push main. A plain push is fast-forward only, so if another run
+           has moved main since the clone the push is rejected and this
+           run fails without touching the repository.
+
+        There is no branch and no pull request: the commit this makes is
+        the commit readers see on main, trailers and all.
         """
         if not self._staged:
             return {"skipped": True, "reason": "no files to commit"}
 
-        try:
-            # Ensure local repository exists and is up to date
-            self._ensure_local_repo()
+        self._ensure_local_repo()
+        self._run_git_command(["checkout", "--quiet", self._default_branch])
 
-            # Create and checkout new branch
-            self._create_and_checkout_branch()
+        # Everything this session stages lives under <Type>/ in the
+        # repository, the same layout as the local backend's
+        # data/<COUNCIL>/<Type>/, so each data type has its own
+        # directory and one type's run can't touch another's files.
+        #
+        # In REPLACE mode the latest scrape is the whole truth, so clear
+        # that directory first and let the commit record the deletions.
+        # In ACCUMULATE mode previous runs are history we're adding to, so
+        # keep them and let git diff pick up only what actually changed.
+        scraper_dir = self._type_dir
+        if self.storage_mode == StorageMode.REPLACE and os.path.exists(scraper_dir):
+            logger.info(f"Deleting existing files in {self.scraper_object_type}/")
+            shutil.rmtree(scraper_dir)
 
-            # Everything this session stages lives under <Type>/ in the
-            # repository, the same layout as the local backend's
-            # data/<COUNCIL>/<Type>/, so each data type has its own
-            # directory and one type's run can't touch another's files.
-            #
-            # In REPLACE mode the latest scrape is the whole truth, so clear
-            # that directory first and let the commit record the deletions.
-            # In ACCUMULATE mode previous runs are history we're adding to, so
-            # keep them and let git diff pick up only what actually changed.
-            scraper_dir = self._type_dir
-            if self.storage_mode == StorageMode.REPLACE and os.path.exists(scraper_dir):
-                logger.info(f"Deleting existing files in {self.scraper_object_type}/")
-                shutil.rmtree(scraper_dir)
+        os.makedirs(scraper_dir, exist_ok=True)
 
-            os.makedirs(scraper_dir, exist_ok=True)
+        logger.info(f"Writing {len(self._staged)} files to local repository")
+        for file_path, content in self._staged.items():
+            full_path = os.path.join(scraper_dir, file_path)
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            with open(full_path, "wb") as f:
+                f.write(content)
 
-            # Write all staged files to disk
-            logger.info(f"Writing {len(self._staged)} files to local repository")
-            for file_path, content in self._staged.items():
-                full_path = os.path.join(scraper_dir, file_path)
-                os.makedirs(os.path.dirname(full_path), exist_ok=True)
-                with open(full_path, "wb") as f:
-                    f.write(content)
+        # Stage all changes (including deletions)
+        self._run_git_command(["add", "-A", "."])
 
-            # Stage all changes (including deletions)
-            self._run_git_command(["add", "-A", "."])
+        if not self._has_uncommitted_changes():
+            logger.info("No changes detected (git diff is empty)")
+            return {"skipped": True, "reason": "no changes detected"}
 
-            # Check if there are any changes
-            if not self._has_uncommitted_changes():
-                logger.info("No changes detected (git diff is empty)")
-                return {"skipped": True, "reason": "no changes detected"}
+        stats = self._get_file_count_stats()
 
-            # Get file statistics before committing
-            stats = self._get_file_count_stats()
+        logger.info(f"Committing: {commit_message.splitlines()[0]}")
+        self._run_git_command(["commit", "--quiet", "-m", commit_message])
+        commit = self._run_git_command(["rev-parse", "HEAD"]).stdout.strip()
 
-            # Commit changes
-            logger.info(f"Committing changes: {commit_message}")
-            self._run_git_command(["commit", "-m", commit_message])
+        logger.info(f"Pushing {self._default_branch} to remote")
+        pushed = self._run_git_command(
+            ["push", "--quiet", "origin", self._default_branch], check=False
+        )
+        if pushed.returncode != 0:
+            stderr = pushed.stderr or ""
+            if (
+                "rejected" in stderr
+                or "fetch first" in stderr
+                or "non-fast-forward" in stderr
+            ):
+                raise RuntimeError(
+                    f"{self._default_branch} of {self.repository_url} moved while "
+                    "this run was scraping, so its commit was not pushed. Another "
+                    "run of the same council probably overlapped this one."
+                )
+            raise RuntimeError(f"git push failed: {stderr[:500]}")
 
-            # Double-check: compare with remote main
-            if not self._has_changes_from_main():
-                logger.info("No changes compared to remote main")
-                return {"skipped": True, "reason": "no changes from main"}
-
-            # Push branch to remote
-            logger.info(f"Pushing branch {self.branch_name} to remote")
-            self._run_git_command(["push", "origin", self.branch_name])
-
-            logger.info(f"Successfully pushed branch: {self.branch_name}")
-
-            return {
-                "success": True,
-                "branch": self.branch_name,
-                "files_committed": len(self._staged),
-                "files_added": stats["files_added"],
-                "files_modified": stats["files_modified"],
-                "files_deleted": stats["files_deleted"],
-            }
-
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Git operation failed: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"Unexpected error during commit: {e}")
-            raise
-
-    def _create_pull_request(self, commit_result: dict[str, Any]) -> dict[str, Any]:
-        """Create a pull request and merge it using GitHub API."""
-        try:
-            # Create pull request
-            pr_data = {
-                "title": f"Update {self.council_code} data ({self.today})",
-                "head": self.branch_name,
-                "base": self._default_branch,
-                "body": (
-                    f"Automated update of {self.council_code} scraper data for {self.today}\n\n"
-                    f"**Changes:**\n"
-                    f"- Files committed: {commit_result.get('files_committed', 0)}\n"
-                    f"- Files added: {commit_result.get('files_added', 0)}\n"
-                    f"- Files modified: {commit_result.get('files_modified', 0)}\n"
-                    f"- Files deleted: {commit_result.get('files_deleted', 0)}"
-                ),
-            }
-
-            logger.info(
-                f"Creating pull request: {self.branch_name} -> {self._default_branch}"
-            )
-            pr_response = self.session.post(
-                f"{self.api_base_url}/pulls", json=pr_data, timeout=30
-            )
-            pr_response.raise_for_status()
-            pr_data_result = pr_response.json()
-            pr_number = pr_data_result["number"]
-            pr_url = pr_data_result["html_url"]
-
-            logger.info(f"Pull request created: {pr_url}")
-
-            # Merge pull request
-            merge_data = {
-                "commit_title": f"Merge {self.council_code} data ({self.today})",
-                "commit_message": f"Automated merge of {self.council_code} data",
-                "merge_method": "merge",  # Use merge commit (not squash or rebase)
-            }
-
-            logger.info(f"Merging pull request #{pr_number}")
-            merge_response = self.session.put(
-                f"{self.api_base_url}/pulls/{pr_number}/merge",
-                json=merge_data,
-                timeout=30,
-            )
-            merge_response.raise_for_status()
-
-            logger.info("Pull request merged successfully")
-
-            return {
-                "success": True,
-                "pr_number": pr_number,
-                "pr_url": pr_url,
-                "merged": True,
-            }
-
-        except requests.exceptions.HTTPError as e:
-            logger.error(f"Failed to create/merge PR: {e}")
-            if e.response is not None:
-                logger.error(f"Response: {e.response.text}")
-            return {
-                "success": False,
-                "error": str(e),
-                "response": e.response.text if e.response else None,
-            }
-        except Exception as e:
-            logger.error(f"Unexpected error creating/merging PR: {e}")
-            return {"success": False, "error": str(e)}
-
-    def _delete_remote_branch(self) -> dict[str, Any]:
-        """Delete the branch from remote repository."""
-        try:
-            logger.info(f"Deleting remote branch: {self.branch_name}")
-            delete_url = f"{self.api_base_url}/git/refs/heads/{self.branch_name}"
-            response = self.session.delete(delete_url, timeout=30)
-            response.raise_for_status()
-
-            logger.info(f"Branch deleted successfully: {self.branch_name}")
-            return {"success": True, "branch": self.branch_name}
-
-        except requests.exceptions.HTTPError as e:
-            logger.warning(f"Failed to delete branch {self.branch_name}: {e}")
-            return {
-                "success": False,
-                "error": str(e),
-                "branch": self.branch_name,
-            }
+        logger.info(f"Pushed {commit[:10]} to {self._default_branch}")
+        return {
+            "success": True,
+            "commit": commit,
+            "files_committed": len(self._staged),
+            "files_added": stats["files_added"],
+            "files_modified": stats["files_modified"],
+            "files_deleted": stats["files_deleted"],
+        }
 
     def _cleanup_local_repo(self) -> None:
         """Clean up local repository directory."""
@@ -907,8 +784,10 @@ class GitHubStorage(BaseStorage):
     """
     GitHub storage backend using Git CLI for operations.
 
-    This storage backend implements the BaseStorage interface using local Git
-    operations to minimize API calls and avoid rate limiting issues.
+    One repository per council. Each run clones main, writes this type's
+    files under <Type>/, commits once with trailers naming the run, and
+    pushes main fast-forward. The GitHub API is used only to create a
+    repository that doesn't exist yet.
     """
 
     def __init__(
@@ -917,7 +796,6 @@ class GitHubStorage(BaseStorage):
         scraper_object_type: str = "Data",
         organization: str | None = None,
         github_token: str | None = None,
-        auto_merge: bool = True,
         storage_mode: StorageMode = StorageMode.REPLACE,
     ):
         """
@@ -928,7 +806,6 @@ class GitHubStorage(BaseStorage):
             scraper_object_type: Type of objects being scraped
             organization: GitHub organization name
             github_token: GitHub authentication token (deprecated, ignored - GitHub App required)
-            auto_merge: If True, automatically merge PRs after creation (always True in this version)
         """
         super().__init__(council_code, storage_mode=storage_mode)
         self.scraper_object_type: str = scraper_object_type
@@ -955,7 +832,6 @@ class GitHubStorage(BaseStorage):
         self.github_token = self.github_app.get_token()
 
         self._active: _GitHubSession | None = None
-        self.auto_merge: bool = auto_merge  # Always True in this version
 
     @override
     def _start_session(self, **kwargs: Any) -> StorageSession:
@@ -989,7 +865,7 @@ class GitHubStorage(BaseStorage):
 
     @override
     def _end_session(self, session: StorageSession, commit_message: str, **kwargs: Any):  # type: ignore[override]
-        """Commit all staged changes and perform GitHub finalization with PR workflow."""
+        """Commit the staged files on main and push them."""
         if not isinstance(session, _GitHubSession):
             raise RuntimeError("Unknown session type for this GitHubStorage.")
 
@@ -1004,32 +880,13 @@ class GitHubStorage(BaseStorage):
         if not commit_message or not commit_message.strip():
             raise ValueError("commit_message cannot be empty")
 
-        # Commit and push the staged files
         commit_result = session._commit_files(commit_message.strip())
-
         if commit_result.get("skipped"):
-            skip_reason = commit_result.get("reason", "unknown")
             logger.info(
-                f"Skipping GitHub operations for {session.council_code}/"
-                f"{session.scraper_object_type}: {skip_reason}"
+                f"Nothing to push for {session.council_code}/"
+                f"{session.scraper_object_type}: {commit_result.get('reason')}"
             )
-            return commit_result
-
-        finalization_result = commit_result.copy()
-
-        # Create PR and merge (always done, unless skip_merge is set)
-        if not kwargs.get("skip_merge", False):
-            pr_result = session._create_pull_request(commit_result)
-            finalization_result["pull_request"] = pr_result
-
-            # Clean up remote branch if PR was merged
-            if pr_result.get("success") and pr_result.get("merged", False):
-                branch_cleanup = session._delete_remote_branch()
-                finalization_result["branch_cleanup"] = branch_cleanup
-            else:
-                finalization_result["branch_cleanup"] = {"skipped": "pr_not_merged"}
-
-        return finalization_result
+        return commit_result
 
     @override
     def _close_session(self, session: StorageSession | None) -> None:

@@ -284,7 +284,14 @@ def scraper_worker_handler(event, context):
             )
 
         console.log(f"Begin attempting to scrape: {council}")
-        options = {"council": council, "verbose": True, "aws_lambda": True}
+        options = {
+            "council": council,
+            "verbose": True,
+            "aws_lambda": True,
+            # Named in the trailers of any commit this run makes, so the
+            # commit can be traced to this execution's run report.
+            "execution_id": event.get("execution_id"),
+        }
         scraper = scraper_cls(options, console)
 
         # Base result structure
@@ -297,13 +304,20 @@ def scraper_worker_handler(event, context):
         try:
             if not scraper.disabled:
                 scraper.run(run_log)
+                run_log.finish()
                 console.log(f"Successfully completed scraping for: {council}")
 
-                # For 200 responses, only return status code - no run log or other text
+                # No run log text for a success, but enough for the run
+                # report to say how long it took and what it produced: the
+                # commit it pushed, or null when nothing had changed.
                 result.update(
                     {
                         "statusCode": 200,
                         "status": "completed",
+                        "end_time": run_log.end.isoformat(),
+                        "duration_seconds": run_log.duration.total_seconds(),
+                        "run_id": scraper.run_id,
+                        "commit": scraper.last_commit,
                     }
                 )
 
@@ -680,6 +694,14 @@ def aggregation_handler(event, context):
                 "status_code": result.get("statusCode", 200),
                 "start_time": result.get("start_time"),
             }
+
+            # What a successful run adds: how long it took and the commit
+            # it pushed (null when nothing had changed), so the report
+            # links to the repository the way the commit's trailers link
+            # back to the report.
+            for key in ("end_time", "duration_seconds", "run_id", "commit"):
+                if key in result:
+                    scraper_entry[key] = result[key]
 
             # Add error information if present
             if result.get("error"):

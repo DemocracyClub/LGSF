@@ -54,6 +54,8 @@ def lambda_environment(tmp_path, monkeypatch):
         self.console = console
         self.council_id = options["council"]
         self.base_url = "https://example.gov.uk"
+        self.run_id = "run-test"
+        self.execution_id = options.get("execution_id")
         self.storage_backend = LocalFilesystemStorage(
             council_code=self.council_id,
             scraper_object_type="Councillors",
@@ -88,6 +90,11 @@ def test_a_successful_run_is_committed_and_reported(lambda_environment, monkeypa
 
     assert (result["statusCode"], result["status"]) == (200, "completed")
     assert stored(lambda_environment) == FULL_COUNCIL
+    # Enough for the run report to show duration and what the run produced
+    assert result["end_time"] >= result["start_time"]
+    assert result["duration_seconds"] >= 0
+    assert result["run_id"] == "run-test"
+    assert result["commit"] is None  # the local backend makes no commits
 
 
 def test_a_run_that_raises_partway_commits_nothing(lambda_environment, monkeypatch):

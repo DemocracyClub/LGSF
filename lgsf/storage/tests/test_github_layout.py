@@ -9,8 +9,7 @@ that a REPLACE run deletes exactly the files of its own type and nothing
 else.
 
 These run the real git plumbing against a bare repository on disk; the
-only GitHub API calls on this path are stubbed out. The branch is pushed
-but not merged, as in production that step is a pull request.
+only GitHub API calls on this path are stubbed out.
 """
 
 import subprocess
@@ -90,11 +89,6 @@ def tree(bare, ref):
     return sorted(git("ls-tree", "-r", "--name-only", ref, cwd=bare).split())
 
 
-def merge_into_main(bare, branch):
-    """What the pull request does in production: main becomes the branch."""
-    git("update-ref", "refs/heads/main", f"refs/heads/{branch}", cwd=bare)
-
-
 def make_session(
     bare, tmp_path, monkeypatch, object_type="Councillors", mode=StorageMode.REPLACE
 ):
@@ -113,15 +107,18 @@ def make_session(
 
 
 def run(bare, tmp_path, monkeypatch, files, **kwargs):
-    """Stage files, commit and push a branch, then merge it as production would."""
+    """Stage files, then commit and push main as a run does."""
     session = make_session(bare, tmp_path, monkeypatch, **kwargs)
     for name, content in files.items():
         session.write(Path(name), content)
-    result = session._commit_files("Updated ABC")
-    if not result.get("skipped"):
-        merge_into_main(bare, result["branch"])
+    result = session._commit_files(MESSAGE)
     session._cleanup_local_repo()
     return result
+
+
+MESSAGE = (
+    "Updated ABC councillors\n\nLGSF-Run-Id: run-1\nLGSF-Scraper-Type: Councillors\n"
+)
 
 
 def test_files_go_under_the_types_directory(bare_repo, tmp_path, monkeypatch):
@@ -225,3 +222,43 @@ def test_closing_an_abandoned_session_removes_its_clone(
     assert not Path(session.local_repo_path).exists()
     assert session._closed and storage._active is None
     assert tree(bare_repo, "main") == ["README.md"]
+
+
+def test_the_commit_on_main_carries_the_message_and_trailers(
+    bare_repo, tmp_path, monkeypatch
+):
+    result = run(bare_repo, tmp_path, monkeypatch, {"json/a.json": "{}"})
+
+    assert git("rev-parse", "main", cwd=bare_repo).strip() == result["commit"]
+    assert (
+        git("log", "-1", "--format=%B", "main", cwd=bare_repo).strip()
+        == MESSAGE.strip()
+    )
+    run_id = git(
+        "log",
+        "-1",
+        "--format=%(trailers:key=LGSF-Run-Id,valueonly)",
+        "main",
+        cwd=bare_repo,
+    )
+    assert run_id.strip() == "run-1"
+    # README + this one: a single commit per run, no merge commit
+    assert git("rev-list", "--count", "main", cwd=bare_repo).strip() == "2"
+
+
+def test_a_run_that_overlaps_another_fails_instead_of_overwriting(
+    bare_repo, tmp_path, monkeypatch
+):
+    """main moved between the clone and the push: the push is rejected, nothing is lost."""
+    session = make_session(bare_repo, tmp_path, monkeypatch)
+    session.write(Path("json/slow.json"), "{}")
+    session._ensure_local_repo()
+    # The clone is now stale: another run lands on main before this one pushes
+    monkeypatch.setattr(session, "_ensure_local_repo", lambda: None)
+    seed_main(bare_repo, tmp_path, {"Councillors/json/fast.json": "{}"})
+
+    with pytest.raises(RuntimeError, match="moved while this run was scraping"):
+        session._commit_files(MESSAGE)
+    session._cleanup_local_repo()
+
+    assert tree(bare_repo, "main") == ["Councillors/json/fast.json", "README.md"]

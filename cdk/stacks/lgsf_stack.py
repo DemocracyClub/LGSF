@@ -372,7 +372,15 @@ class LgsfStack(cdk.Stack):
             self,
             "RunScraper",
             lambda_function=self.scraper_worker_function,
-            payload=sfn.TaskInput.from_json_path_at("$"),
+            # The council and type from the enumerator, plus this execution's
+            # name so the commits a run makes can be traced to its run report.
+            payload=sfn.TaskInput.from_object(
+                {
+                    "council": sfn.JsonPath.string_at("$.council"),
+                    "scraper_type": sfn.JsonPath.string_at("$.scraper_type"),
+                    "execution_id": sfn.JsonPath.string_at("$$.Execution.Name"),
+                }
+            ),
             retry_on_service_exceptions=False,
             output_path="$.Payload",  # Extract the Lambda result payload
         )
