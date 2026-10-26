@@ -260,3 +260,60 @@ def test_every_council_under_the_prefix_and_a_report(fake, tmp_path):
     ]
     rows = list(csv.DictReader(report.open()))
     assert rows[0]["files"] == "4" and rows[0]["head"]
+
+
+class FakeSNS:
+    def __init__(self):
+        self.messages = []
+
+    def publish(self, TopicArn, Message):
+        self.messages.append(json.loads(Message))
+
+
+@pytest.fixture
+def sns(monkeypatch):
+    from lgsf.storage import doorbell
+
+    fake = FakeSNS()
+    monkeypatch.setattr(doorbell, "get_client", lambda region: fake)
+    return fake
+
+
+TOPIC = "arn:aws:sns:eu-west-2:123456789012:lgsf-development-topic-data-commits"
+
+
+def test_a_push_rings_the_doorbell_once_with_main(fake, tmp_path, sns):
+    repo = bare_repo(tmp_path, "ABD", {})
+    put(fake, "merged-data/ABD/Minutes/json/2024-01-01-1.json", "{}")
+
+    result = backfill(
+        fake, tmp_path, scraper_types=["minutes", "decisions"], doorbell_topic=TOPIC
+    ).run_council("ABD")
+
+    assert result.commits == 2
+
+    head = git("rev-parse", "main", cwd=repo).strip()
+    assert result.rang and result.head == head
+    assert sns.messages == [
+        {"repository": "ABD", "after": head, "scraper_type": "Minutes,Decisions"}
+    ]
+
+
+def test_no_push_no_doorbell(fake, tmp_path, sns):
+    bare_repo(tmp_path, "ABD", {})
+    backfill(fake, tmp_path, doorbell_topic=TOPIC).run_council("ABD")
+    rerun = backfill(fake, tmp_path, doorbell_topic=TOPIC).run_council("ABD")
+    dry = backfill(fake, tmp_path, doorbell_topic=TOPIC, dry_run=True)
+
+    assert dry.run_council("ABD").rang is False
+    assert rerun.rang is False
+    assert len(sns.messages) == 1
+
+
+def test_without_a_topic_it_pushes_quietly(fake, tmp_path, sns):
+    bare_repo(tmp_path, "ABD", {})
+
+    result = backfill(fake, tmp_path).run_council("ABD")
+
+    assert result.action == "committed" and not result.rang
+    assert sns.messages == []

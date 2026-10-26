@@ -90,6 +90,8 @@ class LocalGitStorage(GitHubStorage):
     the GitHub backend's own session code. See the module docstring.
     """
 
+    rings_doorbell = False
+
     def __init__(
         self,
         council_code: str,
