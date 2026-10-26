@@ -177,6 +177,25 @@ class LgsfStack(cdk.Stack):
             display_name="LGSF Scraper Execution Notifications",
         )
 
+        # The doorbell: one message per push to a council's main in
+        # LGSF-Data (lgsf/storage/doorbell.py). Kept apart from the run
+        # reports above, which are for people. Subscribers, such as
+        # reps-wiki's queue, subscribe themselves from their own stacks.
+        self.data_commits_topic = sns.Topic(
+            self,
+            "DataCommitsTopic",
+            topic_name=self.get_resource_name("topic", "data-commits"),
+            display_name="LGSF-Data commits",
+        )
+        # For things outside this stack that push to LGSF-Data too, such
+        # as scripts/backfill_github.py on a laptop.
+        ssm.StringParameter(
+            self,
+            "DataCommitsTopicArnParameter",
+            parameter_name=f"/lgsf/{self.dc_environment}/sns/data_commits_topic_arn",
+            string_value=self.data_commits_topic.topic_arn,
+        )
+
     def create_lambda_execution_role(self) -> None:
         """Create IAM role for Lambda function execution with necessary permissions."""
         self.lambda_execution_role = aws_iam.Role(
@@ -339,6 +358,8 @@ class LgsfStack(cdk.Stack):
                 # Must match PLAYWRIGHT_BROWSERS_PATH set during the Docker build
                 # so Playwright finds the pre-installed Chromium binary at runtime.
                 "PLAYWRIGHT_BROWSERS_PATH": "/ms-playwright",
+                # The worker is what pushes to LGSF-Data, so it rings.
+                "DATA_COMMITS_TOPIC_ARN": self.data_commits_topic.topic_arn,
                 # Documents to S3. Without this, with metadata going to
                 # GitHub, the document store would be the Lambda's /tmp,
                 # and every storage_key recorded would point at a file
@@ -797,6 +818,14 @@ class LgsfStack(cdk.Stack):
             value=self.scraper_notification_topic.topic_arn,
             description="SNS Topic ARN for scraper notifications",
             export_name=f"{self._stack_name}-ScraperNotificationTopicArn",
+        )
+
+        cdk.CfnOutput(
+            self,
+            "DataCommitsTopicArn",
+            value=self.data_commits_topic.topic_arn,
+            description="SNS Topic ARN: one message per push to LGSF-Data",
+            export_name=f"{self._stack_name}-DataCommitsTopicArn",
         )
 
         # Lambda Execution Role ARN

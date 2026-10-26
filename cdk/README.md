@@ -50,6 +50,17 @@ with one-month retention, and each council's run is a stream in it. The
 worker is told the prefix (`SCRAPER_LOG_GROUP_PREFIX`) so the two can't
 disagree.
 
+New commits: after each push to a council's `main` the worker publishes
+one message to the `data-commits` SNS topic, `{"repository": "STO",
+"after": "<sha main now points at>", "scraper_type": ..., "run_id": ...}`
+(`lgsf/storage/doorbell.py`). It's a doorbell: it carries no data, and a
+subscriber fetches the repository itself, so a lost message only delays it
+until the next push. A run that pushes nothing publishes nothing, and a
+failed publish never fails the run. Subscribers (reps-wiki's queue, say)
+subscribe from their own stacks; this one has none. The topic's ARN is in
+SSM at `/lgsf/<env>/sns/data_commits_topic_arn`, where
+`scripts/backfill_github.py` finds it so its pushes ring too.
+
 There is no SQS queue. An earlier design used one; the Step Function
 replaced it.
 
@@ -101,8 +112,9 @@ the later one would fail. `--allow-overlap` starts anyway.
 
 ## Stack outputs
 
-`StepFunctionArn`, the ARN of each Lambda, the SNS topic ARN, and the
-execution role ARN. `npx cdk deploy` prints them.
+`StepFunctionArn`, the ARN of each Lambda, the ARNs of the two SNS topics
+(run reports, `ScraperNotificationTopicArn`; new commits,
+`DataCommitsTopicArn`), and the execution role ARN. `npx cdk deploy` prints them.
 
 ## Troubleshooting
 

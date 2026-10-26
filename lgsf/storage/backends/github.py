@@ -13,6 +13,7 @@ from typing import Any, Callable, override
 import jwt
 import requests
 
+from lgsf.storage import doorbell
 from lgsf.storage.backends.base import BaseStorage, StorageMode, StorageSession
 
 logger = logging.getLogger(__name__)
@@ -930,8 +931,13 @@ class GitHubStorage(BaseStorage):
     One repository per council. Each run clones main, writes this type's
     files under <Type>/, commits once with trailers naming the run, and
     pushes main fast-forward. The GitHub API is used only to create a
-    repository that doesn't exist yet.
+    repository that doesn't exist yet. After a push it rings the doorbell
+    (lgsf.storage.doorbell), so subscribers know main has moved.
     """
+
+    # The local git backend shares this class's session code, but its
+    # repositories are on a laptop, so nobody subscribes to them.
+    rings_doorbell = True
 
     def __init__(
         self,
@@ -1028,6 +1034,13 @@ class GitHubStorage(BaseStorage):
             logger.info(
                 f"Nothing to push for {session.council_code}/"
                 f"{session.scraper_object_type}: {commit_result.get('reason')}"
+            )
+        elif self.rings_doorbell:
+            doorbell.ring(
+                session.repo,
+                commit_result["commit"],
+                scraper_type=session.scraper_object_type,
+                run_id=session.run_id,
             )
         return commit_result
 

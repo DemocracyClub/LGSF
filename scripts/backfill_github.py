@@ -46,6 +46,12 @@ exists, and downloads, commits and pushes nothing. A council with no
 repository is skipped and reported: the repository is made by the
 council's first councillors run.
 
+After each push it rings the doorbell (lgsf/storage/doorbell.py), as the
+daily run does, so subscribers such as reps-wiki know the repository has
+moved. The topic comes from ``--doorbell-topic``, ``DATA_COMMITS_TOPIC_ARN``
+or the SSM parameter the LGSF stack writes, in that order; with none of
+them, or with ``--no-doorbell``, it pushes without ringing.
+
 Records pass through this machine on their way from S3 to GitHub. That is
 the records only, a few tens of megabytes for the largest council;
 documents, which run to gigabytes, are not touched.
@@ -68,12 +74,14 @@ from rich.console import Console
 from rich.table import Table
 
 from lgsf.scraper_types import SCRAPER_TYPES
-from lgsf.storage import s3
+from lgsf.storage import doorbell, s3
 from scripts.migrate_github_layout import github_token
 
 ORGANIZATION = "LGSF-Data"
 DEFAULT_BRANCH = "main"
 DEFAULT_PREFIX = "merged-data"
+REGION = "eu-west-2"
+DOORBELL_PARAMETER = "/lgsf/development/sns/data_commits_topic_arn"
 
 #: Files under a type's directory on S3 that aren't records: local run
 #: artefacts the Lambda never writes.
@@ -116,6 +124,7 @@ class Result:
     bytes: int = 0
     commits: int = 0
     head: str = ""
+    rang: bool = False
     error: str = ""
 
 
@@ -145,6 +154,7 @@ class Backfill:
         dry_run: bool = False,
         workers: int = 8,
         out: Callable[[str], None] = print,
+        doorbell_topic: str | None = None,
     ):
         unknown = [t for t in scraper_types if t not in SCRAPER_TYPES]
         if unknown:
@@ -165,6 +175,7 @@ class Backfill:
         self.dry_run = dry_run
         self.workers = workers
         self.out = out
+        self.doorbell_topic = doorbell_topic
 
     # ---- S3 ----
 
@@ -265,6 +276,13 @@ class Backfill:
                 result.commits = commits
                 result.head = head
                 result.action = "committed" if commits else "unchanged"
+                if commits and self.doorbell_topic:
+                    result.rang = doorbell.ring(
+                        council,
+                        head,
+                        topic_arn=self.doorbell_topic,
+                        scraper_type=",".join(map(object_type, on_s3)),
+                    )
                 return result
             self.out(f"{council}: main moved during the backfill, redoing ({attempt})")
         raise RuntimeError(f"main kept moving; gave up after {PUSH_ATTEMPTS} attempts")
@@ -369,6 +387,21 @@ def print_summary(results: list[Result], console: Console, dry_run: bool) -> Non
     )
 
 
+def doorbell_topic(given: str | None) -> str | None:
+    """The topic to ring: as given, else from the environment, else SSM."""
+    found = given or os.environ.get(doorbell.TOPIC_ARN_VARIABLE)
+    if found:
+        return found
+    import boto3
+
+    try:
+        return boto3.client("ssm", region_name=REGION).get_parameter(
+            Name=DOORBELL_PARAMETER
+        )["Parameter"]["Value"]
+    except Exception:
+        return None
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument(
@@ -395,6 +428,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--report", type=Path, default=Path("github-backfill.csv"))
     parser.add_argument(
+        "--doorbell-topic",
+        help=f"SNS topic to tell of each push (default: ${doorbell.TOPIC_ARN_VARIABLE}, "
+        f"else SSM {DOORBELL_PARAMETER})",
+    )
+    parser.add_argument(
+        "--no-doorbell", action="store_true", help="Push without telling anyone"
+    )
+    parser.add_argument(
         "--workdir", type=Path, default=Path("/tmp/lgsf-github-backfill")
     )
     args = parser.parse_args(argv)
@@ -405,6 +446,15 @@ def main(argv: list[str] | None = None) -> int:
     def remote_for(council: str) -> str:
         return f"https://x-access-token:{token}@github.com/{args.organization}/{council}.git"
 
+    topic = None if args.no_doorbell else doorbell_topic(args.doorbell_topic)
+    if topic:
+        console.print(f"Ringing {topic} after each push")
+    elif not args.no_doorbell:
+        console.print(
+            "[yellow]No doorbell topic found: pushes will not be announced.[/yellow] "
+            "Subscribers will see them at the council's next daily commit."
+        )
+
     backfill = Backfill(
         s3.get_client(),
         s3.bucket_from_environment(),
@@ -414,6 +464,7 @@ def main(argv: list[str] | None = None) -> int:
         args.workdir,
         dry_run=args.dry_run,
         out=console.print,
+        doorbell_topic=topic,
     )
     if args.all_councils:
         councils = backfill.councils()
