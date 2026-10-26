@@ -219,6 +219,18 @@ class ModGovCouncillorScraper(BaseCouncillorScraper):
         IGNORED_ENDDATES = ["unspecified"]
 
         try:
+            startdate = (
+                councillor_xml.find("termsofoffice")
+                .findAll("termofoffice")[-1]
+                .find("startdate")
+                .text
+            )
+            start_date = parse(startdate, dayfirst=True)
+            councillor.start_date = start_date.isoformat()
+        except AttributeError:
+            pass
+
+        try:
             enddate = councillor_xml.find("termsofoffice").findAll("enddate")[-1].text
             if enddate not in IGNORED_ENDDATES:
                 # councillor.standing_down = enddate
