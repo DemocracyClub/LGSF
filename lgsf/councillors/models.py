@@ -15,6 +15,7 @@ class CouncillorBase:
     division: str
     email: str = field(init=False, hash=False, compare=False)
     photo_url: str = field(init=False, hash=False, compare=False)
+    start_date: str = field(init=False, hash=False, compare=False)
 
     def __repr__(self):
         return "<Councillor: Name: {}>".format(self.name)
@@ -39,6 +40,8 @@ class CouncillorBase:
         email = data.pop("email", None)
         photo_url = data.pop("photo_url", None)
         data.pop("standing_down", None)
+        data.pop("start_date", None)
+
         for k in list(data.keys()):
             if k.startswith("raw_"):
                 data[k[4:]] = data.pop(k)
@@ -60,6 +63,7 @@ class CouncillorBase:
         out = {
             "photo_url": getattr(self, "photo_url", None),
             "email": getattr(self, "email", None),
+            "start_date": getattr(self, "start_date", None),
             "standing_down": getattr(self, "standing_down", None),
             "url": self.url,
         }
