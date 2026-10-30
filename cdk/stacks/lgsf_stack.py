@@ -721,7 +721,12 @@ class LgsfStack(cdk.Stack):
             rule_name=self.get_resource_name("rule", "scraper-orchestration"),
             description="Trigger LGSF scraper orchestration via Step Functions",
             enabled=True,
-            schedule=events.Schedule.rate(cdk.Duration.days(1)),
+            # A fixed time, early in the UTC day, so the day's runs of
+            # scrapers kept off AWS (run_on_aws = False, run elsewhere
+            # later that morning) and the dashboard's 10:00 build fall on
+            # the same day: the dashboard shows each council's history by
+            # day. The run takes about an hour.
+            schedule=events.Schedule.cron(minute="0", hour="2"),
         )
 
         # Create IAM role for EventBridge rule

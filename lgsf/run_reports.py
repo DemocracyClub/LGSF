@@ -27,8 +27,10 @@ import traceback
 import boto3
 from rich.console import Console
 
-#: How many reports the bucket keeps, and so the dashboard can read.
-REPORTS_KEPT = 10
+#: How many reports the bucket keeps, and so the dashboard can read. It
+#: shows ten days, and a day can have several runs: the scheduled one,
+#: runs on request, and runs of scrapers kept off AWS.
+REPORTS_KEPT = 40
 
 
 def save_to_s3(bucket_name: str, key: str, data: dict, console: Console) -> bool:
@@ -58,7 +60,7 @@ def cleanup_old_reports(
     Args:
         bucket_name: S3 bucket name
         console: Rich console for logging
-        keep_count: Number of recent reports to keep (default: 10)
+        keep_count: Number of recent reports to keep (default: REPORTS_KEPT)
     """
     try:
         s3_client = boto3.client("s3")

@@ -185,9 +185,10 @@ python -m lgsf.run_reports publish run.jsonl --execution-id $ID
 ```
 
 The report is built by the same code as the aggregation Lambda's
-(`lgsf/run_reports.py`), and the bucket keeps only the last 10, so publish
-once per run, not once per command. `publish` exits 1 if any council
-failed.
+(`lgsf/run_reports.py`). Publish once per run, not once per command: the
+bucket keeps the last 40 reports. The dashboard shows each council's
+history by day (UTC), so a run here appears in the same day as the
+scheduled AWS run at 02:00 UTC. `publish` exits 1 if any council failed.
 
 ## Working on a scraper
 
