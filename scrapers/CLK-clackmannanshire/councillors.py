@@ -6,26 +6,22 @@ from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 class Scraper(HTMLCouncillorScraper):
     list_page = {
-        "container_css_selector": "div.col-md-14",
-        "councillor_css_selector": ".col-sm-3",
+        "container_css_selector": "main .ds_layout__content",
+        "councillor_css_selector": ".ds_layout__item",
     }
 
     def get_single_councillor(self, councillor_html):
         url = urljoin(self.base_url, councillor_html.a["href"])
-        soup = self.get_page(url)
-        name = (
-            soup.select_one("div.col-md-14")
-            .h2.get_text(strip=True)
-            .replace("Councillor", "")
-        )
+        soup = self.get_page(url).select_one("main .ds_layout__content")
+        name = soup.select_one("h1 .fn").get_text(strip=True)
         ward = (
-            soup.find("strong", text=re.compile("Ward:"))
+            soup.find("strong", string=re.compile("Ward:"))
             .find_parent("li")
             .get_text(strip=True)
             .replace("Ward:", "")
             .strip()
         )
-        party = councillor_html.h5.get_text(strip=True)
+        party = councillor_html.h3.get_text(strip=True)
 
         councillor = self.add_councillor(
             url,
