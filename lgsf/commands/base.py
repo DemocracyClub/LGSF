@@ -317,11 +317,16 @@ class PerCouncilCommandBase(AWSInvokableMixin, CouncilFilteringCommandBase):
 
         self.console.print(table)
 
-    #: URL listing the scrapers failing in production, for command types
-    #: that have one. The dashboard reports a single scheduled job with no
-    #: service field, so it describes exactly one data type and cannot be
-    #: reused for the others.
-    failing_api_url = None
+    #: The dashboard publishes one list of failing councils per scraper
+    #: type, from the last scheduled production run. A type the production
+    #: job doesn't run yet has no file there (404).
+    FAILING_API_URL = (
+        "https://democracyclub.github.io/lgsf-dashboard/api/failing/{type}.json"
+    )
+
+    @property
+    def failing_api_url(self):
+        return self.FAILING_API_URL.format(type=self.command_name)
 
     def local_run_logs(self):
         """
@@ -351,12 +356,37 @@ class PerCouncilCommandBase(AWSInvokableMixin, CouncilFilteringCommandBase):
         return logs
 
     def failing(self):
-        if not self.failing_api_url:
-            return []
-        req = requests.get(self.failing_api_url)
+        """
+        Councils failing in the last production run, or None when the
+        dashboard has no report for this type.
+        """
+        req = requests.get(self.failing_api_url, timeout=30)
+        if req.status_code == 404:
+            return None
+        req.raise_for_status()
         return req.json()
 
     def output_failing(self):
+        failing = self.failing()
+        if failing is not None:
+            table = Table(
+                title=f"Councils with '{self.command_name}' failing in production"
+            )
+            table.add_column("Code", style="magenta")
+            table.add_column("When", style="cyan")
+            table.add_column("Error", style="red", overflow="fold")
+            for council in failing:
+                if council["council_id"] not in self.current_council_ids:
+                    continue
+                run = council["latest_run"]
+                table.add_row(
+                    council["council_id"],
+                    str(run.get("start", ""))[:19],
+                    run.get("error") or "",
+                )
+            self.console.print(table)
+            self.console.print(f"[dim]From {self.failing_api_url}[/dim]")
+
         logs = self.local_run_logs()
         if logs:
             failed = {code: log for code, log in logs.items() if log.get("status_code")}
@@ -381,25 +411,13 @@ class PerCouncilCommandBase(AWSInvokableMixin, CouncilFilteringCommandBase):
             )
             return
 
-        if self.failing_api_url:
-            table = Table(
-                title=f"Councils with '{self.command_name}' failing in production"
+        if failing is None:
+            self.console.print(
+                f"[yellow]No {self.command_name} run logs on this machine, and no "
+                f"production report for this type. Run the scrapers to find out "
+                f"what is failing: `manage.py {self.command_name} "
+                f"--all-councils`.[/yellow]"
             )
-            table.add_column("Code", style="magenta")
-            table.add_column("Error", style="red")
-            for council in self.failing():
-                if council["council_id"] in self.current_council_ids:
-                    table.add_row(
-                        council["council_id"], council["latest_run"]["log_text"]
-                    )
-            self.console.print(table)
-            return
-
-        self.console.print(
-            f"[yellow]No {self.command_name} run logs on this machine, and no "
-            f"production report for this type. Run the scrapers to find out what "
-            f"is failing: `manage.py {self.command_name} --all-councils`.[/yellow]"
-        )
 
     def output_status(self):
         from rich.columns import Columns

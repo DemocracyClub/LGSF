@@ -31,7 +31,7 @@ uv run python manage.py <type> --council KIR -v
 # Everything. Councils run concurrently; one failing never stops the rest
 uv run python manage.py <type> --all-councils
 
-# What has no scraper, what failed last time it ran here
+# What has no scraper; what failed in production and in local runs
 uv run python manage.py <type> --list-missing
 uv run python manage.py <type> --list-failing
 
@@ -53,10 +53,33 @@ data/<COUNCIL>/<Type>/runlog.json  how the last run went, locally only
 data/<COUNCIL>/documents/        downloaded files
 ```
 
-`--list-failing` reads those run logs first, so it mostly knows about councils
-run on this machine. Where there are no local logs it falls back to the
-production report, which only councillors has — so for other types an empty
-result means "nothing has been run here", not "nothing is failing".
+## Finding what's failing
+
+The dashboard (https://democracyclub.github.io/lgsf-dashboard/) publishes the
+councils that failed in the last scheduled production run, **one feed per
+type**:
+
+```
+https://democracyclub.github.io/lgsf-dashboard/api/failing/<type>.json
+```
+
+Councillors and minutes have one; a type production doesn't run yet (decisions,
+for now) returns 404. `api/failing.json` without a type is the councillors list
+only. Each entry looks like:
+
+```json
+{"council_id": "AGY", "scraper_type": "minutes",
+ "latest_run": {"status": "failed", "start": "...", "end": "...",
+                "duration": 16, "error": "ConnectTimeout: ...", "log_text": "<full traceback>"}}
+```
+
+`error` is a one-line summary, cut at about 160 characters — read that first
+and only open `log_text` if it isn't enough. The same council often fails in
+both feeds for the same reason (a dead host), so fix it once and check both.
+
+`--list-failing` prints the production list, then whatever failed in local run
+logs. The production list only changes after the next scheduled run, so after
+fixing one, confirm with a local `-v` run rather than the feed.
 
 ## Diagnosing a broken scraper
 
@@ -88,6 +111,9 @@ If the site is down or blocking, say so rather than working around it.
 | 409 Conflict from ModernGov | Server-side fault | Usually not fixable from here |
 
 ## Working through a batch of failing scrapers
+
+- **Start from the per-type feeds**, all types, not just councillors. Group by
+  council: one wrong `base_url` often breaks every type for that council.
 
 - **One council at a time**, committed on its own as
   `Fix ABC (Council Name): what changed`.
