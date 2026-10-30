@@ -23,6 +23,7 @@ from rich.table import Table
 from lgsf.commands.aws_mixin import AWSInvokableMixin
 from lgsf.conf import settings
 from lgsf.path_utils import _abs_path, load_council_info, load_scraper
+from lgsf.run_reports import completed_result, failed_result
 from lgsf.scrapers.progress import LiveProgress
 
 
@@ -233,6 +234,32 @@ class PerCouncilCommandBase(AWSInvokableMixin, CouncilFilteringCommandBase):
             help="Only run scrapers that haven't completed a run in the last "
             "HOURS (default 24)",
         )
+        where = self.parser.add_mutually_exclusive_group()
+        where.add_argument(
+            "--run-on-aws",
+            dest="run_on_aws",
+            action="store_const",
+            const=True,
+            help="Only run councils whose scraper runs on AWS (as AWS does)",
+        )
+        where.add_argument(
+            "--no-aws",
+            dest="run_on_aws",
+            action="store_const",
+            const=False,
+            help="Only run councils whose scraper is kept off AWS (run_on_aws = False)",
+        )
+        self.parser.add_argument(
+            "--results-file",
+            metavar="FILE",
+            help="Add each council's result to FILE, for `python -m "
+            "lgsf.run_reports publish` to report as one run",
+        )
+        self.parser.add_argument(
+            "--execution-id",
+            help="Name this run in its commits' trailers, as the run report "
+            "it goes in is named",
+        )
         self.parser.add_argument(
             "--check-only",
             action="store_true",
@@ -317,11 +344,16 @@ class PerCouncilCommandBase(AWSInvokableMixin, CouncilFilteringCommandBase):
 
         self.console.print(table)
 
-    #: URL listing the scrapers failing in production, for command types
-    #: that have one. The dashboard reports a single scheduled job with no
-    #: service field, so it describes exactly one data type and cannot be
-    #: reused for the others.
-    failing_api_url = None
+    #: The dashboard publishes one list of failing councils per scraper
+    #: type, from the last scheduled production run. A type the production
+    #: job doesn't run yet has no file there (404).
+    FAILING_API_URL = (
+        "https://democracyclub.github.io/lgsf-dashboard/api/failing/{type}.json"
+    )
+
+    @property
+    def failing_api_url(self):
+        return self.FAILING_API_URL.format(type=self.command_name)
 
     def local_run_logs(self):
         """
@@ -351,12 +383,37 @@ class PerCouncilCommandBase(AWSInvokableMixin, CouncilFilteringCommandBase):
         return logs
 
     def failing(self):
-        if not self.failing_api_url:
-            return []
-        req = requests.get(self.failing_api_url)
+        """
+        Councils failing in the last production run, or None when the
+        dashboard has no report for this type.
+        """
+        req = requests.get(self.failing_api_url, timeout=30)
+        if req.status_code == 404:
+            return None
+        req.raise_for_status()
         return req.json()
 
     def output_failing(self):
+        failing = self.failing()
+        if failing is not None:
+            table = Table(
+                title=f"Councils with '{self.command_name}' failing in production"
+            )
+            table.add_column("Code", style="magenta")
+            table.add_column("When", style="cyan")
+            table.add_column("Error", style="red", overflow="fold")
+            for council in failing:
+                if council["council_id"] not in self.current_council_ids:
+                    continue
+                run = council["latest_run"]
+                table.add_row(
+                    council["council_id"],
+                    str(run.get("start", ""))[:19],
+                    run.get("error") or "",
+                )
+            self.console.print(table)
+            self.console.print(f"[dim]From {self.failing_api_url}[/dim]")
+
         logs = self.local_run_logs()
         if logs:
             failed = {code: log for code, log in logs.items() if log.get("status_code")}
@@ -381,25 +438,13 @@ class PerCouncilCommandBase(AWSInvokableMixin, CouncilFilteringCommandBase):
             )
             return
 
-        if self.failing_api_url:
-            table = Table(
-                title=f"Councils with '{self.command_name}' failing in production"
+        if failing is None:
+            self.console.print(
+                f"[yellow]No {self.command_name} run logs on this machine, and no "
+                f"production report for this type. Run the scrapers to find out "
+                f"what is failing: `manage.py {self.command_name} "
+                f"--all-councils`.[/yellow]"
             )
-            table.add_column("Code", style="magenta")
-            table.add_column("Error", style="red")
-            for council in self.failing():
-                if council["council_id"] in self.current_council_ids:
-                    table.add_row(
-                        council["council_id"], council["latest_run"]["log_text"]
-                    )
-            self.console.print(table)
-            return
-
-        self.console.print(
-            f"[yellow]No {self.command_name} run logs on this machine, and no "
-            f"production report for this type. Run the scrapers to find out what "
-            f"is failing: `manage.py {self.command_name} --all-councils`.[/yellow]"
-        )
 
     def output_status(self):
         from rich.columns import Columns
@@ -435,7 +480,19 @@ class PerCouncilCommandBase(AWSInvokableMixin, CouncilFilteringCommandBase):
                 for council in councils
                 if council.council_id not in missing_councils
             ]
+        run_on_aws = self.options.get("run_on_aws")
+        if run_on_aws is not None:
+            councils = [
+                council
+                for council in councils
+                if self.runs_on_aws(council.council_id) is run_on_aws
+            ]
         return councils
+
+    def runs_on_aws(self, council_id):
+        """The scraper's run_on_aws, or None for a council without one."""
+        scraper = load_scraper(council_id, self.command_name)
+        return scraper.run_on_aws if scraper else None
 
     @property
     def in_lambda(self):
@@ -507,6 +564,40 @@ class PerCouncilCommandBase(AWSInvokableMixin, CouncilFilteringCommandBase):
 
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content)
+
+    def record_result(self, scraper, run_log, error):
+        """
+        Add this council's result to --results-file, as the AWS worker
+        returns it (lgsf.run_reports), so a run outside AWS can be reported
+        the way AWS runs are. A failure's full log goes to S3 beside the
+        reports when S3_REPORTS_BUCKET is set, as the worker's does.
+        """
+        path = self.options.get("results_file")
+        if not path:
+            return
+        council = scraper.options["council"]
+        if error is None:
+            result = completed_result(
+                council,
+                self.command_name,
+                run_log,
+                run_id=scraper.run_id,
+                commit=scraper.last_commit,
+            )
+        else:
+            from lgsf.storage.backends.github import GitHubRateLimitError
+
+            result = failed_result(
+                council,
+                self.command_name,
+                run_log,
+                error,
+                bucket=os.environ.get("S3_REPORTS_BUCKET"),
+                rate_limited=isinstance(error, GitHubRateLimitError),
+                console=self.console,
+            )
+        with self._lock, open(path, "a") as f:
+            f.write(json.dumps(result, default=str) + "\n")
 
     def run_councils(self):
         self._run_councils(progress=False)
@@ -606,6 +697,7 @@ class PerCouncilCommandBase(AWSInvokableMixin, CouncilFilteringCommandBase):
 
     def _run_single(self, scraper, console):
         run_log = settings.RUN_LOGGER(start=datetime.datetime.now(datetime.UTC))
+        error = None
         try:
             scraper.run(run_log)
             if self.options.get("report"):
@@ -613,8 +705,14 @@ class PerCouncilCommandBase(AWSInvokableMixin, CouncilFilteringCommandBase):
                     self.scraped_items.extend(scraper.report_items)
         except KeyboardInterrupt:
             raise
-        except Exception:
+        except Exception as e:
+            error = e
             run_log.error = traceback.format_exc()
+            # A run that raised commits nothing. Left open, its session would
+            # be committed as it stands when the scraper's context exits,
+            # or that commit's own checks would raise past this handler and
+            # end the whole run.
+            scraper.abandon_storage()
             if not run_log.log and hasattr(console, "export_text"):
                 run_log.log = console.export_text()
             # One council failing must not end a run over many of them.
@@ -623,12 +721,14 @@ class PerCouncilCommandBase(AWSInvokableMixin, CouncilFilteringCommandBase):
             if self._council_count <= 1 and self.options.get("verbose"):
                 run_log.finish()
                 self.record_run_log(scraper, run_log)
+                self.record_result(scraper, run_log, error)
                 raise
         run_log.finish()
 
         with self._lock:
             self._results.append((scraper.options["council"], run_log))
         self.record_run_log(scraper, run_log)
+        self.record_result(scraper, run_log, error)
 
         if not self._concurrent:
             console.print(run_log.as_rich_table)

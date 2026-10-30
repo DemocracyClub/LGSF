@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "https://www.orkney.gov.uk/your-council/councillors/councillors/",
+            "base_url": "https://www.orkney.gov.uk/council-and-democracy/how-the-council-works/your-councillors/find-your-councillor",
             "cms_type": "Custom HTML"
         }
     }

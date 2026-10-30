@@ -6,10 +6,6 @@ from lgsf.commands.base import PerCouncilCommandBase
 class Command(PerCouncilCommandBase):
     command_name = "councillors"
 
-    # The scheduled production job behind this dashboard runs councillors
-    # scrapers.
-    failing_api_url = "https://democracyclub.github.io/lgsf-dashboard/api/failing.json"
-
     def output_report(self):
         """Display a Rich table report of scraped councillor data"""
         table = Table(title="Scraped Councillor Data")

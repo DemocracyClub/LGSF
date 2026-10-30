@@ -165,3 +165,23 @@ def test_with_the_real_commands_and_scrapers():
     assert result["councils"] == [
         {"council": "KIR", "scraper_types": list(scraper_types.SCRAPER_TYPES)}
     ]
+
+
+def test_councils_kept_off_aws_are_left_out(monkeypatch, registry):
+    """A site that blocks AWS is run from elsewhere with --no-aws instead."""
+    registry(councillors={"daily": True})
+
+    class OnAWS:
+        run_on_aws = True
+
+    class KeptOff:
+        run_on_aws = False
+
+    monkeypatch.setattr(
+        "lgsf.commands.base.load_scraper",
+        lambda code, cmd: KeptOff if code == "STO" else OnAWS,
+    )
+
+    result = enumerate_({"council_ids": "KIR,STO"})
+
+    assert result["councils"] == [{"council": "KIR", "scraper_types": ["councillors"]}]

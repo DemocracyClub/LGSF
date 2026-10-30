@@ -238,7 +238,8 @@ stored in REPLACE mode (not decisions). Readers need `s3:ListBucket` and
 Don't run two machines on the same council at once: each would overwrite
 the other's index.
 
-`--list-failing` reads run logs from `data/` and doesn't see ones on S3;
+`--list-failing` reads local run logs from `data/`, plus the dashboard's
+production feed once decisions has one; it doesn't see run logs on S3;
 they are at `<prefix>/<COUNCIL>/Decisions/runlog.json`.
 
 ## Watching a long run

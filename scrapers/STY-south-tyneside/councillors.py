@@ -10,6 +10,8 @@ def decode_cfemail(hexstr: str) -> str:
 
 
 class Scraper(HTMLCouncillorScraper):
+    # The site answers most AWS IPs with a 403 (Oct 2026).
+    run_on_aws = False
     list_page = {
         "container_css_selector": "#COUNCILLORSLISTBYNAME_HTML",  # lol
         "councillor_css_selector": "tbody td a",

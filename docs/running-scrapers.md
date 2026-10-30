@@ -36,9 +36,14 @@ finished and found implausibly little: whatever its last good run stored is
 left as it was. The same holds in the daily AWS run, where a failed council
 leaves its GitHub repository untouched.
 
-`--list-failing` reads those run logs, so after a full run it will tell you
-what is currently broken. It only knows about councils you have actually run
-on this machine.
+`--list-failing` shows two lists. The first is what failed in the last
+scheduled production run, from the dashboard's per-type feed at
+`https://democracyclub.github.io/lgsf-dashboard/api/failing/<type>.json`
+(councillors and minutes have one; a type production doesn't run yet has
+none). The second is from those local run logs, and only knows about councils
+you have actually run on this machine. Re-running one council here updates its
+local log, not the production list, which changes after the next scheduled
+run.
 
 A run over every council takes a while, and for minutes without
 `--skip-documents` will download a great deal — see below.
@@ -53,7 +58,7 @@ Useful options while working on a scraper:
 | `--skip-documents` | Minutes only. Find and record documents without downloading them |
 | `--list-missing` | Councils with no scraper of this type |
 | `--list-disabled` | Councils whose scraper is marked `disabled` |
-| `--list-failing` | Councils that failed the last time you ran them here |
+| `--list-failing` | Councils failing in the last production run, then those that failed the last time you ran them here |
 
 Output lands in a `data` directory:
 
@@ -153,6 +158,38 @@ while another execution covers one of the same councils; `--allow-overlap`
 starts it anyway. The daily run does the types marked `daily` in
 `lgsf/scraper_types.py`; see `cdk/README.md`.
 
+### Sites that block AWS
+
+Some councils refuse requests from AWS altogether (a 403 or a dropped
+connection, whichever region it comes from) while the same scraper works
+from a home connection. Set `run_on_aws = False` on that scraper and AWS
+leaves it out of every run, scheduled or `--aws`. Run those from another
+machine instead:
+
+```bash
+python manage.py councillors --all-councils --no-aws      # only the ones AWS skips
+python manage.py councillors --all-councils --run-on-aws  # only what AWS runs
+```
+
+Without either flag a local run includes both.
+
+To have such a run show on the dashboard the way AWS runs do, give each
+command the same `--results-file` and `--execution-id`, then publish the
+file as one run report (needs `S3_REPORTS_BUCKET` and AWS credentials):
+
+```bash
+ID=local-$(hostname -s)-$(date -u +%Y%m%d-%H%M%S)
+python manage.py councillors --all-councils --no-aws --results-file run.jsonl --execution-id $ID
+python manage.py minutes --all-councils --no-aws --results-file run.jsonl --execution-id $ID
+python -m lgsf.run_reports publish run.jsonl --execution-id $ID
+```
+
+The report is built by the same code as the aggregation Lambda's
+(`lgsf/run_reports.py`). Publish once per run, not once per command: the
+bucket keeps the last 40 reports. The dashboard shows each council's
+history by day (UTC), so a run here appears in the same day as the
+scheduled AWS run at 02:00 UTC. `publish` exits 1 if any council failed.
+
 ## Working on a scraper
 
 Install pre-commit hooks:
@@ -175,11 +212,12 @@ meetings too, usually at the same base URL.
 matching scraper file, that `base_url` is set, and that the scraper's base
 class agrees with the recorded `cms_type`.
 
-There is no feed of which scrapers are failing for a given service — the
-`--list-failing` reports what failed the last time you ran each council
-locally, so run the scrapers first: `manage.py <type> --all-councils
---skip-documents`. For councillors, where no local runs exist it falls back to
-the production dashboard.
+The dashboard publishes which councils failed in the last production run,
+one feed per type: `api/failing/councillors.json`,
+`api/failing/minutes.json`, and so on (the old `api/failing.json` is the
+councillors list only). `--list-failing` prints that alongside what failed the
+last time you ran each council locally. For a type with no production feed,
+run the scrapers first: `manage.py <type> --all-councils --skip-documents`.
 
 ## Adding a scraper for a council
 
