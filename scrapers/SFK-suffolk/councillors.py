@@ -2,6 +2,7 @@ from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
+from lgsf.councillors import SkipCouncillorException
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
@@ -15,6 +16,9 @@ class Scraper(HTMLCouncillorScraper):
         url = urljoin(self.base_url, councillor_html.select_one("a")["href"])
 
         identifier = url.rstrip("/").split("/")[-1]
+        if identifier == "vacancy":
+            # Vacant seats are listed as a card with a division and no party
+            raise SkipCouncillorException("Vacant seat")
         name = councillor_html.find_all("a")[0].text.strip()
         division = councillor_html.select_one(".division .value").get_text(strip=True)
         party = councillor_html.select_one(".party .value").get_text(strip=True)
@@ -32,5 +36,7 @@ class Scraper(HTMLCouncillorScraper):
         if email_el:
             councillor.email = email_el["href"].replace("mailto:", "")
 
-        councillor.photo_url = soup.select_one(".councillor__profile img")["src"]
+        image = soup.select_one(".councillor__profile img")
+        if image:
+            councillor.photo_url = urljoin(url, image["src"])
         return councillor
