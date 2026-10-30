@@ -5,10 +5,12 @@ from lgsf.councillors.scrapers import ModGovCouncillorScraper
 class Scraper(ModGovCouncillorScraper):
     def get_single_councillor(self, ward, councillor_xml):
         councillor = super().get_single_councillor(ward, councillor_xml)
-        if not getattr(councillor, "email", None):
+        email = getattr(councillor, "email", None)
+        if not email:
             if councillor.identifier == "1414":
                 # This person doesn't have an email address listed
                 return councillor
-        if "staffsmoorlands.gov.uk" in councillor.email:
+            raise SkipCouncillorException()
+        if "staffsmoorlands.gov.uk" in email:
             return councillor
         raise SkipCouncillorException()
