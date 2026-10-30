@@ -2,4 +2,5 @@ from lgsf.minutes.scrapers import ModGovMinutesScraper
 
 
 class Scraper(ModGovMinutesScraper):
-    pass
+    # The site drops connections from AWS, from every region tried (Oct 2026).
+    run_on_aws = False
