@@ -225,8 +225,9 @@ class ModGovCouncillorScraper(BaseCouncillorScraper):
                 .find("startdate")
                 .text
             )
-            start_date = parse(startdate, dayfirst=True)
-            councillor.start_date = start_date.isoformat()
+            if startdate not in IGNORED_ENDDATES:
+                start_date = parse(startdate, dayfirst=True)
+                councillor.start_date = start_date.isoformat()
         except AttributeError:
             pass
 
