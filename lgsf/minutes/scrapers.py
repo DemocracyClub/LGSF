@@ -3,7 +3,7 @@ import datetime
 import json
 import re
 from functools import cached_property
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit
 
 from bs4 import BeautifulSoup, Tag
 
@@ -561,6 +561,21 @@ class ModGovMinutesScraper(BaseMinutesScraper):
         except ValueError:
             return None
 
+    #: Some installs answer only on https but give their document links as
+    #: http://, so every download waits out a connect timeout and a run with
+    #: many documents is cut off. Set this to give links on the install's
+    #: own host the scheme of base_url. Off by default: the index is keyed
+    #: by URL, so changing a link fetches that document again.
+    documents_use_base_url_scheme = False
+
+    def document_url(self, url):
+        if not (url and self.documents_use_base_url_scheme):
+            return url
+        base, link = urlsplit(self.base_url), urlsplit(url)
+        if link.hostname == base.hostname and link.scheme != base.scheme:
+            return link._replace(scheme=base.scheme).geturl()
+        return url
+
     def get_documents(self, detail, meeting_date=None):
         """
         The meeting's documents, each once, with the agenda item it is
@@ -569,7 +584,7 @@ class ModGovMinutesScraper(BaseMinutesScraper):
         documents = []
         seen = set()
         for linked_doc in detail.find_all("linkeddoc"):
-            url = self.tag_text(linked_doc, "url")
+            url = self.document_url(self.tag_text(linked_doc, "url"))
             if not url or url in seen:
                 continue
             seen.add(url)

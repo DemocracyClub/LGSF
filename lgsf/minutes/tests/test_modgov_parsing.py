@@ -344,3 +344,27 @@ def test_the_run_writes_committees_before_reading_meetings():
 
     assert order[0] == ("committees", 3)
     assert [o[1] for o in order[1:]] == ["312", "163", "144"]
+
+
+def test_document_links_are_kept_as_given_by_default():
+    scraper = make_scraper()
+    assert (
+        scraper.document_url("http://democracy.example.gov.uk/mgConvert2PDF.aspx?ID=1")
+        == "http://democracy.example.gov.uk/mgConvert2PDF.aspx?ID=1"
+    )
+
+
+def test_document_links_can_take_the_scheme_of_base_url():
+    """For installs whose http:// links time out because only https answers."""
+    scraper = make_scraper()
+    scraper.documents_use_base_url_scheme = True
+
+    assert (
+        scraper.document_url("http://Democracy.example.gov.uk/mgConvert2PDF.aspx?ID=1")
+        == "https://Democracy.example.gov.uk/mgConvert2PDF.aspx?ID=1"
+    )
+    # Links elsewhere are left alone
+    assert (
+        scraper.document_url("http://elsewhere.example/doc.pdf")
+        == "http://elsewhere.example/doc.pdf"
+    )
