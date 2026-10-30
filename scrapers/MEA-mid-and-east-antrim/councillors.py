@@ -3,6 +3,12 @@ from urllib.parse import urljoin
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
+def decode_cfemail(hexstr: str) -> str:
+    data = bytes.fromhex(hexstr)
+    key = data[0]
+    return bytes(b ^ key for b in data[1:]).decode("utf-8")
+
+
 class Scraper(HTMLCouncillorScraper):
     list_page = {
         "container_css_selector": ".list-councillors",
@@ -24,10 +30,13 @@ class Scraper(HTMLCouncillorScraper):
 
         container = soup.select_one(".councillor-specific")
 
-        councillor.email = container.select_one("a[href^=mailto]")["href"].replace(
-            "mailto:", ""
-        )
+        # Emails are obfuscated by Cloudflare's email protection
+        email = container.select_one(".councillor-email a[href*=email-protection]")
+        if email:
+            councillor.email = decode_cfemail(email["href"].split("#", 1)[1])
 
-        councillor.photo_url = container.select_one("img")["src"]
+        image = container.select_one("img")
+        if image:
+            councillor.photo_url = image["src"]
 
         return councillor
