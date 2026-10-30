@@ -18,7 +18,7 @@
             "cms_type": "CMIS"
         },
         "minutes": {
-            "base_url": "https://north-ayrshire.cmis.uk.com/north-ayrshire/Meetings.aspx",
+            "base_url": "https://north-ayrshire.cmis.uk.com/north-ayrshire/CommitteesMeetings/MeetingsCalendar.aspx",
             "cms_type": "CMIS"
         }
     }
