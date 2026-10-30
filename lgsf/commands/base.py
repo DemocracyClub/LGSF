@@ -233,6 +233,21 @@ class PerCouncilCommandBase(AWSInvokableMixin, CouncilFilteringCommandBase):
             help="Only run scrapers that haven't completed a run in the last "
             "HOURS (default 24)",
         )
+        where = self.parser.add_mutually_exclusive_group()
+        where.add_argument(
+            "--run-on-aws",
+            dest="run_on_aws",
+            action="store_const",
+            const=True,
+            help="Only run councils whose scraper runs on AWS (as AWS does)",
+        )
+        where.add_argument(
+            "--no-aws",
+            dest="run_on_aws",
+            action="store_const",
+            const=False,
+            help="Only run councils whose scraper is kept off AWS (run_on_aws = False)",
+        )
         self.parser.add_argument(
             "--check-only",
             action="store_true",
@@ -453,7 +468,19 @@ class PerCouncilCommandBase(AWSInvokableMixin, CouncilFilteringCommandBase):
                 for council in councils
                 if council.council_id not in missing_councils
             ]
+        run_on_aws = self.options.get("run_on_aws")
+        if run_on_aws is not None:
+            councils = [
+                council
+                for council in councils
+                if self.runs_on_aws(council.council_id) is run_on_aws
+            ]
         return councils
+
+    def runs_on_aws(self, council_id):
+        """The scraper's run_on_aws, or None for a council without one."""
+        scraper = load_scraper(council_id, self.command_name)
+        return scraper.run_on_aws if scraper else None
 
     @property
     def in_lambda(self):

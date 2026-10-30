@@ -178,6 +178,8 @@ def _councils_for_type(scraper_type, council_ids, console):
         "council": council_ids or None,
         "exclude_missing": True,
         "exclude_disabled": True,
+        # Sites that block AWS are left to a run elsewhere with --no-aws.
+        "run_on_aws": True,
         "tags": None,
         "verbose": True,
     }

@@ -82,6 +82,16 @@ class AWSInvokableMixin:
 
             if council_ids:
                 self.console.print(f"[blue]Councils:[/blue] {council_ids}")
+                kept_off = [
+                    code
+                    for code in council_ids.split(",")
+                    if self.runs_on_aws(code.strip().split("-")[0].upper()) is False
+                ]
+                if kept_off:
+                    self.console.print(
+                        f"[yellow]Not run on AWS (run_on_aws = False):[/yellow] "
+                        f"{', '.join(kept_off)}. Run locally with --no-aws."
+                    )
             elif all_councils:
                 self.console.print("[blue]Running:[/blue] All councils")
 

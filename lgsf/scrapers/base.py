@@ -70,6 +70,9 @@ class ScraperBase(metaclass=abc.ABCMeta):
     """
 
     disabled = False
+    #: False for a site that blocks AWS: the AWS run leaves it out, and it
+    #: is run from elsewhere with --no-aws.
+    run_on_aws = True
     extra_headers = {}
     http_lib = "wreq"
     verify_requests = True

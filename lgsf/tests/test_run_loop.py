@@ -25,6 +25,7 @@ class FakeScraper:
     """Stands in for a council's scraper class."""
 
     disabled = False
+    run_on_aws = True
     tags = []
     get_tags = []
     scraper_object_type = "Fake"
@@ -186,6 +187,46 @@ def test_each_council_gets_its_own_options(command):
     assert sorted(seen) == ["AAA", "BBB", "CCC"]
     # The command's own options are left as the user gave them
     assert cmd.options["council"] == "AAA,BBB,CCC"
+
+
+class KeptOffAWS(FakeScraper):
+    run_on_aws = False
+
+
+@pytest.fixture
+def bbb_kept_off_aws(monkeypatch):
+    monkeypatch.setattr(
+        "lgsf.commands.base.load_scraper",
+        lambda code, cmd: KeptOffAWS if code == "BBB" else FakeScraper,
+    )
+
+
+@pytest.mark.parametrize(
+    "run_on_aws, expected",
+    [(None, ["AAA", "BBB", "CCC"]), (True, ["AAA", "CCC"]), (False, ["BBB"])],
+)
+def test_run_on_aws_selects_councils(command, bbb_kept_off_aws, run_on_aws, expected):
+    """
+    --run-on-aws is what AWS runs; --no-aws is what's left to run from
+    elsewhere. Neither runs everything.
+    """
+    cmd = command(["AAA", "BBB", "CCC"], run_on_aws=run_on_aws)
+
+    cmd.run_councils()
+
+    assert sorted(FakeScraper.ran) == expected
+
+
+def test_run_on_aws_flags_parse():
+    def parsed(*flags):
+        cmd = Command(["minutes", "--all-councils", *flags], io.StringIO())
+        return cmd.create_parser().run_on_aws
+
+    assert parsed() is None
+    assert parsed("--run-on-aws") is True
+    assert parsed("--no-aws") is False
+    with pytest.raises(SystemExit):
+        parsed("--run-on-aws", "--no-aws")
 
 
 def test_run_log_records_every_council(command, tmp_path):

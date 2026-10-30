@@ -158,6 +158,21 @@ while another execution covers one of the same councils; `--allow-overlap`
 starts it anyway. The daily run does the types marked `daily` in
 `lgsf/scraper_types.py`; see `cdk/README.md`.
 
+### Sites that block AWS
+
+Some councils refuse requests from AWS altogether (a 403 or a dropped
+connection, whichever region it comes from) while the same scraper works
+from a home connection. Set `run_on_aws = False` on that scraper and AWS
+leaves it out of every run, scheduled or `--aws`. Run those from another
+machine instead:
+
+```bash
+python manage.py councillors --all-councils --no-aws      # only the ones AWS skips
+python manage.py councillors --all-councils --run-on-aws  # only what AWS runs
+```
+
+Without either flag a local run includes both.
+
 ## Working on a scraper
 
 Install pre-commit hooks:

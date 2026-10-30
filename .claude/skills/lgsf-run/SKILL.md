@@ -107,6 +107,7 @@ If the site is down or blocking, say so rather than working around it.
 | Name resolution failure | Council moved CMS or domain | Find the new site — see the councillors skill |
 | 404 on a URL that used to work | URL structure changed | New `base_url` in `metadata.json` |
 | 403 Forbidden | Cloudflare or another WAF | `http_lib = "playwright"`, or `use_proxy = True` |
+| 403 / connection refused in AWS only, fine locally | Site blocks AWS IPs | `run_on_aws = False`; run it elsewhere with `--no-aws` |
 | `AttributeError: 'NoneType' has no attribute …` | Page structure changed | Reselect against the live page; check for a JSON endpoint first |
 | 409 Conflict from ModernGov | Server-side fault | Usually not fixable from here |
 
