@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "http://services.swale.gov.uk",
+            "base_url": "https://democracy.swale.gov.uk",
             "cms_type": "ModernGov"
         },
         "minutes": {
