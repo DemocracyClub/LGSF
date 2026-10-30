@@ -633,6 +633,11 @@ class PerCouncilCommandBase(AWSInvokableMixin, CouncilFilteringCommandBase):
             raise
         except Exception:
             run_log.error = traceback.format_exc()
+            # A run that raised commits nothing. Left open, its session would
+            # be committed as it stands when the scraper's context exits,
+            # or that commit's own checks would raise past this handler and
+            # end the whole run.
+            scraper.abandon_storage()
             if not run_log.log and hasattr(console, "export_text"):
                 run_log.log = console.export_text()
             # One council failing must not end a run over many of them.

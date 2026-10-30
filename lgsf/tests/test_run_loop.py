@@ -31,6 +31,7 @@ class FakeScraper:
     failing_councils = set()
     data_root = None
     ran = []
+    committed = []
 
     def __init__(self, options, console):
         self.options = options
@@ -39,12 +40,20 @@ class FakeScraper:
         self.storage_backend = FakeStorageBackend(
             FakeScraper.data_root, self.council_id
         )
+        self.storage_session = object()
 
     def __enter__(self):
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, exc_type, *args):
+        # As the real scraper does: a session still open on a clean exit
+        # is committed.
+        if self.storage_session and exc_type is None:
+            FakeScraper.committed.append(self.council_id)
         return False
+
+    def abandon_storage(self):
+        self.storage_session = None
 
     def run_since(self, hours=24):
         return None
@@ -71,6 +80,7 @@ def command(tmp_path, monkeypatch):
     )
     monkeypatch.setattr("lgsf.commands.base.load_council_info", lambda code: {})
     FakeScraper.ran = []
+    FakeScraper.committed = []
     FakeScraper.failing_councils = set()
     FakeScraper.data_root = tmp_path / "data"
 
@@ -108,6 +118,19 @@ def test_every_council_runs_even_when_one_fails(command, tmp_path):
     cmd.run_councils()
 
     assert sorted(FakeScraper.ran) == ["AAA", "BBB", "CCC"]
+
+
+def test_a_council_that_raises_commits_nothing(command):
+    """
+    What it stored before raising is partial, and committing it would read
+    downstream as everything else having gone.
+    """
+    cmd = command(["AAA", "BBB"])
+    FakeScraper.failing_councils = {"BBB"}
+
+    cmd.run_councils()
+
+    assert FakeScraper.committed == ["AAA"]
 
 
 def test_a_failure_does_not_abort_even_with_verbose(command):
