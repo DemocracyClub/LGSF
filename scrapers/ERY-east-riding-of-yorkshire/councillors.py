@@ -24,6 +24,9 @@ class Scraper(JSONCouncillorScraper):
 
         # Extract party (use political_group as fallback)
         party = search_data.get("party", "") or search_data.get("political_group", "")
+        # A few entries (e.g. recent by-election winners) have neither field
+        # filled in yet. Keep the councillor rather than failing the run.
+        party = party.strip() or "Unknown"
 
         # Build URL from alias
         alias = councillor_json.get("alias", "")
