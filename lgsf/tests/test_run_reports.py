@@ -131,3 +131,80 @@ def test_aws_and_local_runs_report_the_same_way(s3, tmp_path):
     for report in (from_aws, from_local):
         del report["timestamp"], report["execution_id"]
     assert from_aws == from_local
+
+
+def report(execution_id, *entries):
+    return {
+        "execution_id": execution_id,
+        "scrapers": [
+            {
+                "council": c,
+                "scraper_type": t,
+                "status": s,
+                "start_time": f"{day}T02:10:00+00:00",
+            }
+            for c, t, s, day in entries
+        ],
+    }
+
+
+def test_failure_streaks_count_days_on_aws_only():
+    reports = [
+        report(
+            "aws-1",
+            ("FEN", "minutes", "failed", "2026-11-01"),
+            ("KIR", "minutes", "failed", "2026-11-01"),
+        ),
+        report(
+            "aws-2",
+            ("FEN", "minutes", "failed", "2026-11-02"),
+            ("KIR", "minutes", "completed", "2026-11-02"),
+        ),
+        report(
+            "aws-3",
+            ("FEN", "minutes", "failed", "2026-11-03"),
+            ("KIR", "minutes", "failed", "2026-11-03"),
+        ),
+        # A run elsewhere that worked doesn't end the streak on AWS
+        report("local-box-1", ("FEN", "minutes", "completed", "2026-11-03")),
+    ]
+
+    assert run_reports.aws_failure_streaks(reports) == {
+        ("FEN", "minutes"): 3,
+        ("KIR", "minutes"): 1,
+    }
+
+
+def test_a_days_last_run_on_aws_is_the_one_that_counts():
+    """A failed scheduled run, then a run on request that worked."""
+    reports = [
+        report("aws-daily", ("FEN", "minutes", "failed", "2026-11-03")),
+        {
+            "execution_id": "minutes-FEN-20261103",
+            "scrapers": [
+                {
+                    "council": "FEN",
+                    "scraper_type": "minutes",
+                    "status": "completed",
+                    "start_time": "2026-11-03T14:00:00+00:00",
+                }
+            ],
+        },
+    ]
+
+    assert run_reports.aws_failure_streaks(reports) == {}
+
+
+def test_failing_on_aws_lists_those_past_the_threshold(s3, capsys):
+    for n, day in enumerate(["2026-11-01", "2026-11-02", "2026-11-03", "2026-11-04"]):
+        entries = [("FEN", "minutes", "failed", day)]
+        if n:
+            entries.append(("CAT", "councillors", "failed", day))
+        s3.put_object(
+            Bucket="reports",
+            Key=f"run-reports/run-report-{n}.json",
+            Body=json.dumps(report(f"aws-{n}", *entries)),
+        )
+
+    assert run_reports.main(["failing-on-aws", "--days", "4"]) == 0
+    assert capsys.readouterr().out == "minutes FEN\n"

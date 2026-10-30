@@ -15,6 +15,11 @@ results to FILE, in the worker's shape, and
 
 reports them as one run. One report for the whole run, however many
 commands it took, because each report takes one of the REPORTS_KEPT.
+
+    python -m lgsf.run_reports failing-on-aws --days 4
+
+lists the scrapers whose runs on AWS have failed that many days in a row,
+for a run elsewhere to try.
 """
 
 import argparse
@@ -338,6 +343,64 @@ def publish_report(bucket, built, console):
     return key
 
 
+#: The execution ids of runs outside AWS start with this (local_execution_id)
+LOCAL_EXECUTION_PREFIX = "local-"
+
+
+def read_reports(bucket):
+    """Every run report in the bucket."""
+    s3 = boto3.client("s3")
+    reports = []
+    pages = s3.get_paginator("list_objects_v2").paginate(
+        Bucket=bucket, Prefix="run-reports/"
+    )
+    for page in pages:
+        for obj in page.get("Contents", []):
+            body = s3.get_object(Bucket=bucket, Key=obj["Key"])["Body"].read()
+            reports.append(json.loads(body))
+    return reports
+
+
+def aws_failure_streaks(reports):
+    """
+    {(council, scraper_type): days} for scrapers whose last run on AWS
+    failed: how many days in a row, counting back over the days it ran.
+
+    By day (UTC), as the dashboard shows them: a day counts by its last run
+    of the scraper on AWS. Runs outside AWS are left out, so a scraper that
+    works only from elsewhere still counts as failing on AWS.
+    """
+    last = {}
+    for report in reports:
+        if report.get("execution_id", "").startswith(LOCAL_EXECUTION_PREFIX):
+            continue
+        for entry in report.get("scrapers", []):
+            start = entry.get("start_time")
+            if not start or entry.get("council", "unknown") == "unknown":
+                continue
+            key = (entry["council"], entry["scraper_type"], start[:10])
+            if key not in last or start > last[key][0]:
+                failed = (
+                    entry.get("status") == "failed" or entry.get("status_code") == 429
+                )
+                last[key] = (start, failed)
+
+    days_by_scraper = {}
+    for (council, scraper_type, day), (_, failed) in last.items():
+        days_by_scraper.setdefault((council, scraper_type), []).append((day, failed))
+
+    streaks = {}
+    for scraper, days in days_by_scraper.items():
+        streak = 0
+        for _, failed in sorted(days, reverse=True):
+            if not failed:
+                break
+            streak += 1
+        if streak:
+            streaks[scraper] = streak
+    return streaks
+
+
 def read_results(path):
     """The results a run's commands wrote to a --results-file, one per line."""
     with open(path) as f:
@@ -362,12 +425,26 @@ def main(argv=None):
         required=True,
         help="The id the run's commands were given, so commits lead to the report",
     )
+    failing = commands.add_parser(
+        "failing-on-aws",
+        help="List scrapers failing on AWS for DAYS days in a row, as 'type council' lines",
+    )
+    failing.add_argument("--days", type=int, default=4)
     args = parser.parse_args(argv)
 
     console = Console()
     bucket = os.environ.get("S3_REPORTS_BUCKET")
     if not bucket:
         parser.error("S3_REPORTS_BUCKET must be set")
+
+    if args.command == "failing-on-aws":
+        streaks = aws_failure_streaks(read_reports(bucket))
+        for (council, scraper_type), days in sorted(
+            streaks.items(), key=lambda s: (s[0][1], s[0][0])
+        ):
+            if days >= args.days:
+                print(scraper_type, council)
+        return 0
 
     results = (
         read_results(args.results_file) if os.path.exists(args.results_file) else []
