@@ -14,15 +14,15 @@
     },
     "services": {
         "councillors": {
-            "base_url": "https://democracy.anglesey.gov.uk",
+            "base_url": "https://democracy.anglesey.gov.wales",
             "cms_type": "ModernGov"
         },
         "minutes": {
-            "base_url": "https://democracy.anglesey.gov.uk",
+            "base_url": "https://democracy.anglesey.gov.wales",
             "cms_type": "ModernGov"
         },
         "decisions": {
-            "base_url": "https://democracy.anglesey.gov.uk",
+            "base_url": "https://democracy.anglesey.gov.wales",
             "cms_type": "ModernGov"
         }
     }
