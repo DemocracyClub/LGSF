@@ -173,6 +173,22 @@ python manage.py councillors --all-councils --run-on-aws  # only what AWS runs
 
 Without either flag a local run includes both.
 
+To have such a run show on the dashboard the way AWS runs do, give each
+command the same `--results-file` and `--execution-id`, then publish the
+file as one run report (needs `S3_REPORTS_BUCKET` and AWS credentials):
+
+```bash
+ID=local-$(hostname -s)-$(date -u +%Y%m%d-%H%M%S)
+python manage.py councillors --all-councils --no-aws --results-file run.jsonl --execution-id $ID
+python manage.py minutes --all-councils --no-aws --results-file run.jsonl --execution-id $ID
+python -m lgsf.run_reports publish run.jsonl --execution-id $ID
+```
+
+The report is built by the same code as the aggregation Lambda's
+(`lgsf/run_reports.py`), and the bucket keeps only the last 10, so publish
+once per run, not once per command. `publish` exits 1 if any council
+failed.
+
 ## Working on a scraper
 
 Install pre-commit hooks:

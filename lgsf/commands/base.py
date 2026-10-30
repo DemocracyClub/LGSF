@@ -23,6 +23,7 @@ from rich.table import Table
 from lgsf.commands.aws_mixin import AWSInvokableMixin
 from lgsf.conf import settings
 from lgsf.path_utils import _abs_path, load_council_info, load_scraper
+from lgsf.run_reports import completed_result, failed_result
 from lgsf.scrapers.progress import LiveProgress
 
 
@@ -247,6 +248,17 @@ class PerCouncilCommandBase(AWSInvokableMixin, CouncilFilteringCommandBase):
             action="store_const",
             const=False,
             help="Only run councils whose scraper is kept off AWS (run_on_aws = False)",
+        )
+        self.parser.add_argument(
+            "--results-file",
+            metavar="FILE",
+            help="Add each council's result to FILE, for `python -m "
+            "lgsf.run_reports publish` to report as one run",
+        )
+        self.parser.add_argument(
+            "--execution-id",
+            help="Name this run in its commits' trailers, as the run report "
+            "it goes in is named",
         )
         self.parser.add_argument(
             "--check-only",
@@ -553,6 +565,40 @@ class PerCouncilCommandBase(AWSInvokableMixin, CouncilFilteringCommandBase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content)
 
+    def record_result(self, scraper, run_log, error):
+        """
+        Add this council's result to --results-file, as the AWS worker
+        returns it (lgsf.run_reports), so a run outside AWS can be reported
+        the way AWS runs are. A failure's full log goes to S3 beside the
+        reports when S3_REPORTS_BUCKET is set, as the worker's does.
+        """
+        path = self.options.get("results_file")
+        if not path:
+            return
+        council = scraper.options["council"]
+        if error is None:
+            result = completed_result(
+                council,
+                self.command_name,
+                run_log,
+                run_id=scraper.run_id,
+                commit=scraper.last_commit,
+            )
+        else:
+            from lgsf.storage.backends.github import GitHubRateLimitError
+
+            result = failed_result(
+                council,
+                self.command_name,
+                run_log,
+                error,
+                bucket=os.environ.get("S3_REPORTS_BUCKET"),
+                rate_limited=isinstance(error, GitHubRateLimitError),
+                console=self.console,
+            )
+        with self._lock, open(path, "a") as f:
+            f.write(json.dumps(result, default=str) + "\n")
+
     def run_councils(self):
         self._run_councils(progress=False)
 
@@ -651,6 +697,7 @@ class PerCouncilCommandBase(AWSInvokableMixin, CouncilFilteringCommandBase):
 
     def _run_single(self, scraper, console):
         run_log = settings.RUN_LOGGER(start=datetime.datetime.now(datetime.UTC))
+        error = None
         try:
             scraper.run(run_log)
             if self.options.get("report"):
@@ -658,7 +705,8 @@ class PerCouncilCommandBase(AWSInvokableMixin, CouncilFilteringCommandBase):
                     self.scraped_items.extend(scraper.report_items)
         except KeyboardInterrupt:
             raise
-        except Exception:
+        except Exception as e:
+            error = e
             run_log.error = traceback.format_exc()
             # A run that raised commits nothing. Left open, its session would
             # be committed as it stands when the scraper's context exits,
@@ -673,12 +721,14 @@ class PerCouncilCommandBase(AWSInvokableMixin, CouncilFilteringCommandBase):
             if self._council_count <= 1 and self.options.get("verbose"):
                 run_log.finish()
                 self.record_run_log(scraper, run_log)
+                self.record_result(scraper, run_log, error)
                 raise
         run_log.finish()
 
         with self._lock:
             self._results.append((scraper.options["council"], run_log))
         self.record_run_log(scraper, run_log)
+        self.record_result(scraper, run_log, error)
 
         if not self._concurrent:
             console.print(run_log.as_rich_table)

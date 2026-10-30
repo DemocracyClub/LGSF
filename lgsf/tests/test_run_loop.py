@@ -31,6 +31,8 @@ class FakeScraper:
     scraper_object_type = "Fake"
     failing_councils = set()
     data_root = None
+    run_id = "run-1"
+    last_commit = None
     ran = []
     committed = []
 
@@ -308,3 +310,19 @@ def test_a_single_council_is_never_run_concurrently(command):
     cmd.run_councils()
 
     assert cmd._concurrent is False
+
+
+def test_results_file_gets_each_councils_result_as_aws_reports_it(command, tmp_path):
+    results = tmp_path / "results.jsonl"
+    cmd = command(["AAA", "BBB"], results_file=str(results))
+    FakeScraper.failing_councils = {"BBB"}
+
+    cmd.run_councils()
+
+    by_council = {
+        r["council"]: r for r in map(json.loads, results.read_text().splitlines())
+    }
+    assert by_council["AAA"]["status"] == "completed"
+    assert by_council["AAA"]["run_id"] == "run-1"
+    assert by_council["BBB"]["status"] == "failed"
+    assert by_council["BBB"]["error"] == "RuntimeError: BBB is broken"

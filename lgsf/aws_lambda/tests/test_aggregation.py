@@ -5,6 +5,7 @@ council, and names the report by the Step Functions execution.
 
 from types import SimpleNamespace
 
+from lgsf import run_reports
 from lgsf.aws_lambda import handlers
 
 
@@ -84,11 +85,11 @@ def test_the_report_records_the_execution_name(monkeypatch):
     saved = {}
     monkeypatch.setenv("S3_REPORTS_BUCKET", "bucket")
     monkeypatch.setattr(
-        handlers,
+        run_reports,
         "save_to_s3",
         lambda bucket, key, data, console: saved.update(key=key, data=data) or True,
     )
-    monkeypatch.setattr(handlers, "cleanup_old_reports", lambda *a, **k: None)
+    monkeypatch.setattr(run_reports, "cleanup_old_reports", lambda *a, **k: None)
 
     handlers.aggregation_handler(
         {
@@ -106,11 +107,11 @@ def test_without_an_execution_name_the_request_id_is_used_as_before(monkeypatch)
     saved = {}
     monkeypatch.setenv("S3_REPORTS_BUCKET", "bucket")
     monkeypatch.setattr(
-        handlers,
+        run_reports,
         "save_to_s3",
         lambda bucket, key, data, console: saved.update(data=data) or True,
     )
-    monkeypatch.setattr(handlers, "cleanup_old_reports", lambda *a, **k: None)
+    monkeypatch.setattr(run_reports, "cleanup_old_reports", lambda *a, **k: None)
 
     handlers.aggregation_handler(
         {"scraper_results": []}, SimpleNamespace(aws_request_id="req-1")
@@ -200,7 +201,7 @@ def test_aggregation_reports_from_s3_then_removes_the_map_files(
 ):
     fake, pointer = written_map_results
     monkeypatch.setenv("S3_REPORTS_BUCKET", "reports")
-    monkeypatch.setattr(handlers, "cleanup_old_reports", lambda *a, **k: None)
+    monkeypatch.setattr(run_reports, "cleanup_old_reports", lambda *a, **k: None)
 
     result = handlers.aggregation_handler(
         {"execution_id": "daily-1", "scraper_results": pointer},
