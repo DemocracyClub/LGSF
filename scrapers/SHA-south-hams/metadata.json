@@ -18,11 +18,11 @@
             "cms_type": "ModernGov"
         },
         "minutes": {
-            "base_url": "http://mg.swdevon.gov.uk",
+            "base_url": "https://democracy.swdevon.gov.uk",
             "cms_type": "ModernGov"
         },
         "decisions": {
-            "base_url": "http://mg.swdevon.gov.uk",
+            "base_url": "https://democracy.swdevon.gov.uk",
             "cms_type": "ModernGov"
         }
     }
