@@ -14,7 +14,7 @@
     },
     "services": {
         "councillors": {
-            "base_url": "https://estates8.warwickdc.gov.uk/cmis/",
+            "base_url": "https://estates10.warwickdc.gov.uk/cmis/",
             "cms_type": "CMIS"
         }
     }
