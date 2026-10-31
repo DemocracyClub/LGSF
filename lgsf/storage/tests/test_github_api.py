@@ -227,3 +227,49 @@ def test_the_installation_token_request_is_retried(monkeypatch):
 
     assert token == "ghs_abc"
     assert len(auth._http.calls) == 2
+
+
+def test_a_new_token_is_requested_only_once_the_last_has_expired(monkeypatch):
+    auth = GitHubAppAuthenticator(app_id="1", installation_id="2", private_key="k")
+    issued = iter(["first", "second"])
+    monkeypatch.setattr(
+        auth, "_request_installation_token", lambda: (next(issued), 1000.0)
+    )
+    # The first call has no token to check the age of
+    clock = iter([999.0, 1000.0])
+    monkeypatch.setattr("lgsf.storage.backends.github.time.time", lambda: next(clock))
+
+    assert [auth.get_token() for _ in range(3)] == ["first", "first", "second"]
+
+
+def test_a_long_run_uses_the_token_current_at_each_call(monkeypatch):
+    """An installation token lasts an hour; one council's run can last longer."""
+    tokens = iter(["old", "new"])
+    session = _GitHubSession(
+        organization="LGSF-Data",
+        github_token=lambda: next(tokens),
+        council_code="ABC",
+        scraper_object_type="Minutes",
+    )
+    ran = []
+    monkeypatch.setattr(
+        "lgsf.storage.backends.github.subprocess.run",
+        lambda cmd, **kwargs: ran.append(cmd),
+    )
+
+    session._run_git_command(["push", "origin", "main"])
+
+    # The clone's origin is pointed at the current token before pushing
+    assert ran[0] == [
+        "git",
+        "remote",
+        "set-url",
+        "origin",
+        "https://x-access-token:old@github.com/LGSF-Data/ABC.git",
+    ]
+    assert ran[1] == ["git", "push", "origin", "main"]
+
+    request = session.session.prepare_request(
+        requests.Request("GET", "https://api.github.com/repos/LGSF-Data/ABC")
+    )
+    assert request.headers["Authorization"] == "token new"
