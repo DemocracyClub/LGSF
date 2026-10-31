@@ -240,14 +240,18 @@ class _GitHubSession(StorageSession):
     def __init__(
         self,
         organization: str,
-        github_token: str,
+        github_token: str | Callable[[], str],
         council_code: str,
         scraper_object_type: str = "Data",
         run_id: str | None = None,
         storage_mode: StorageMode = StorageMode.REPLACE,
     ):
         self.organization: str = organization
-        self.github_token: str = github_token
+        # A callable is asked each time the token is needed. An installation
+        # token lasts an hour, and one council's run can last longer.
+        self._github_token = (
+            github_token if callable(github_token) else lambda: github_token
+        )
         self.council_code: str = council_code
         self.scraper_object_type: str = scraper_object_type
         self.storage_mode: str = storage_mode
@@ -268,12 +272,6 @@ class _GitHubSession(StorageSession):
         # Local Git repository path (in Lambda's /tmp)
         self.local_repo_path: str = f"/tmp/lgsf-repos/{self.council_code}"
 
-        # Remote URL with authentication
-        self.remote_url: str = (
-            f"https://x-access-token:{self.github_token}@github.com/"
-            f"{self.owner}/{self.repo}.git"
-        )
-
         self._default_branch: str = "main"
 
         # GitHub API session (only for creating a repository that doesn't exist)
@@ -285,6 +283,27 @@ class _GitHubSession(StorageSession):
 
         # Configure Git identity for commits
         self._configure_git_identity()
+
+    @property
+    def github_token(self) -> str:
+        return self._github_token()
+
+    #: A remote to use in place of GitHub, such as a bare repository on disk.
+    _fixed_remote_url: str | None = None
+
+    @property
+    def remote_url(self) -> str:
+        """The repository's URL, authenticated with the current token."""
+        if self._fixed_remote_url is not None:
+            return self._fixed_remote_url
+        return (
+            f"https://x-access-token:{self.github_token}@github.com/"
+            f"{self.owner}/{self.repo}.git"
+        )
+
+    @remote_url.setter
+    def remote_url(self, url: str) -> None:
+        self._fixed_remote_url = url
 
     def _generate_run_id(self) -> str:
         """Generate a unique run ID."""
@@ -302,9 +321,14 @@ class _GitHubSession(StorageSession):
     def _create_api_session(self) -> requests.Session:
         """Create and configure the GitHub API session."""
         session = requests.Session()
+
+        def authorize(request: requests.PreparedRequest) -> requests.PreparedRequest:
+            request.headers["Authorization"] = f"token {self.github_token}"
+            return request
+
+        session.auth = authorize
         session.headers.update(
             {
-                "Authorization": f"token {self.github_token}",
                 "Accept": "application/vnd.github.v3+json",
                 "User-Agent": "LGSF-GitHub-Storage/3.0",
             }
@@ -419,6 +443,16 @@ class _GitHubSession(StorageSession):
         """
         cmd = ["git"] + args
         working_dir = cwd or self.local_repo_path
+
+        # The clone's origin has the token it was cloned with, which may have
+        # expired since: on a long run, or in a clone left by an earlier one.
+        if args[0] in ("fetch", "push"):
+            subprocess.run(
+                ["git", "remote", "set-url", "origin", self.remote_url],
+                cwd=working_dir,
+                check=True,
+                capture_output=True,
+            )
 
         logger.debug(f"Running git command: {' '.join(cmd)} in {working_dir}")
 
@@ -978,7 +1012,6 @@ class GitHubStorage(BaseStorage):
             )
 
         logger.info(f"Using GitHub App authentication for {council_code}")
-        self.github_token = self.github_app.get_token()
 
         self._active: _GitHubSession | None = None
 
@@ -993,16 +1026,10 @@ class GitHubStorage(BaseStorage):
         scraper_type = kwargs.get("scraper_object_type", self.scraper_object_type)
         run_id = kwargs.get("run_id")
 
-        if not self.organization or not self.github_token:
-            raise ValueError("Organization and GitHub token are required")
-
-        # Refresh GitHub App token if needed
-        if self.github_app.is_configured():
-            self.github_token = self.github_app.get_token()
-
         session = _GitHubSession(
             organization=self.organization,
-            github_token=self.github_token,
+            # Asked each time, so a new token is fetched once one expires
+            github_token=self.github_app.get_token,
             council_code=self.council_code,
             scraper_object_type=scraper_type,
             run_id=run_id,
