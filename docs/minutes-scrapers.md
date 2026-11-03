@@ -135,13 +135,21 @@ attributes:
 
 ```python
 weeks_back = 4
-weeks_forward = 1
+weeks_forward = 104
 ```
 
 Minutes are usually published days or weeks after a meeting, which is why the
-window looks backwards: revisiting a meeting is how its minutes get picked up
-once they appear. Override either attribute on a council's scraper if its
-publishing schedule needs it.
+window looks back: revisiting a meeting is how its minutes get picked up
+once they appear. It looks forward past anything a council has scheduled, so
+a meeting is stored as soon as the council lists it, and a change to it (a new
+date, a cancellation, the agenda) is picked up from then on. ModernGov's API
+needs an end date and CMIS is read a month at a time, so "everything ahead" is
+two years.
+
+Looking ahead costs one detail request per future meeting a run, which a
+ModernGov install that sends validators answers with a 304 when nothing has
+changed, and for CMIS one calendar page per month. Override either attribute
+on a council's scraper if it needs it.
 
 ## Skipping meetings
 

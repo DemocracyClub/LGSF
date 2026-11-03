@@ -36,9 +36,10 @@ Scaffold with `--template minutes_scraper_modgov`, `minutes_scraper_cmis` or
 ## The scrape window
 
 Meetings are scraped over a rolling window set by `weeks_back` (4) and
-`weeks_forward` (1). It looks mostly backwards on purpose: minutes are
-published days or weeks after a meeting, so revisiting is how they get picked
-up once they appear.
+`weeks_forward` (104). It looks back because minutes are published days or
+weeks after a meeting, so revisiting is how they get picked up once they
+appear; it looks forward past anything a council has scheduled, so a meeting
+is stored as soon as it is listed.
 
 This means **a scraper finding zero meetings is not necessarily broken.** Over
 a quiet period, or a recess, there may genuinely be none. Check by asking the
