@@ -65,9 +65,13 @@ class BaseMinutesScraper(DocumentSavingMixin, ScraperBase):
     # must add to what's stored rather than replacing it.
     storage_mode = StorageMode.ACCUMULATE
 
-    # Meetings are scraped over a rolling window around today
+    # Meetings are scraped over a rolling window around today: back far
+    # enough to pick up minutes published after a meeting, and forward
+    # past anything a council has scheduled, so a meeting is stored as soon
+    # as the council lists it. ModernGov's API needs an end date and CMIS
+    # is read a month at a time, so "everything ahead" is two years.
     weeks_back = 4
-    weeks_forward = 1
+    weeks_forward = 104
 
     # When True, every document linked from a meeting is downloaded to the
     # document store. The full agenda pack is kept, not just the minutes:
