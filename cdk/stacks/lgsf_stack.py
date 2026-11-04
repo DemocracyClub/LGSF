@@ -26,6 +26,7 @@ from lgsf.scraper_types import SCRAPER_TYPES  # noqa: E402
 EXCLUDE_FILES = [
     "cdk.out",
     ".venv",
+    "node_modules",
     ".ruff_cache",
     ".git",
     "__pycache__",
