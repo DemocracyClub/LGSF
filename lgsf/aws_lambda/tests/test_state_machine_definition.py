@@ -94,7 +94,10 @@ def test_a_log_group_per_registered_type(template):
 
 
 def test_the_schedule_starts_every_council_with_the_daily_types(template):
-    (rule,) = template.find_resources("AWS::Events::Rule").values()
+    (rule,) = template.find_resources(
+        "AWS::Events::Rule",
+        {"Properties": {"Name": "lgsf-development-rule-scraper-orchestration"}},
+    ).values()
     (target,) = rule["Properties"]["Targets"]
     assert json.loads(target["Input"]) == {"all_councils": True}
 

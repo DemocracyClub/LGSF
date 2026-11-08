@@ -311,12 +311,26 @@ def work_safely(file, status, do_extract, store, options):
         return None, traceback.format_exc()
 
 
+def _sha256(path: Path) -> str:
+    """The file's SHA-256 as hex, read a megabyte at a time."""
+    digest = hashlib.sha256()
+    with path.open("rb") as f:
+        while block := f.read(1024 * 1024):
+            digest.update(block)
+    return digest.hexdigest()
+
+
 def _inspect(file: File, store, directory: Path):
     """
     Download the file and settle what can be settled without Docling:
     that it's there, that its bytes are the ones its name says, and its
     format. Returns the WorkResult, with an extract entry if the file is
-    left out, and the file's bytes.
+    left out, and the downloaded file's path (None if it's missing).
+
+    The file is never held in memory here: it's streamed to
+    ``directory``, hashed in blocks, and its format read from its head.
+    A dispatch Lambda sees every file a council stores, agenda packs
+    included.
     """
     start = time.monotonic()
 
@@ -332,18 +346,17 @@ def _inspect(file: File, store, directory: Path):
     except FileNotFoundError:
         return WorkResult(missing=True), None
 
-    raw = path.read_bytes()
-    digest = hashlib.sha256(raw).hexdigest()
+    digest = _sha256(path)
     result = WorkResult(format=detect_format(path))
     if digest != file.digest:
         result.extract = entry(ExtractStatus.FAILED)
         result.error = (
             f"The file's SHA-256 is {digest}, not the {file.digest} in its name"
         )
-        return result, raw
+        return result, path
     if result.format in LEFT_OUT_FORMATS:
         result.extract = entry(LEFT_OUT_FORMATS[result.format])
-    return result, raw
+    return result, path
 
 
 def _extract(file: File, status: FileStatus | None, store, options: Options):
@@ -364,9 +377,11 @@ def _extract(file: File, status: FileStatus | None, store, options: Options):
         )
 
     with tempfile.TemporaryDirectory() as directory:
-        result, raw = _inspect(file, store, Path(directory))
-    if result.missing or result.extract is not None:
-        return result, None, None
+        result, path = _inspect(file, store, Path(directory))
+        if result.missing or result.extract is not None:
+            return result, None, None
+        # Read whole only here, where it's about to be converted.
+        raw = path.read_bytes()
 
     try:
         data = extract.document_bytes(raw, result.format)

@@ -15,3 +15,7 @@ lambda-layers
 councillors.csv
 councils.csv
 modgov-councils.csv
+Dockerfile.documents
+.playwright-mcp
+node_modules
+*.csv

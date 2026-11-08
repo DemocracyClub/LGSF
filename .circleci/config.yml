@@ -139,6 +139,13 @@ jobs:
       - run:
           name: Install Node.js dependencies
           command: npm install
+      # Builds and pushes the two Docker image assets as well: the scraper
+      # worker's, and Dockerfile.documents for the document pipeline's
+      # Batch job (cdk/stacks/documents.py). The second needs nothing the
+      # first doesn't, only time and disk: it installs torch and Docling
+      # and downloads Docling's models, a few GB. Docker layer caching is
+      # best effort: when it holds, and pyproject.toml and uv.lock are
+      # unchanged, those layers aren't rebuilt.
       - run:
           name: CDK deploy
           command: uv run npx cdk deploy --require-approval never --all

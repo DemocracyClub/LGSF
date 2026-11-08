@@ -6,6 +6,8 @@ council, or one year of a council's files. See docs/document-pipeline.md.
     manage.py embeddings --council STO --year 2026
     manage.py embeddings --file STO/<sha256>.pdf --embedder titan-v2
     manage.py embeddings --council STO --source s3 --stages extract,chunk
+    manage.py embeddings --council STO --queue           # to the AWS pipeline
+    manage.py embeddings --drain-queue <url>             # the Batch worker
 
 Extracting and chunking need the embeddings dependency group:
 ``uv sync --group embeddings``. Embedding with titan-v2 needs AWS
@@ -21,7 +23,7 @@ import time
 from concurrent.futures.process import BrokenProcessPool
 
 from lgsf.commands.base import CommandBase
-from lgsf.embeddings import pipeline
+from lgsf.embeddings import aws, pipeline, queue_worker
 from lgsf.embeddings.embedders import EMBEDDERS
 from lgsf.embeddings.extract import (
     ConverterSettings,
@@ -83,16 +85,17 @@ class Command(CommandBase):
         parser.add_argument(
             "--embedder",
             choices=sorted(EMBEDDERS),
-            default="fake",
-            help="The embedding model (default fake, which calls nothing)",
+            help="The embedding model (default fake, which calls nothing; "
+            f"with --queue, the one the Lambdas use: {aws.EMBEDDER} or "
+            f"{aws.DEFAULT_EMBEDDER})",
         )
         parser.add_argument(
             "--source",
             choices=list(Source),
             type=Source,
-            default=Source.LOCAL,
             help="Where the documents are: the data directory (local, the "
-            "default) or the bucket LGSF_S3_BUCKET and LGSF_S3_PREFIX name (s3)",
+            "default) or the bucket LGSF_S3_BUCKET and LGSF_S3_PREFIX name "
+            "(s3, the default with --queue and --drain-queue)",
         )
         parser.add_argument(
             "--force",
@@ -145,25 +148,83 @@ class Command(CommandBase):
             type=int,
             help="Only the first this many files",
         )
+        parser.add_argument(
+            "--queue",
+            action="store_true",
+            help="Send the files that need something to the AWS pipeline's "
+            f"documents queue ({aws.DOCUMENTS_QUEUE_URL}) instead of running "
+            "them here",
+        )
+        parser.add_argument(
+            "--max-queued",
+            type=int,
+            default=2000,
+            help="With --queue, wait while the documents queue holds more "
+            "than this many messages (default 2000)",
+        )
+        parser.add_argument(
+            "--drain-queue",
+            metavar="URL",
+            help="Run as the Batch worker: extract and chunk the files on "
+            "this SQS queue until it's empty, sending each to the embed "
+            f"queue ({aws.EMBED_QUEUE_URL})",
+        )
 
     def write(self, text=""):
         self.console.print(text, markup=False, highlight=False, soft_wrap=True)
 
     def handle(self, options):
         self.options = options
+        in_aws = options["queue"] or options["drain_queue"]
+        if options["source"] is None:
+            options["source"] = Source.S3 if in_aws else Source.LOCAL
+        if options["embedder"] is None:
+            options["embedder"] = aws.embedder_name() if in_aws else "fake"
+        pipeline_options = self.pipeline_options()
+        if options["drain_queue"]:
+            if options["council"] or options["file"] or options["year"]:
+                self.parser.error(
+                    "--drain-queue works on the queue's files; it can't go "
+                    "with --council, --file or --year"
+                )
+            self.drain(store_for(options["source"]), pipeline_options)
+            return
         if options["file"] is None and not options["council"]:
             self.parser.error("one of --council or --file is required")
         if options["file"] is not None and options["year"] is not None:
             self.parser.error(
                 "--year chooses a council's files; it can't go with --file"
             )
+        if options["queue"] and (options["force"] or options["retry_failed"]):
+            self.parser.error(
+                "--force and --retry-failed can't go with --queue: the "
+                "pipeline plans each file from its status; to do a file "
+                "again, delete its status.json"
+            )
 
         store = store_for(options["source"])
         files = self.get_files(store)
         embedders = []
-        if Stage.EMBED in options["stages"]:
+        if Stage.EMBED in options["stages"] and not options["queue"]:
+            # Planning needs only the embedder's name; the Lambdas embed.
             embedders = [EMBEDDERS[options["embedder"]]()]
-        pipeline_options = pipeline.Options(
+
+        names = [embedder.name for embedder in embedders] or [options["embedder"]]
+        if len(files) == 1:
+            plans = [pipeline.plan(store, files[0], pipeline_options, names)]
+        else:
+            plans = pipeline.plan_files(store, files, pipeline_options, names)
+        self.output_plan(files, plans, store)
+        if options["queue"]:
+            self.queue(store, files, plans)
+            return
+        if options["dry_run"]:
+            return
+        self.run(store, files, plans, embedders, pipeline_options)
+
+    def pipeline_options(self):
+        options = self.options
+        return pipeline.Options(
             stages=options["stages"],
             max_pages=options["max_pages"],
             force=options["force"],
@@ -174,16 +235,6 @@ class Command(CommandBase):
                 device=options["device"],
             ),
         )
-
-        names = [embedder.name for embedder in embedders] or [options["embedder"]]
-        if len(files) == 1:
-            plans = [pipeline.plan(store, files[0], pipeline_options, names)]
-        else:
-            plans = pipeline.plan_files(store, files, pipeline_options, names)
-        self.output_plan(files, plans, store)
-        if options["dry_run"]:
-            return
-        self.run(store, files, plans, embedders, pipeline_options)
 
     def get_files(self, store):
         options = self.options
@@ -224,25 +275,46 @@ class Command(CommandBase):
             order=["extract", "chunk", "embed", "nothing"],
         )
 
-    def run(self, store, files, plans, embedders, pipeline_options):
-        options = self.options
-        to_convert = [p for p in plans if p.needs_converter]
-        if to_convert and importlib.util.find_spec("docling") is None:
+    def queue(self, store, files, plans):
+        """
+        --queue: the files that need something, to the documents queue,
+        leaving out those already waiting on the extract queue.
+        """
+        to_queue = [
+            file for file, p in zip(files, plans, strict=True) if not p.nothing_to_do
+        ]
+        waiting = aws.recently_queued_files(store, to_queue)
+        to_queue = [file for file in to_queue if file not in waiting]
+        if waiting:
+            self.write(f"\n{len(waiting)} files already queued for extraction")
+        self.write(f"\n{len(to_queue)} files to queue")
+        if self.options["dry_run"] or not to_queue:
+            return
+        sent = aws.queue_backfill(
+            to_queue, max_queued=self.options["max_queued"], log=self.write
+        )
+        self.write(f"{sent} files queued")
+
+    def check_docling(self):
+        if importlib.util.find_spec("docling") is None:
             self.parser.error(
                 "docling isn't installed. Run: uv sync --group embeddings"
             )
 
-        self.outcomes = []
+    def run(self, store, files, plans, embedders, pipeline_options):
+        options = self.options
+        to_convert = [p for p in plans if p.needs_converter]
+        if to_convert:
+            self.check_docling()
+
         self.to_do = sum(not p.nothing_to_do for p in plans)
-        self.write()
-        start = time.monotonic()
         executor = (
             worker_pool(options["workers"], pipeline_options.converter)
             if to_convert
             else contextlib.nullcontext()
         )
-        stopped = None
-        try:
+
+        def run_files():
             with executor:
                 pipeline.run_files(
                     store,
@@ -253,6 +325,36 @@ class Command(CommandBase):
                     self.output_outcome,
                     plans=plans,
                 )
+
+        self.run_reporting(run_files)
+
+    def drain(self, store, pipeline_options):
+        """--drain-queue: the Batch worker."""
+        self.check_docling()
+        self.to_do = None
+        self.write(f"Working {self.options['drain_queue']} against {store!r}")
+        self.run_reporting(
+            lambda: queue_worker.drain(
+                self.options["drain_queue"],
+                store,
+                pipeline_options,
+                workers=self.options["workers"],
+                on_outcome=self.output_outcome,
+                log=self.write,
+            )
+        )
+
+    def run_reporting(self, run):
+        """
+        Call ``run``, which reports each file through output_outcome(),
+        and print the summary, whether it finished or was stopped.
+        """
+        self.outcomes = []
+        self.write()
+        start = time.monotonic()
+        stopped = None
+        try:
+            run()
         except KeyboardInterrupt:
             stopped = "Stopped."
         except BrokenProcessPool:
@@ -312,9 +414,13 @@ class Command(CommandBase):
                     parts.append(f"{name} error: {entry.error}")
             if outcome.note:
                 parts.append(outcome.note)
+        # The worker doesn't know how many files its queue holds.
+        count = f"{len(self.outcomes)}"
+        if self.to_do is not None:
+            count += f"/{self.to_do}"
         self.write(
-            f"[{len(self.outcomes)}/{self.to_do}] {outcome.file.council} "
-            f"{outcome.file.storage_key}: " + "; ".join(parts)
+            f"[{count}] {outcome.file.council} {outcome.file.storage_key}: "
+            + "; ".join(parts)
         )
 
     def output_summary(self, elapsed):

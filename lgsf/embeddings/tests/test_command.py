@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
-from lgsf.embeddings import commands, extract
+from lgsf.embeddings import commands, extract, queue_worker
 from lgsf.embeddings.commands import Command
 from lgsf.embeddings.extract import ExtractStatus
 from lgsf.embeddings.sidecars import read_status
@@ -127,11 +127,12 @@ def fake_converter(monkeypatch):
     monkeypatch.setattr(extract, "docling_version", lambda: "2.130.0")
     monkeypatch.setattr(extract, "converter_device", lambda: "cpu")
     monkeypatch.setattr(extract, "pdf_title", lambda data: None)
-    monkeypatch.setattr(
-        commands,
-        "worker_pool",
-        lambda workers, settings: ThreadPoolExecutor(max_workers=2),
-    )
+    for module in (commands, queue_worker):
+        monkeypatch.setattr(
+            module,
+            "worker_pool",
+            lambda workers, settings: ThreadPoolExecutor(max_workers=2),
+        )
 
 
 def test_run(store, fake_converter):
@@ -161,3 +162,126 @@ def test_status_is_read_for_the_dry_run(store, fake_converter):
     assert "        1  ok\n" in output
     assert "        1  restricted\n" in output
     assert "        2  nothing\n" in output
+
+
+# The AWS pipeline: --queue and --drain-queue
+
+
+@pytest.fixture
+def aws_clients(monkeypatch):
+    """Fake SQS and SNS in place of the AWS clients, and their variables."""
+    from lgsf.embeddings import aws
+    from lgsf.embeddings.tests.test_aws import FakeSNS, FakeSQS
+
+    fakes = {"sqs": FakeSQS(), "sns": FakeSNS()}
+    monkeypatch.setattr(aws, "get_client", fakes.__getitem__)
+    monkeypatch.setenv(aws.DOCUMENTS_QUEUE_URL, "https://sqs/documents")
+    monkeypatch.setenv(aws.EXTRACT_QUEUE_URL, "https://sqs/extract")
+    monkeypatch.setenv(aws.EMBED_QUEUE_URL, "https://sqs/embed")
+    monkeypatch.setenv(aws.FILE_READY_TOPIC_ARN, "arn:aws:sns:eu-west-2:1:ready")
+    monkeypatch.setenv(aws.EMBEDDER, "fake")
+    return fakes
+
+
+def test_queue_sends_the_files_that_need_something(store, aws_clients):
+    output = run_command("--council", "STO", "--queue")
+
+    assert "2 files to queue" in output
+    assert "2 files queued" in output
+    sqs = aws_clients["sqs"]
+    assert sorted(m["storage_key"] for m in sqs.bodies("https://sqs/documents")) == (
+        sorted([key_for(PDF), key_for(RESTRICTED)])
+    )
+    assert sqs.bodies("https://sqs/extract") == []
+
+
+def test_queue_skips_files_that_are_done(store, aws_clients, fake_converter):
+    run_command("--council", "STO")
+    output = run_command("--council", "STO", "--queue")
+    assert "0 files to queue" in output
+    assert aws_clients["sqs"].bodies("https://sqs/documents") == []
+
+
+def test_queue_skips_files_waiting_on_the_extract_queue(store, aws_clients):
+    import os
+    import time
+
+    from lgsf.embeddings import aws
+    from lgsf.embeddings.files import File
+
+    pdf = File("STO", key_for(PDF))
+    restricted = File("STO", key_for(RESTRICTED))
+    aws.mark_queued(store, pdf)
+    aws.mark_queued(store, restricted)
+    stale = time.time() - 8 * 24 * 3600
+    os.utime(
+        store.path(f"{restricted.document_key}.{aws.QUEUED_SUFFIX}"), (stale, stale)
+    )
+
+    output = run_command("--council", "STO", "--queue")
+
+    assert "1 files already queued for extraction" in output
+    assert "1 files to queue" in output
+    assert aws_clients["sqs"].bodies("https://sqs/documents") == [
+        aws.message(restricted)
+    ]
+
+
+def test_queue_dry_run(store, aws_clients):
+    output = run_command("--council", "STO", "--queue", "--dry-run")
+    assert "2 files to queue" in output
+    assert "queued" not in output
+    assert aws_clients["sqs"].bodies("https://sqs/documents") == []
+
+
+def test_queue_refuses_force_and_retry_failed(store, aws_clients):
+    with pytest.raises(SystemExit):
+        run_command("--council", "STO", "--queue", "--force")
+    with pytest.raises(SystemExit):
+        run_command("--council", "STO", "--queue", "--retry-failed")
+
+
+def test_queue_plans_for_the_lambdas_embedder(store, aws_clients, monkeypatch):
+    """
+    The default embedder for a run is the fake one; for --queue it's the
+    one the Lambdas use, so a file embedded there counts as done.
+    """
+    from lgsf.embeddings.tests.test_aws import add_chunked
+
+    monkeypatch.setenv("EMBEDDER", "titan-v2")
+    add_chunked(store, b"%PDF-1.7 chunked", ["one two three"], embedder="titan-v2")
+    output = run_command("--council", "STO", "--queue", "--dry-run")
+    assert "3 files in" in output
+    assert "2 files to queue" in output
+
+
+def test_drain_queue(store, aws_clients, fake_converter):
+    sqs = aws_clients["sqs"]
+    sqs.send_message_batch(
+        "https://sqs/extract",
+        [
+            {
+                "Id": str(index),
+                "MessageBody": json.dumps({"council": "STO", "storage_key": key}),
+            }
+            for index, key in enumerate([key_for(PDF), key_for(RESTRICTED)])
+        ],
+    )
+
+    output = run_command("--drain-queue", "https://sqs/extract", "--workers", "1")
+
+    assert "2 messages received, 2 files" in output
+    assert f"] STO {key_for(PDF)}: pdf ok 2 pages" in output
+    assert "4 chunks" in output
+    assert "fake 3 embedded" not in output
+    assert f"] STO {key_for(RESTRICTED)}: restricted restricted" in output
+    assert "The queue is empty: stopping." in output
+    assert "2 files worked on" in output
+    assert [m["storage_key"] for m in sqs.bodies("https://sqs/embed")] == [key_for(PDF)]
+    assert [m["outcome"] for m in aws_clients["sns"].messages] == ["restricted"]
+    assert sqs.in_flight == {}
+
+
+def test_drain_queue_does_not_go_with_a_council(store, aws_clients):
+    with pytest.raises(SystemExit):
+        run_command("--drain-queue", "https://sqs/extract", "--council", "STO")
