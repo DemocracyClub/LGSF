@@ -19,7 +19,17 @@ from lgsf.embeddings import extract, pipeline, queue_worker
 from lgsf.embeddings.aws import Targets
 from lgsf.embeddings.extract import ExtractStatus
 from lgsf.embeddings.files import File
-from lgsf.embeddings.sidecars import Stage, read_status
+from lgsf.embeddings.chunking import inputs_hash
+from lgsf.embeddings.formats import DocumentFormat
+from lgsf.embeddings.sidecars import (
+    ExtractEntry,
+    FileStatus,
+    Outcome,
+    Stage,
+    Suffix,
+    read_status,
+    result_key,
+)
 from lgsf.embeddings.stores import LocalStore
 from lgsf.embeddings.tests.test_aws import (
     EMBED_QUEUE,
@@ -163,6 +173,54 @@ def test_the_worker_runs_only_extract_and_chunk(tmp_path, converted):
         name.removeprefix(f"{pdf.document_key}.")
         for name in store.list_prefix(f"{pdf.document_key}.")
     ) == ["chunks.jsonl", "docling-v2.json", "md", "status.json"]
+
+
+def test_an_extracted_file_is_chunked_without_converting(tmp_path, converted):
+    """
+    A file whose status has an extract entry and no chunk entry, with the
+    Docling document beside it, as the copy of lgsf-web's results leaves.
+    """
+    store = LocalStore(tmp_path)
+    pdf = add_file(store, PDF)
+    status = FileStatus(
+        council=pdf.council,
+        storage_key=pdf.storage_key,
+        content_hash=pdf.content_hash,
+        format=DocumentFormat.PDF,
+        outcome=Outcome.OK,
+        extract=ExtractEntry(
+            status=ExtractStatus.OK,
+            tool_version="2.130.0",
+            finished_at="2026-10-20T16:02:58+00:00",
+            pages=2,
+            seconds=1.9,
+            device="cuda",
+        ),
+    )
+    store.write_bytes(result_key(pdf.document_key, Suffix.STATUS), status.as_json())
+    store.write_bytes(
+        result_key(pdf.document_key, Suffix.DOCLING), MAN_DOCLING.read_bytes()
+    )
+    store.write_bytes(result_key(pdf.document_key, Suffix.TEXT), b"# A report")
+    sqs = FakeSQS()
+    queue_files(sqs, pdf)
+
+    worked, outcomes, _ = drain(store, sqs)
+
+    assert worked == 1
+    assert converted == []
+    after = read_status(store, pdf.document_key, pdf.content_hash)
+    assert after.chunked
+    assert after.extract == status.extract
+    assert after.outcome == Outcome.OK
+    assert after.chunk.inputs_hash == inputs_hash(
+        DocumentFormat.PDF, "2.130.0", pdf.content_hash
+    )
+    assert store.exists(result_key(pdf.document_key, Suffix.CHUNKS))
+    assert sqs.bodies(EMBED_QUEUE) == [
+        {"council": "STO", "storage_key": pdf.storage_key}
+    ]
+    assert sqs.in_flight == {}
 
 
 def test_a_redelivered_message_for_a_done_file_is_sent_on(tmp_path, converted):
