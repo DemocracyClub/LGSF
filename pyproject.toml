@@ -33,16 +33,44 @@ dev = [
     "pytest-mypy-plugins==3.2.0",
     "pytest-ruff==0.5",
     "ruff==0.15.22",
+    "jsonschema==4.26.0",
 ]
 cdk = [
     "aws-cdk-lib>=2.253.0,<3.0.0",
     "constructs>=10.5.0,<11.0.0",
     "aws-cdk-aws-lambda-python-alpha>=2.253.0,<3.0.0",
 ]
+# The document pipeline's extraction (lgsf/embeddings/, docs/document-pipeline.md).
+# Kept out of the main dependencies: the Lambda layer is built from
+# `uv export --no-dev` and has to stay under 250MB, and Docling with torch
+# is several times that. Everything in lgsf/embeddings/ except extraction
+# imports without this group.
+embeddings = [
+    "docling==2.130.0",
+    "docling-core==2.96.0",
+    "docling-parse==7.21.0",
+    "rapidocr==3.9.2",
+    "torch==2.14.1",
+    "torchvision==0.29.1",
+]
 
 [tool.uv]
 package = false
 required-version = "==0.11.*"
+
+[tool.uv.sources]
+# torch from PyPI is the CUDA build on Linux, which brings several GB of
+# NVIDIA libraries. The embeddings group runs on CPU, so it takes torch
+# from PyTorch's CPU-only index instead. torchvision, which Docling
+# needs, has to come from the same index, to be built against the same
+# torch.
+torch = [{ index = "pytorch-cpu", group = "embeddings" }]
+torchvision = [{ index = "pytorch-cpu", group = "embeddings" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [tool.pytest.ini_options]
 testpaths = ["lgsf", "scrapers", "scripts"]

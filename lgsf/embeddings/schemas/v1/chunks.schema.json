@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/DemocracyClub/LGSF/lgsf/embeddings/schemas/v1/chunks.schema.json",
+  "title": "Chunk",
+  "description": "One line of a document's .chunks.jsonl file: one piece of the document's text to embed, and what's needed to find it again.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "chunk_id",
+    "council",
+    "content_hash",
+    "storage_key",
+    "chunk_index",
+    "chunk_count",
+    "header",
+    "text",
+    "headings",
+    "pages",
+    "embed",
+    "chunker_version",
+    "word_count",
+    "text_hash"
+  ],
+  "properties": {
+    "chunk_id": {
+      "type": "string",
+      "description": "Stable between runs: {council}:documents:{sha256 hex}:{chunk_index}.",
+      "pattern": "^[A-Za-z0-9_-]+:documents:[0-9a-f]{64}:[0-9]+$"
+    },
+    "council": {"type": "string", "description": "The council's code."},
+    "content_hash": {
+      "type": "string",
+      "description": "The file's hash, as records have it.",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "storage_key": {
+      "type": "string",
+      "description": "The file's name in the council's documents directory: its SHA-256 as hex and an extension."
+    },
+    "chunk_index": {"type": "integer", "minimum": 0},
+    "chunk_count": {"type": "integer", "minimum": 1},
+    "header": {
+      "type": "string",
+      "description": "The document's title on one line and the section's headings on the next, or less when there isn't both. Put in front of the text when embedding."
+    },
+    "text": {"type": "string"},
+    "headings": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "The headings of the section the text is in, outermost first."
+    },
+    "pages": {
+      "type": "array",
+      "items": {"type": "integer", "minimum": 1},
+      "description": "The pages the text is on, in order."
+    },
+    "embed": {
+      "type": "boolean",
+      "description": "False for chunks too short to be worth embedding."
+    },
+    "chunker_version": {"type": "integer", "minimum": 1},
+    "word_count": {"type": "integer", "minimum": 0},
+    "text_hash": {
+      "type": "string",
+      "description": "SHA-256 of the text that is embedded: header, a blank line and text, or the text alone.",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

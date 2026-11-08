@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/DemocracyClub/LGSF/lgsf/embeddings/schemas/v1/status.schema.json",
+  "title": "Document pipeline status",
+  "description": "A document's .status.json: what the pipeline has done with the file, written last after each run.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["schema_version", "council", "storage_key", "content_hash", "format", "outcome", "error", "stages"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "council": {"type": "string"},
+    "storage_key": {"type": "string"},
+    "content_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "format": {
+      "type": ["string", "null"],
+      "enum": ["pdf", "multipart_pdf", "docx", "xlsx", "pptx", "image", "text", "csv", "restricted", "html", "empty", "unsupported", null]
+    },
+    "outcome": {
+      "type": ["string", "null"],
+      "enum": ["ok", "restricted", "empty", "not_a_document", "failed", null]
+    },
+    "error": {"type": ["string", "null"]},
+    "stages": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "An entry for each stage that has run.",
+      "properties": {
+        "extract": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["version", "tool_version", "finished_at", "status", "pages", "seconds", "device"],
+          "properties": {
+            "version": {"type": "integer", "description": "Docling's major version, as in the .docling-v2.json name."},
+            "tool_version": {"type": ["string", "null"], "description": "The exact Docling version; null if Docling wasn't loaded."},
+            "finished_at": {"type": ["string", "null"], "format": "date-time"},
+            "status": {
+              "type": "string",
+              "enum": ["ok", "partial", "failed", "timeout", "restricted", "not_document", "empty", "unsupported"]
+            },
+            "pages": {"type": ["integer", "null"]},
+            "seconds": {"type": ["number", "null"]},
+            "device": {"type": ["string", "null"]}
+          }
+        },
+        "chunk": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["version", "finished_at", "inputs_hash", "chunks", "embeddable"],
+          "properties": {
+            "version": {"type": "integer"},
+            "finished_at": {"type": ["string", "null"], "format": "date-time"},
+            "inputs_hash": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+            "chunks": {"type": "integer", "minimum": 0},
+            "embeddable": {"type": "integer", "minimum": 0},
+            "error": {"type": ["string", "null"]}
+          }
+        },
+        "embed": {
+          "type": "object",
+          "description": "By embedder name.",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": ["version", "model", "finished_at", "chunk_inputs_hash", "embedded", "reused", "tokens"],
+            "properties": {
+              "version": {"type": "integer"},
+              "model": {"type": "string"},
+              "finished_at": {"type": ["string", "null"], "format": "date-time"},
+              "chunk_inputs_hash": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-f]{64}$"},
+              "embedded": {"type": "integer", "minimum": 0},
+              "reused": {"type": "integer", "minimum": 0},
+              "tokens": {"type": "integer", "minimum": 0},
+              "error": {"type": ["string", "null"]}
+            }
+          }
+        }
+      }
+    }
+  }
+}
