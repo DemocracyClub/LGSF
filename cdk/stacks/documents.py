@@ -534,7 +534,11 @@ class DocumentPipeline(Construct):
                 actions=["batch:SubmitJob"],
                 resources=[
                     self.job_queue.job_queue_arn,
-                    # Any revision: the job is submitted by name.
+                    # The job is submitted by name, which IAM evaluates
+                    # as the bare job definition ARN; a revision is
+                    # allowed too, should one ever be named.
+                    f"arn:aws:batch:{stack.region}:{stack.account}:job-definition/"
+                    f"{self.job_definition_name}",
                     f"arn:aws:batch:{stack.region}:{stack.account}:job-definition/"
                     f"{self.job_definition_name}:*",
                 ],

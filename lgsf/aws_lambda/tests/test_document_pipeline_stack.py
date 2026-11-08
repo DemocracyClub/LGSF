@@ -207,6 +207,7 @@ def test_the_trigger_may_invoke_itself_and_submit_batch_jobs(template):
     (invoke,) = [r for a, r in allowed if a == "lambda:InvokeFunction"]
     assert f"function:{PREFIX}-lambda-documents-trigger" in invoke
     (submit,) = [r for a, r in allowed if a == "batch:SubmitJob"]
+    assert f"job-definition/{PREFIX}-documents" in submit
     assert f"job-definition/{PREFIX}-documents:*" in submit
     assert "JobQueueArn" in submit
     assert "batch:ListJobs" in {a for a, _ in allowed}
