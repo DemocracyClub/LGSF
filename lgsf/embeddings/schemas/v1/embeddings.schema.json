@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/DemocracyClub/LGSF/lgsf/embeddings/schemas/v1/embeddings.schema.json",
+  "title": "Embedding",
+  "description": "One line of a document's .<embedder>.jsonl file: one chunk's embedding.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["chunk_id", "text_hash", "model", "dimensions", "token_count", "embedding"],
+  "properties": {
+    "chunk_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]+:documents:[0-9a-f]{64}:[0-9]+$"
+    },
+    "text_hash": {
+      "type": "string",
+      "description": "The chunk's text_hash when it was embedded. If the chunk's is different now, this embedding is of old text.",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "model": {"type": "string", "description": "The provider's model ID."},
+    "dimensions": {"type": "integer", "minimum": 1},
+    "token_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "How many tokens the model read, by its own tokenizer."
+    },
+    "embedding": {"type": "array", "items": {"type": "number"}}
+  }
+}

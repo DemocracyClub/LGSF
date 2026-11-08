@@ -37,6 +37,7 @@ class BaseSettings(object):
             "templates",
             "metadata",
             "sync",
+            "embeddings",
             # 'parties',
             # "scrapers",
             # 'reconcilers',

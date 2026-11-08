@@ -75,6 +75,11 @@ responses and normalised JSON, with documents beside it in
 `data/<COUNCIL>/documents/`. Storage is pluggable: the same run can write to
 the local filesystem or commit to a per-council GitHub repository.
 
+**Documents get text, chunks and embeddings beside them.** `manage.py
+embeddings` extracts each stored document with Docling, chunks and embeds
+it, and writes the results next to the file; see
+[docs/document-pipeline.md](docs/document-pipeline.md).
+
 ## Install
 
 Requires Python 3.12 and [uv](https://docs.astral.sh/uv/).
@@ -109,6 +114,7 @@ uv run pre-commit install
 | [docs/minutes-scrapers.md](docs/minutes-scrapers.md) | Minutes scraper classes, the scrape window, and document storage |
 | [docs/decision-scrapers.md](docs/decision-scrapers.md) | Decision scraper classes, the decision text, and document storage |
 | [docs/adding-a-scraper-type.md](docs/adding-a-scraper-type.md) | Adding a whole new data type, not a council |
+| [docs/document-pipeline.md](docs/document-pipeline.md) | The document pipeline: extracting, chunking and embedding stored documents, the files it writes, and when each stage runs again |
 
 ## For LLMs and coding agents
 

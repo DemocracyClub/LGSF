@@ -34,5 +34,6 @@ def test_runner_no_commands():
         "\t * decisions\n"
         "\t * templates\n"
         "\t * metadata\n"
-        "\t * sync"
+        "\t * sync\n"
+        "\t * embeddings"
     )
