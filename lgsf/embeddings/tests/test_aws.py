@@ -592,6 +592,36 @@ def test_dispatch_routes_each_outcome(clients):
         assert not store.exists(result_key(file.document_key, "queued.json"))
 
 
+def test_dispatch_sends_an_extracted_but_unchunked_file_to_the_converter(clients):
+    """
+    A status with an extract entry and no chunk entry, as the copy of
+    lgsf-web's results leaves: chunking needs docling-core, which only
+    the Batch image has, so the file goes to the extract queue, and
+    nothing of it is downloaded or written apart from the marker.
+    """
+    store = clients.store
+    extracted = add_file(store, PDF)
+    status = replace(chunked_status(extracted), chunk=None)
+    store.write_bytes(
+        result_key(extracted.document_key, Suffix.STATUS), status.as_json()
+    )
+    store.write_bytes(result_key(extracted.document_key, Suffix.DOCLING), b"{}")
+    store.write_bytes(result_key(extracted.document_key, Suffix.TEXT), b"# A report")
+    clients.s3.calls.clear()
+
+    result = aws.dispatch_handler(sqs_event(extracted), None)
+
+    assert result == {"batchItemFailures": []}
+    assert clients.sqs.bodies(EXTRACT_QUEUE) == [aws.message(extracted)]
+    assert clients.sqs.bodies(EMBED_QUEUE) == []
+    assert clients.sns.messages == []
+    assert clients.s3.ops("download") == []
+    assert clients.s3.ops("put") == [
+        store.object_key(result_key(extracted.document_key, "queued.json"))
+    ]
+    assert read_status(store, extracted.document_key, extracted.content_hash) == status
+
+
 def test_dispatch_reports_the_records_that_failed(clients):
     store = clients.store
     restricted = add_file(store, RESTRICTED)

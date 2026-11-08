@@ -152,6 +152,12 @@ so fields can be added without a new schema version. A status that
 can't be parsed at all counts as `failed`, so `--retry-failed` covers it
 and Docling isn't run again by accident.
 
+A status with an extract stage from Docling 2.130.0 and no chunk stage
+may be one of lgsf-web's earlier conversions, copied into this layout by
+`scripts/copy_lgsf_web_results.py` with its `.docling-v2.json` and `.md`;
+the pipeline chunks and embeds such a file as it would any other
+extracted one, without converting it again.
+
 ## When each stage runs again
 
 Every run reads each file's status and runs only what's needed, so a run
