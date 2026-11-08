@@ -22,7 +22,10 @@ if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 from lgsf.scraper_types import SCRAPER_TYPES  # noqa: E402
+from stacks.documents import DocumentPipeline  # noqa: E402
 
+#: Left out of the zip Lambdas' code asset. The handlers import only
+#: lgsf/ and scrapers/; the rest is for people, CI, Docker or the layer.
 EXCLUDE_FILES = [
     "cdk.out",
     ".venv",
@@ -37,6 +40,11 @@ EXCLUDE_FILES = [
     "scripts",
     ".github",
     ".circleci",
+    ".playwright-mcp",
+    "Dockerfile.*",
+    ".dockerignore",
+    "*.csv",
+    "*.zip",
 ]
 
 
@@ -124,6 +132,7 @@ class LgsfStack(cdk.Stack):
         self.create_lambda_functions()
         self.create_step_function()
         self.create_event_rules()
+        self.create_document_pipeline()
 
         # Create outputs
         self.create_outputs()
@@ -760,6 +769,22 @@ class LgsfStack(cdk.Stack):
             )
         )
 
+    def create_document_pipeline(self) -> None:
+        """The document pipeline: queues, functions, Batch and alarms (documents.py)."""
+        self.document_pipeline = DocumentPipeline(
+            self,
+            "DocumentPipeline",
+            prefix=self.prefix,
+            dc_environment=self.dc_environment,
+            data_bucket=self.s3_data_bucket,
+            data_prefix=S3_DATA_PREFIX,
+            code_exclude=EXCLUDE_FILES,
+            dependencies_layer=self.dependencies_layer,
+            data_commits_topic=self.data_commits_topic,
+            scraper_notification_topic=self.scraper_notification_topic,
+            state_machine=self.step_function,
+        )
+
     def create_outputs(self) -> None:
         """Create CloudFormation outputs."""
 
@@ -834,6 +859,14 @@ class LgsfStack(cdk.Stack):
             export_name=f"{self._stack_name}-DataCommitsTopicArn",
         )
 
+        cdk.CfnOutput(
+            self,
+            "FileReadyTopicArn",
+            value=self.document_pipeline.file_ready_topic.topic_arn,
+            description="SNS Topic ARN: one message per document the pipeline finishes",
+            export_name=f"{self._stack_name}-FileReadyTopicArn",
+        )
+
         # Lambda Execution Role ARN
         cdk.CfnOutput(
             self,
@@ -847,7 +880,7 @@ class LgsfStack(cdk.Stack):
         cdk.CfnOutput(
             self,
             "ConfigurationInfo",
-            value=f"Required SSM Parameters: /lgsf/{self.dc_environment}/github/app_id, /lgsf/{self.dc_environment}/github/installation_id, /lgsf/{self.dc_environment}/github/app_private_key, /lgsf/{self.dc_environment}/github/organization, /lgsf/{self.dc_environment}/notification/emails (comma-separated), /lgsf/{self.dc_environment}/s3/reports_bucket, /lgsf/{self.dc_environment}/s3/data_bucket",
+            value=f"Required SSM Parameters: /lgsf/{self.dc_environment}/github/app_id, /lgsf/{self.dc_environment}/github/installation_id, /lgsf/{self.dc_environment}/github/app_private_key, /lgsf/{self.dc_environment}/github/organization, /lgsf/{self.dc_environment}/notification/emails (comma-separated), /lgsf/{self.dc_environment}/s3/reports_bucket, /lgsf/{self.dc_environment}/s3/data_bucket, /lgsf/{self.dc_environment}/vpc/id, /lgsf/{self.dc_environment}/vpc/public_subnet_ids",
             description="Information about required SSM Parameter Store configuration",
         )
 

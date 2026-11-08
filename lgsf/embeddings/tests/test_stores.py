@@ -1,5 +1,6 @@
 """The local and S3 stores, the S3 one against the storage tests' fake client."""
 
+import datetime
 import pickle
 
 import pytest
@@ -67,6 +68,17 @@ def test_list_sizes(store):
         "STO/documents/a.pdf": 5,
         "STO/documents/a.pdf.md": 0,
     }
+
+
+def test_list_entries(store):
+    before = datetime.datetime.now(datetime.UTC) - datetime.timedelta(seconds=2)
+    store.write_bytes("STO/documents/a.pdf", b"12345")
+    entries = store.list_entries("STO/documents/")
+    assert list(entries) == ["STO/documents/a.pdf"]
+    entry = entries["STO/documents/a.pdf"]
+    assert entry.size == 5
+    assert entry.last_modified.tzinfo is not None
+    assert before <= entry.last_modified <= datetime.datetime.now(datetime.UTC)
 
 
 def test_download_to(store, tmp_path):

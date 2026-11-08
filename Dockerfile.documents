@@ -1,0 +1,55 @@
+# The image AWS Batch runs `manage.py embeddings --drain-queue` in: the
+# document pipeline's extraction (docs/document-pipeline.md). Docling and
+# torch are too large for the Lambda layer, so conversion runs here. The
+# CDK builds it as an image asset when the stack is deployed
+# (cdk/stacks/documents.py), for CPU instances: torch comes from PyTorch's
+# CPU-only index (pyproject.toml). To build it yourself:
+#
+#     docker build -f Dockerfile.documents .
+
+FROM python:3.12-slim
+
+COPY --from=ghcr.io/astral-sh/uv:0.11.32 /uv /uvx /bin/
+
+# The dependency group with Docling. The CDK passes a different one for
+# GPU instances (documents.py, INSTANCES).
+ARG GROUP=embeddings
+
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=never \
+    PATH="/app/.venv/bin:$PATH" \
+    DOCLING_ARTIFACTS_PATH=/models \
+    PYTHONUNBUFFERED=1
+
+# The libraries OpenCV loads: RapidOCR depends on opencv-python, the
+# build with a GUI, rather than opencv-python-headless.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        libgl1 \
+        libglib2.0-0t64 \
+        libice6 \
+        libsm6 \
+        libx11-6 \
+        libxcb1 \
+        libxext6 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Dependencies first, so a code change doesn't reinstall them. No cache:
+# nothing else in the image would read it, and it would be in the layer.
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-cache --group "$GROUP"
+
+# Docling's layout model, TableFormer and RapidOCR's models, so that jobs
+# don't fetch them from Hugging Face and modelscope.cn when they start.
+RUN docling-tools models download --output-dir /models \
+    layout tableformer rapidocr
+
+COPY lgsf/ ./lgsf/
+COPY scrapers/ ./scrapers/
+COPY manage.py ./
+
+# The job definition gives the real command (documents.py).
+CMD ["python", "manage.py", "embeddings", "--help"]

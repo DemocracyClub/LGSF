@@ -11,7 +11,9 @@ A store is handed to worker processes, so S3Store leaves its boto3
 client out when it's pickled and gets one again when it's first used.
 """
 
+import datetime
 import os
+from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 from uuid import uuid4
@@ -23,6 +25,15 @@ from lgsf.storage import s3
 class Source(StrEnum):
     LOCAL = "local"
     S3 = "s3"
+
+
+@dataclass(frozen=True)
+class Entry:
+    """What a listing says about one key."""
+
+    size: int
+    #: When the object was last written, in UTC.
+    last_modified: datetime.datetime
 
 
 class LocalStore:
@@ -47,17 +58,27 @@ class LocalStore:
 
     def list_sizes(self, prefix: str) -> dict[str, int]:
         """The size in bytes of every file list_prefix() lists."""
+        return {key: entry.size for key, entry in self.list_entries(prefix).items()}
+
+    def list_entries(self, prefix: str) -> dict[str, Entry]:
+        """The size and modification time of every file list_prefix() lists."""
         directory, _, start = prefix.rpartition("/")
         path = self.path(directory)
         if not path.is_dir():
             return {}
-        return {
-            (f"{directory}/{entry.name}" if directory else entry.name): (
-                entry.stat().st_size
+        entries = {}
+        for entry in os.scandir(path):
+            if not (entry.is_file() and entry.name.startswith(start)):
+                continue
+            stat = entry.stat()
+            key = f"{directory}/{entry.name}" if directory else entry.name
+            entries[key] = Entry(
+                size=stat.st_size,
+                last_modified=datetime.datetime.fromtimestamp(
+                    stat.st_mtime, datetime.UTC
+                ),
             )
-            for entry in os.scandir(path)
-            if entry.is_file() and entry.name.startswith(start)
-        }
+        return entries
 
     def read_bytes(self, key: str) -> bytes:
         """Raises FileNotFoundError if there's nothing at ``key``."""
@@ -131,9 +152,13 @@ class S3Store:
         return sorted(self.list_sizes(prefix))
 
     def list_sizes(self, prefix: str) -> dict[str, int]:
+        """The size in bytes of every object list_prefix() lists."""
+        return {key: entry.size for key, entry in self.list_entries(prefix).items()}
+
+    def list_entries(self, prefix: str) -> dict[str, Entry]:
         """
-        The size in bytes of every object list_prefix() lists. One
-        ListObjectsV2 request for each thousand keys.
+        The size and LastModified of every object list_prefix() lists.
+        One ListObjectsV2 request for each thousand keys.
 
         A trailing slash on ``prefix`` is kept: "STO/documents/" must not
         list "STO/documents-backup/".
@@ -142,12 +167,15 @@ class S3Store:
         key_prefix = self.object_key(prefix)
         if prefix.endswith("/") or not prefix:
             key_prefix += "/"
-        sizes = {}
+        entries = {}
         paginator = self.client.get_paginator("list_objects_v2")
         for page in paginator.paginate(Bucket=self.bucket, Prefix=key_prefix):
             for item in page.get("Contents", []):
-                sizes[item["Key"][start:]] = item.get("Size", 0)
-        return sizes
+                entries[item["Key"][start:]] = Entry(
+                    size=item.get("Size", 0),
+                    last_modified=item["LastModified"].astimezone(datetime.UTC),
+                )
+        return entries
 
     def read_bytes(self, key: str) -> bytes:
         """Raises FileNotFoundError if there's nothing at ``key``."""
@@ -173,9 +201,20 @@ class S3Store:
         )
 
     def download_to(self, key: str, directory: Path) -> Path:
+        """
+        Streamed to disk, so a large document is never held in memory.
+        Raises FileNotFoundError if there's nothing at ``key``.
+        """
+        from botocore.exceptions import ClientError
+
         path = Path(directory) / Path(key).name
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(self.read_bytes(key))
+        try:
+            self.client.download_file(self.bucket, self.object_key(key), str(path))
+        except ClientError as error:
+            if s3.is_not_found(error):
+                raise FileNotFoundError(self.url(key)) from None
+            raise
         return path
 
 

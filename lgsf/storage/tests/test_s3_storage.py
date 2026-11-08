@@ -5,6 +5,7 @@ Run against an in-memory fake of the S3 client, so what is checked is what
 we ask S3 to do and in what order, not S3 itself.
 """
 
+import datetime
 import hashlib
 import io
 import json
@@ -27,8 +28,10 @@ class FakeS3:
     Enough of a boto3 S3 client for these backends and the documents
     migration, and a call log.
 
-    Objects are dicts of Body, and optionally ContentType and Metadata, so
-    a test can put one there directly.
+    Objects are dicts of Body, and optionally ContentType, Metadata and
+    LastModified, so a test can put one there directly. Listings carry
+    each object's LastModified, as S3's do: the time it was put, unless
+    a test has set it.
     """
 
     def __init__(self, page_size=1000):
@@ -48,6 +51,7 @@ class FakeS3:
             "Body": bytes(Body),
             "ContentType": ContentType,
             "Metadata": Metadata or {},
+            "LastModified": now(),
         }
 
     def get_object(self, Bucket, Key, Range=None):
@@ -78,6 +82,13 @@ class FakeS3:
         response["ContentLength"] = len(body)
         response["Body"] = io.BytesIO(body)
         return response
+
+    def download_file(self, Bucket, Key, Filename):
+        """As boto3's transfer does, a missing key fails with a 404."""
+        self.calls.append(("download", Key))
+        if Key not in self.objects:
+            raise ClientError({"Error": {"Code": "404"}}, "HeadObject")
+        Path(Filename).write_bytes(self.objects[Key]["Body"])
 
     def head_object(self, Bucket, Key):
         self.calls.append(("head", Key))
@@ -117,6 +128,7 @@ class FakeS3:
             "Body": source["Body"],
             "ContentType": content_type,
             "Metadata": dict(metadata),
+            "LastModified": now(),
         }
 
     def delete_objects(self, Bucket, Delete):
@@ -146,7 +158,11 @@ class FakeS3:
                     yield {
                         "CommonPrefixes": [{"Prefix": c} for c in common],
                         "Contents": [
-                            {"Key": k, "Size": len(fake.objects[k]["Body"])}
+                            {
+                                "Key": k,
+                                "Size": len(fake.objects[k]["Body"]),
+                                "LastModified": fake.last_modified(k),
+                            }
                             for k in keys
                         ],
                     }
@@ -158,6 +174,7 @@ class FakeS3:
                                 "Key": k,
                                 "Size": len(fake.objects[k]["Body"]),
                                 "ETag": etag(fake.objects[k]["Body"]),
+                                "LastModified": fake.last_modified(k),
                             }
                             for k in keys[start : start + fake.page_size]
                         ]
@@ -167,6 +184,14 @@ class FakeS3:
 
     def ops(self, kind):
         return [key for op, key in self.calls if op == kind]
+
+    def last_modified(self, key):
+        """An object put there directly, without one, counts as put now."""
+        return self.objects[key].get("LastModified") or now()
+
+
+def now():
+    return datetime.datetime.now(datetime.UTC).replace(microsecond=0)
 
 
 def etag(body):
@@ -234,8 +259,14 @@ def test_the_fake_lists_sizes_and_etags(fake):
     )
 
     assert page["Contents"] == [
-        {"Key": "data/a", "Size": 3, "ETag": '"900150983cd24fb0d6963f7d28e17f72"'}
+        {
+            "Key": "data/a",
+            "Size": 3,
+            "ETag": '"900150983cd24fb0d6963f7d28e17f72"',
+            "LastModified": fake.objects["data/a"]["LastModified"],
+        }
     ]
+    assert page["Contents"][0]["LastModified"].tzinfo is not None
 
 
 def test_the_fake_lists_common_prefixes(fake):

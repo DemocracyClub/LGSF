@@ -38,6 +38,10 @@ For `STO/documents/<sha256>.pdf`:
 A file that isn't a document to extract (see outcomes below) gets only the
 status file.
 
+In AWS, dispatch also writes `<sha256>.pdf.queued.json` beside a file
+it sends to the extract queue (see "Running in AWS"). It's not one of
+the pipeline's results and not part of the schema; readers ignore it.
+
 JSON Schemas for the chunks, embeddings and status files are in
 `lgsf/embeddings/schemas/v1/`. They allow fields to be added without a new
 version; a change to what a field means needs one.
@@ -252,3 +256,191 @@ embeds it; otherwise it writes nothing and the outcome's
 `needs_converter` is true, for a process that has Docling to pick up.
 Everything in `lgsf/embeddings/` other than `documents.py` imports
 without Docling, torch, pypdfium2 or pandas.
+
+## Infrastructure
+
+On AWS the pipeline runs in the LGSF stack, as three Lambda functions,
+three SQS queues and an AWS Batch job queue, with an SNS topic for what
+it finishes; `cdk/stacks/documents.py` makes them and
+[cdk/README.md](../cdk/README.md) describes them. The handlers are
+`lgsf/embeddings/aws.py` and the Batch worker `lgsf/embeddings/queue_worker.py`,
+run by `manage.py embeddings --drain-queue`. The files are the ones above,
+in the data bucket under `merged-data/`; nothing differs from a run on a
+laptop with `--source s3` except who does which stage.
+
+## Running in AWS
+
+In AWS the same library runs as three Lambdas and a Batch job, joined by
+SQS queues. A new document that turns out not to need Docling (a
+restricted page, an empty file) has its status within minutes of being
+scraped, and a chunked document its embeddings within minutes; a
+document that needs extracting waits for the hourly Batch submission
+and the instance to start, so is typically done within an hour or two,
+longer while a backlog converts. A backfill of every council's
+documents runs alongside without holding the new ones up. The code
+is in `lgsf/embeddings/aws.py` (the Lambdas, the messages, "file ready")
+and `lgsf/embeddings/queue_worker.py` (the Batch worker); the library
+is unchanged. The Lambdas run with boto3 alone: `aws.py` imports without
+Docling.
+
+Every message on every queue is one file, as JSON:
+
+```json
+{"council": "STO", "storage_key": "<sha256>.pdf"}
+```
+
+Messages are sent ten a request, the most SQS takes. A message carries
+no instructions: each stage plans the file from its status, as a run
+does, so a message delivered twice costs a status read and nothing else.
+
+A file can wait on the extract queue for hours while a backlog
+converts, with no status yet. So that the next scrape's trigger, a
+sweep or a backfill doesn't queue it again meanwhile, dispatch writes a
+marker beside it when it sends it there, `<key>.queued.json`
+(`{"queued_at": "<ISO UTC>", "queue": "extract"}`), and the trigger
+and `--queue` skip a file whose marker is younger than seven days. An
+older marker is ignored, so a message that was lost is made up for by
+a later sweep (the extract queue keeps a message for fourteen days).
+Nothing removes the marker: once the status is written the file is
+skipped anyway, and the marker is tiny.
+
+### The queues
+
+| Queue | Variable | Holds |
+| --- | --- | --- |
+| documents | `DOCUMENTS_QUEUE_URL` | Files that may need something, from the trigger and from `--queue` |
+| extract | `EXTRACT_QUEUE_URL` | Files that need Docling: the Batch worker's work |
+| embed | `EMBED_QUEUE_URL` | Files that are chunked and need embedding |
+
+### The trigger (`lgsf.embeddings.aws.trigger_handler`)
+
+Finds files for the pipeline to do. It tells the event it was given
+apart by looking at it:
+
+- **A message from the `data-commits` SNS topic** (see
+  `lgsf/storage/doorbell.py`), after a council's scrape has pushed: it
+  lists the council's documents directory once and sends every document
+  that has no `.status.json` to the documents queue. A direct invocation
+  with `{"council": "STO"}` does the same. A file with a fresh
+  `.queued.json` (above) is left out, and so is one written to the
+  bucket before `DOCUMENTS_SINCE` (an ISO UTC timestamp, such as
+  `2026-11-09T00:00:00Z`): the trigger is for what the scrapers add from
+  now on, and the historical files, about a million of them, come in
+  through the backfill command at its own pace. Without the variable the
+  trigger queues nothing and logs a warning, so a sweep of the whole
+  bucket can't happen by accident.
+- **A sweep**, `{"sweep": true}` or EventBridge's "Step Functions
+  Execution Status Change" event when the scraping state machine
+  finishes: it lists the councils (the directories under the prefix) and
+  invokes itself asynchronously once a council (`TRIGGER_FUNCTION_NAME`),
+  so no one invocation runs long.
+- **Submit a Batch job**, `{"submit_batch": true}` or EventBridge's
+  scheduled event: if the extract queue has messages waiting and no job
+  on the Batch job queue (`DOCUMENTS_BATCH_JOB_QUEUE`) is submitted,
+  pending, runnable, starting or running, it submits one
+  (`DOCUMENTS_BATCH_JOB_DEFINITION`), named `documents-<UTC timestamp>`.
+  One job at a time: the worker drains the queue whatever its length.
+
+It returns a small dict saying what it did.
+
+### Dispatch (`lgsf.embeddings.aws.dispatch_handler`)
+
+An SQS event source on the documents queue, up to ten messages at a
+time, with `ReportBatchItemFailures`. For each file it calls
+`pipeline.dispatch()`, which settles without Docling what it can:
+
+- a restricted page, an empty file, a page that isn't a document, or a
+  file whose bytes aren't its name's: the status is written and "file
+  ready" is published;
+- a file that needs Docling, to extract or to chunk: sent to the extract
+  queue, and marked with `.queued.json`;
+- a file that's chunked but not embedded by the Lambdas' embedder, or
+  whose embedding has an error (some chunks not embedded): sent to the
+  embed queue;
+- a file that's done: "file ready" is published again, so a subscriber
+  that missed it can ask for a file by queueing it.
+
+A record whose file isn't in the store, or that the store failed on, is
+returned as a batch item failure, so SQS delivers it again and in the
+end moves it to the dead-letter queue.
+
+### The Batch worker (`manage.py embeddings --drain-queue <url>`)
+
+Runs on a Batch instance with Docling installed and
+`EMBED_QUEUE_URL` and `FILE_READY_TOPIC_ARN` set. It receives up to ten
+messages at a time with long polling, plans their files from their
+statuses, and runs the extract and chunk stages for them with
+`pipeline.run_files()` and a pool of `--workers` processes, as a run
+does. While a batch converts, the messages' visibility is extended
+every few minutes, so a long agenda pack doesn't reappear on the queue
+before it's done. Then each message is settled by what became of its
+file:
+
+- chunked: the file is sent to the embed queue, and the message deleted;
+- left out or failed (restricted, empty, not a document, Docling failed
+  or timed out): "file ready" is published, and the message deleted;
+- anything else (the store failed, the file isn't there, chunking
+  failed): the message is left, so SQS delivers it again and in the end
+  dead-letters it.
+
+A file is sent on before its message is deleted, so a worker stopped
+between the two repeats the file rather than losing it. The worker
+prints a line a file as the command does, and exits when the queue has
+been empty for two receives. `--council`, `--file` and `--year` don't go
+with it; `--workers`, `--threads`, `--timeout` and `--device` do.
+
+### Embed (`lgsf.embeddings.aws.embed_handler`)
+
+An SQS event source on the embed queue, up to ten messages at a time,
+with `ReportBatchItemFailures`. For each file it runs the embed stage
+alone with the embedder `EMBEDDER` names (`titan-v2` unless set), then
+publishes "file ready". It can send a file back: one whose status says
+it needs Docling, or whose chunks turn out to have gone, goes to the
+extract queue, marked as dispatch would mark it, and the record
+succeeds. A file whose embed entry records an error ("N of M chunks not
+embedded", a Bedrock throttle that outlasted the retries) is a batch
+item failure, so SQS delivers it again and the next run sends only the
+chunks that failed.
+
+### "File ready" (`FILE_READY_TOPIC_ARN`)
+
+Whenever a file's status reaches a final outcome (`ok` with its
+embeddings written, `restricted`, `empty`, `not_a_document` or
+`failed`), one message goes to the topic:
+
+```json
+{
+  "council": "STO",
+  "storage_key": "<sha256>.pdf",
+  "content_hash": "sha256:<hex>",
+  "outcome": "ok",
+  "status_key": "STO/documents/<sha256>.pdf.status.json",
+  "schema_version": 1
+}
+```
+
+It's a notice, not a delivery: a subscriber reads the status and the
+files beside the document from the bucket. It can arrive more than once
+for a file. The one publisher is `Targets.ready()` in `aws.py`; without
+the variable it logs a warning and sends nothing, so a worker on a
+laptop stays quiet.
+
+### Backfilling
+
+```
+uv run manage.py embeddings --council STO --queue --dry-run
+uv run manage.py embeddings --council STO --queue
+uv run manage.py embeddings --council STO --year 2025 --queue --max-queued 500
+```
+
+`--queue` plans the files as a run would, against the bucket, and sends
+those that need something, and aren't already waiting on the extract
+queue (a fresh `.queued.json`), to the documents queue, ten a request,
+from where dispatch routes them. `DOCUMENTS_SINCE` doesn't apply: this
+is how the files from before it get in, a council or a year at a time. While the documents queue holds more than
+`--max-queued` messages (2,000 unless set) it waits, so a backfill never
+swamps the files new scrapes add. The embedder it plans for is the one
+the Lambdas use (`EMBEDDER`, or `titan-v2`), and `--source` is `s3`,
+unless either is given. `--force` and `--retry-failed` don't go with it:
+the Lambdas plan each file from its status, so to do a file again,
+delete its `.status.json` and queue it.

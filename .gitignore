@@ -124,3 +124,6 @@ dmypy.json
 # Personal Claude Code settings. Skills in .claude/skills/ are shared.
 .claude/settings.local.json
 logs/
+
+# CDK CLI installed by npm for cdk synth/deploy
+node_modules/
