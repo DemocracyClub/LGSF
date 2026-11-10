@@ -352,7 +352,7 @@ def test_the_batch_job_drains_the_extract_queue_on_sixteen_cpus(template):
     assert PIPELINE_VARIABLES <= set(env)
     assert env["EXTRACT_QUEUE_URL"] == {"Ref": extract_id}
     assert definition["Timeout"] == {"AttemptDurationSeconds": 12 * 60 * 60}
-    assert definition["RetryStrategy"]["Attempts"] == 3
+    assert definition["RetryStrategy"]["Attempts"] == 10
     assert definition["RetryStrategy"]["EvaluateOnExit"][0] == {
         "Action": "RETRY",
         "OnStatusReason": "Host EC2*",
@@ -365,7 +365,10 @@ def test_the_batch_compute_environment_is_spot_cpu_instances(template):
 
     assert resources["Type"] == "SPOT"
     assert resources["AllocationStrategy"] == "SPOT_PRICE_CAPACITY_OPTIMIZED"
-    assert resources["InstanceTypes"] == ["c7i.4xlarge", "c7a.4xlarge"]
+    # Ten 16-vCPU kinds, so Spot has pools to choose from.
+    assert resources["InstanceTypes"][:2] == ["c7i.4xlarge", "c7a.4xlarge"]
+    assert len(resources["InstanceTypes"]) == 10
+    assert all(kind.endswith(".4xlarge") for kind in resources["InstanceTypes"])
     assert resources["MinvCpus"] == 0
     assert resources["MaxvCpus"] == 32
     _, queue_ = resource(

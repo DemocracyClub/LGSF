@@ -124,10 +124,25 @@ class Instances:
 
 
 INSTANCES = {
-    # 16 vCPUs and 32 GiB. Docling on a CPU converts about a page a
-    # second a worker; the hourly job drains what the day's scrapes found.
+    # 16 vCPUs and 32 GiB or more. Docling on a CPU converts about a page
+    # a second a worker; the hourly job drains what the day's scrapes
+    # found. Ten kinds across the region's zones, so Spot has a pool to
+    # choose from: with two kinds, on 10 November 2026 every instance was
+    # taken back within hours for want of capacity, and none could be
+    # launched. The allocation strategy picks the cheapest with capacity.
     "cpu": Instances(
-        instance_types=["c7i.4xlarge", "c7a.4xlarge"],
+        instance_types=[
+            "c7i.4xlarge",
+            "c7a.4xlarge",
+            "c6i.4xlarge",
+            "c6a.4xlarge",
+            "c5.4xlarge",
+            "c5a.4xlarge",
+            "m7i.4xlarge",
+            "m6i.4xlarge",
+            "m6a.4xlarge",
+            "m5.4xlarge",
+        ],
         image_type=batch.EcsMachineImageType.ECS_AL2023,
         hardware_type=ecs.AmiHardwareType.STANDARD,
         dependency_group="embeddings",
@@ -415,12 +430,15 @@ class DocumentPipeline(Construct):
             job_definition_name=self.job_definition_name,
             container=container,
             timeout=cdk.Duration.hours(12),
-            retry_attempts=3,
+            # Batch's most: a day of scarce Spot capacity took three hosts
+            # from one job.
+            retry_attempts=10,
             retry_strategies=[
                 # A Spot instance taken back ("Host EC2 (instance ...)
                 # terminated"). The next attempt carries on with the
-                # queue; the file being converted comes back when its
-                # visibility timeout ends.
+                # queue; the files being converted come back when their
+                # visibility timeout ends, each receipt counting one of
+                # the five before the dead-letter queue.
                 batch.RetryStrategy.of(
                     batch.Action.RETRY, batch.Reason.SPOT_INSTANCE_RECLAIMED
                 ),

@@ -372,6 +372,15 @@ end moves it to the dead-letter queue.
 
 ### The Batch worker (`manage.py embeddings --drain-queue <url>`)
 
+The instances are Spot, from a pool of ten 16-vCPU kinds across the
+region's zones (`INSTANCES["cpu"]` in `cdk/stacks/documents.py`), and
+Batch picks the cheapest with capacity. A host taken back fails the
+attempt with "Host EC2 (instance …) terminated", and the job is retried,
+up to ten times; the files it was converting reappear on the queue a few
+minutes later, each reappearance counting one of the five receipts before
+the dead-letter queue. With two kinds, a day of scarce capacity (10
+November 2026) took back every host within hours, and no job finished.
+
 Runs on a Batch instance with Docling installed and
 `EMBED_QUEUE_URL` and `FILE_READY_TOPIC_ARN` set. It receives up to ten
 messages at a time with long polling, plans their files from their
