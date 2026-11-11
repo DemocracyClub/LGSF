@@ -13,7 +13,7 @@ dependencies = [
     "lxml==6.1.0",
     "olefile==0.47",
     "playwright>=1.60.0",
-    "pyjwt==2.14.0",
+    "pyjwt==2.15.0",
     "python-dateutil==2.9.0.post0",
     "python-slugify==8.0.4",
     "requests[security]==2.34.2",
