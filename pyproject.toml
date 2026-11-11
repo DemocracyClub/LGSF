@@ -47,7 +47,7 @@ cdk = [
 # imports without this group.
 embeddings = [
     "docling==2.130.0",
-    "docling-core==2.96.0",
+    "docling-core==2.104.0",
     "docling-parse==7.21.0",
     "rapidocr==3.9.2",
     "torch==2.14.1",
