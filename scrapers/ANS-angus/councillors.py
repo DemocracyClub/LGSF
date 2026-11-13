@@ -1,6 +1,12 @@
 from lgsf.councillors.scrapers import HTMLCouncillorScraper
 
 
+def decode_cfemail(hexstr: str) -> str:
+    data = bytes.fromhex(hexstr)
+    key = data[0]
+    return bytes(b ^ key for b in data[1:]).decode("utf-8")
+
+
 class Scraper(HTMLCouncillorScraper):
     disabled = False
     list_page = {
@@ -24,8 +30,13 @@ class Scraper(HTMLCouncillorScraper):
             division=division,
         )
         soup = self.get_page(url)
-        councillor.email = soup.select(".field--name-field-email a[href^=mailto]")[
-            0
-        ].get_text(strip=True)
+        # Cloudflare hides the address: decode it from data-cfemail.
+        email = soup.select_one(".field--name-field-email [data-cfemail]")
+        if email:
+            councillor.email = decode_cfemail(email["data-cfemail"])
+        else:
+            mailto = soup.select_one(".field--name-field-email a[href^=mailto]")
+            if mailto:
+                councillor.email = mailto.get_text(strip=True)
 
         return councillor
