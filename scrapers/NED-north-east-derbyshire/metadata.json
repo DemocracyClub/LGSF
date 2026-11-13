@@ -14,15 +14,15 @@
     },
     "services": {
         "councillors": {
-            "base_url": "https://democracy.ne-derbyshire.gov.uk",
+            "base_url": "https://ne-derbyshire.moderngov.co.uk",
             "cms_type": "ModernGov"
         },
         "minutes": {
-            "base_url": "https://democracy.ne-derbyshire.gov.uk",
+            "base_url": "https://ne-derbyshire.moderngov.co.uk",
             "cms_type": "ModernGov"
         },
         "decisions": {
-            "base_url": "https://democracy.ne-derbyshire.gov.uk",
+            "base_url": "https://ne-derbyshire.moderngov.co.uk",
             "cms_type": "ModernGov"
         }
     }
