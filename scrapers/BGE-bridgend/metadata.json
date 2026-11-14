@@ -14,15 +14,15 @@
     },
     "services": {
         "councillors": {
-            "base_url": "https://democratic.bridgend.gov.uk",
+            "base_url": "https://moderngov.bridgend.gov.uk",
             "cms_type": "ModernGov"
         },
         "minutes": {
-            "base_url": "https://democratic.bridgend.gov.uk",
+            "base_url": "https://moderngov.bridgend.gov.uk",
             "cms_type": "ModernGov"
         },
         "decisions": {
-            "base_url": "https://democratic.bridgend.gov.uk",
+            "base_url": "https://moderngov.bridgend.gov.uk",
             "cms_type": "ModernGov"
         }
     }
