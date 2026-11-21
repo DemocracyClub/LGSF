@@ -172,6 +172,7 @@ class BaseDecisionsScraper(DocumentSavingMixin, ScraperBase):
         self.windows_skipped = 0
         self.windows_incomplete = 0
         self.incomplete_decisions = 0
+        self.excluded_decisions = 0
         self.consecutive_failures = 0
 
     @property
@@ -417,6 +418,8 @@ class BaseDecisionsScraper(DocumentSavingMixin, ScraperBase):
             return False
 
         entry = self.index["decisions"].get(row["url"]) or {}
+        if entry.get("excluded"):
+            return True
         if entry.get("incomplete") and not self.skip_documents:
             return False
 
@@ -487,6 +490,9 @@ class BaseDecisionsScraper(DocumentSavingMixin, ScraperBase):
                 self.checkpoint()
             try:
                 decision = self.get_single_decision(decision_data)
+                if self.exclude_decision_hook(decision):
+                    self.exclude_decision(decision)
+                    continue
                 self.process_decision(decision, decision_data)
             except DecisionNotModifiedException:
                 self.unchanged_decisions += 1
@@ -516,6 +522,26 @@ class BaseDecisionsScraper(DocumentSavingMixin, ScraperBase):
         self.finalize_storage(run_log)
 
         self.report()
+
+    def exclude_decision_hook(self, decision):
+        """
+        True to leave a decision out, after its page is read and before
+        its documents are downloaded or it is saved. For a site shared with
+        another council (lgsf/shared_sites.py).
+        """
+        return False
+
+    def exclude_decision(self, decision):
+        """
+        Forget a decision the hook left out, and note it in the index so
+        that, once settled, its page isn't fetched again whenever its slice
+        is listed.
+        """
+        self.decisions.discard(decision)
+        self.excluded_decisions += 1
+        entry = self.index["decisions"].setdefault(decision.url, {})
+        entry.pop("file_name", None)
+        entry["excluded"] = True
 
     def prettify_decision_str(self, decision_raw_str):
         if isinstance(decision_raw_str, dict):
@@ -564,6 +590,7 @@ class BaseDecisionsScraper(DocumentSavingMixin, ScraperBase):
         # however old it gets, rather than settling with a gap.
         entry = self.index["decisions"].setdefault(decision_obj.url, {})
         entry["file_name"] = "{}.json".format(decision_obj.as_file_name())
+        entry.pop("excluded", None)
         if complete:
             entry.pop("incomplete", None)
         else:
@@ -588,6 +615,10 @@ class BaseDecisionsScraper(DocumentSavingMixin, ScraperBase):
             f"({self.unchanged_decisions} unchanged since last run, "
             f"{self.settled_decisions} already stored and settled)"
         )
+        if self.excluded_decisions:
+            self.console.log(
+                f"{self.excluded_decisions} decisions left out as another council's"
+            )
         if self.windows_read or self.windows_skipped:
             self.console.log(
                 f"Date slices: {self.windows_read} listed, "
