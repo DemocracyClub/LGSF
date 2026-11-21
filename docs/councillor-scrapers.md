@@ -78,6 +78,17 @@ The `base_url` should be the URL above the `mgWebService.asmx` script, e.g.
 `http://democracy.kirklees.gov.uk/councillors/` if it’s installed at a
 sub-path.
 
+A councillor's `start_date` and `standing_down` come from their terms of
+office, ModernGov's `<termsofoffice>`. Every term is read, not only the
+last: a councillor can lose their seat and come back at a later election, so
+a record can list a term that ended and a later one that hasn't (Reading's
+David Stevens: 2018 to 2022, then from 2024 with no end). The term in force
+today is used if there is one, else one still to begin, else the one that
+ended last; of several in force, the one that began last. An end of
+"unspecified" leaves `standing_down` unset. A term that ends before it
+starts has a mistyped date: its start is ignored and its end kept
+(`ModGovCouncillorScraper.term_of_office`).
+
 
 ## Skipping councillors
 
