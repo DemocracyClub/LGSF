@@ -446,6 +446,26 @@ can't be read is logged, counted and skipped, and the count is reported at the
 end. Letting it propagate would abandon the run before storage was finalised
 and lose every decision scraped up to that point.
 
+## A site shared with another council
+
+Adur and Worthing share one ModernGov install, so each council's list pages
+carry both councils' decisions. `exclude_decision_hook(decision)` leaves one
+out after its page is read and before its documents are downloaded or it is
+saved. `lgsf.shared_sites.only_other_councils` decides from the decision
+maker: one that names only the other council ("Worthing Leader", "Worthing
+Planning Committee") is left out; one by both councils' cabinet members, a
+joint committee or an officer is kept by both.
+
+```python
+def exclude_decision_hook(self, decision):
+    return only_other_councils(decision.decision_maker, "Adur", ["Worthing"])
+```
+
+The decision maker is only on the decision's own page, so a left-out decision
+is still fetched. Its index entry is marked `excluded`, and once it is
+settled it is treated like a stored one: not fetched again when its slice is
+listed.
+
 ## Known limitations
 
 - **ModernGov sends no HTTP validators** on decision pages — no `ETag` or

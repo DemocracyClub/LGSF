@@ -382,7 +382,11 @@ class ModGovMinutesScraper(BaseMinutesScraper):
         ModGovCouncillorScraper - this overrides the base run() loop rather
         than using the generic get_meetings()/get_single_meeting() pairing.
         """
-        committees = self.get_meetings()
+        committees = [
+            committee
+            for committee in self.get_meetings()
+            if not self.exclude_committee_hook(self.committee_record(committee))
+        ]
         self.save_committees(committees)
         for committee in committees:
             committee_id = committee.find("committeeid").text.strip()
@@ -429,6 +433,14 @@ class ModGovMinutesScraper(BaseMinutesScraper):
                 for child in committee.find_all(recursive=False)
             },
         }
+
+    def exclude_committee_hook(self, record):
+        """
+        True to leave a committee out: neither its record nor any of its
+        meetings is fetched or saved. `record` is `committee_record()`'s.
+        For a site shared with another council (lgsf/shared_sites.py).
+        """
+        return False
 
     def save_committees(self, committees):
         """committees/<id>.json beside the meetings, one per committee."""

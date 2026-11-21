@@ -161,6 +161,22 @@ raise `SkipMeetingException` and the loop moves on:
 from lgsf.minutes.exceptions import SkipMeetingException
 ```
 
+### A site shared with another council
+
+Adur and Worthing share one ModernGov install, holding both councils'
+committees. A ModernGov scraper can leave a whole committee out with
+`exclude_committee_hook(record)`, given the record `committee_record()` makes:
+neither the committee's file nor any of its meetings is fetched or saved.
+`lgsf.shared_sites.only_other_councils` decides from the name: a committee
+that names only the other council ("Worthing Planning Committee", "Joint
+Strategic Sub-Committee (Worthing)") is left out, and a joint one is kept by
+both.
+
+```python
+def exclude_committee_hook(self, record):
+    return only_other_councils(record["title"], "Adur", ["Worthing"])
+```
+
 ## Documents, and where they go
 
 Metadata and document files are stored separately.
