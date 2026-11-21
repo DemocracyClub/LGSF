@@ -1,5 +1,6 @@
 import abc
 import contextlib
+import datetime
 import json
 from urllib.parse import urljoin
 
@@ -215,30 +216,12 @@ class ModGovCouncillorScraper(BaseCouncillorScraper):
         with contextlib.suppress(AttributeError):
             councillor.photo_url = councillor_xml.photobigurl.text
 
-        # Standing down
-        IGNORED_ENDDATES = ["unspecified"]
-
-        try:
-            startdate = (
-                councillor_xml.find("termsofoffice")
-                .findAll("termofoffice")[-1]
-                .find("startdate")
-                .text
-            )
-            if startdate not in IGNORED_ENDDATES:
-                start_date = parse(startdate, dayfirst=True)
-                councillor.start_date = start_date.isoformat()
-        except AttributeError:
-            pass
-
-        try:
-            enddate = councillor_xml.find("termsofoffice").findAll("enddate")[-1].text
-            if enddate not in IGNORED_ENDDATES:
-                # councillor.standing_down = enddate
-                standing_down = parse(enddate, dayfirst=True)
-                councillor.standing_down = standing_down.isoformat()
-        except AttributeError:
-            pass
+        # Terms of office
+        start_date, end_date = self.term_of_office(councillor_xml)
+        if start_date:
+            councillor.start_date = start_date.isoformat()
+        if end_date:
+            councillor.standing_down = end_date.isoformat()
 
         if self.exclude_councillor_hook(councillor):
             raise SkipCouncillorException
@@ -247,6 +230,66 @@ class ModGovCouncillorScraper(BaseCouncillorScraper):
 
     def exclude_councillor_hook(self, councillor: CouncillorBase):
         return False
+
+    @staticmethod
+    def _term_date(term, tag):
+        """A term's start or end, or None for "unspecified" or none."""
+        element = term.find(tag)
+        text = element.get_text(strip=True) if element else ""
+        if not text or text.lower() == "unspecified":
+            return None
+        try:
+            return parse(text, dayfirst=True)
+        except (ValueError, OverflowError):
+            return None
+
+    def term_of_office(self, councillor_xml, today=None):
+        """
+        The start and end (datetimes, or None) of the councillor's current
+        term, from every term ModernGov lists, not only the last.
+
+        A councillor can lose their seat and come back later, so a record
+        can list a term that ended and a later one that hasn't (Reading's
+        David Stevens: 2018 to 2022, then from 2024 with no end). So the
+        term in force today is used if there is one, else one still to
+        begin (elected, not yet in office), else the one that ended last.
+        Of several in force, the one that began last: an older term left
+        open by mistake (Hertsmere's Caroline Clapper has 2019 with no end
+        as well as 2023 to 2027) gives way to it.
+
+        A term that ends before it starts has a mistyped date. Its start is
+        not trusted, its end is: West Oxfordshire's Duncan Enright has
+        07/05/2028 to 04/05/2028, a term to 2028, and Thanet's Rob Yates
+        05/05/2023 to 04/05/2023, which ended long ago.
+        """
+        today = today or datetime.date.today()
+        holder = councillor_xml.find("termsofoffice")
+        terms = []
+        for term in holder.find_all("termofoffice") if holder else []:
+            start = self._term_date(term, "startdate")
+            end = self._term_date(term, "enddate")
+            if start and end and end < start:
+                start = None
+            terms.append((start, end))
+        if not terms:
+            return None, None
+
+        def began(term):
+            return term[0] is None or term[0].date() <= today
+
+        def running(term):
+            return term[1] is None or term[1].date() >= today
+
+        def latest_start(term):
+            start, end = term
+            return (start is not None, start, end is not None, end)
+
+        current = [t for t in terms if began(t) and running(t)]
+        future = [t for t in terms if not began(t)]
+        if current or future:
+            return max(current or future, key=latest_start)
+        # Every term has ended, so has an end.
+        return max(terms, key=lambda t: t[1])
 
 
 class CMISCouncillorScraper(BaseCouncillorScraper):
